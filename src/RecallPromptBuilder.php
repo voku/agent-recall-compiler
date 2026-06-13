@@ -86,6 +86,12 @@ final class RecallPromptBuilder
             'task_id' => $task->id,
             'compiled_at' => (new DateTimeImmutable('now'))->format(DateTimeInterface::ATOM),
             'selected_guidance' => array_map(static fn(RecallGuidance $g) => $g->id, $result->selectedGuidance),
+            'selected_constraints' => array_map(static fn(ConstraintManifest $c) => [
+                'id' => $c->id,
+                'engine' => $c->engine,
+                'rule_identifier' => $c->ruleIdentifier,
+                'source_proposal' => $c->sourceProposal,
+            ], $result->selectedConstraints),
             'selected_rejections' => array_map(static fn(RecallRejection $rj) => $rj->id, $result->selectedRejections),
             'warnings' => $result->warnings,
         ];
@@ -96,11 +102,30 @@ final class RecallPromptBuilder
     public function buildValidationPlan(TaskBrief $task, RecallResult $result): string
     {
         $md = [];
-        $md[] = "# Validation Plan for Task: " . $task->id;
-        $md[] = "Verify the changes using the following validation instructions:";
+        $md[] = "# Validation Plan";
+        $md[] = "";
+        $md[] = "## Required Validation";
         $md[] = "";
 
         $hasValidation = false;
+        foreach ($this->constraintsByEngine($result->selectedConstraints) as $engine => $constraints) {
+            $hasValidation = true;
+            $md[] = "### " . $this->formatEngine($engine);
+            $md[] = "";
+            foreach ($this->uniqueConstraintCommands($constraints) as $command) {
+                $md[] = "```bash";
+                $md[] = $command;
+                $md[] = "```";
+                $md[] = "";
+            }
+            $md[] = "Required rule identifiers:";
+            $md[] = "";
+            foreach ($constraints as $constraint) {
+                $md[] = "- `" . $constraint->ruleIdentifier . "`";
+            }
+            $md[] = "";
+        }
+
         foreach ($result->selectedGuidance as $g) {
             if ($g->validation !== []) {
                 $hasValidation = true;
@@ -117,12 +142,23 @@ final class RecallPromptBuilder
             $md[] = "";
         }
 
+        if ($result->selectedConstraints !== []) {
+            $md[] = "## Provenance";
+            $md[] = "";
+            foreach ($result->selectedConstraints as $constraint) {
+                $md[] = "- `" . $constraint->sourceProposal . "`";
+            }
+            $md[] = "";
+        }
+
         return implode("\n", $md);
     }
 
     public function buildRecallLogDraft(TaskBrief $task, RecallResult $result): string
     {
         $selectedIds = array_map(static fn(RecallGuidance $g) => $g->id, $result->selectedGuidance);
+        $selectedConstraintIds = array_map(static fn(ConstraintManifest $c) => $c->id, $result->selectedConstraints);
+        $sourceProposalIds = array_map(static fn(ConstraintManifest $c) => $c->sourceProposal, $result->selectedConstraints);
         
         $data = [
             'schema_version' => '1.0',
@@ -131,10 +167,11 @@ final class RecallPromptBuilder
             'session' => 'sess_placeholder',
             'created_at' => (new DateTimeImmutable('now'))->format(DateTimeInterface::ATOM),
             'guidance_used' => $selectedIds,
-            'applied_proposals' => $selectedIds,
-            'selected' => $selectedIds,
-            'applied' => $selectedIds,
-            'helpful' => $selectedIds,
+            'constraints_used' => $selectedConstraintIds,
+            'applied_proposals' => array_values(array_unique([...$selectedIds, ...$sourceProposalIds])),
+            'selected' => array_values(array_unique([...$selectedIds, ...$selectedConstraintIds])),
+            'applied' => array_values(array_unique([...$selectedIds, ...$selectedConstraintIds])),
+            'helpful' => array_values(array_unique([...$selectedIds, ...$selectedConstraintIds])),
             'irrelevant' => [],
             'harmful' => [],
             'result' => 'successful',
@@ -142,5 +179,46 @@ final class RecallPromptBuilder
         ];
 
         return json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+    }
+
+    /**
+     * @param list<ConstraintManifest> $constraints
+     * @return array<string, list<ConstraintManifest>>
+     */
+    private function constraintsByEngine(array $constraints): array
+    {
+        $byEngine = [];
+        foreach ($constraints as $constraint) {
+            $byEngine[$constraint->engine][] = $constraint;
+        }
+        ksort($byEngine);
+
+        return $byEngine;
+    }
+
+    private function formatEngine(string $engine): string
+    {
+        return match ($engine) {
+            'phpstan' => 'PHPStan',
+            'php_cs_fixer' => 'PHP-CS-Fixer',
+            'ci' => 'CI',
+            default => ucfirst($engine),
+        };
+    }
+
+    /**
+     * @param list<ConstraintManifest> $constraints
+     * @return list<string>
+     */
+    private function uniqueConstraintCommands(array $constraints): array
+    {
+        $commands = [];
+        foreach ($constraints as $constraint) {
+            foreach ($constraint->validationCommands as $command) {
+                $commands[$command] = true;
+            }
+        }
+
+        return array_keys($commands);
     }
 }

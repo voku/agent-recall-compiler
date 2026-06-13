@@ -37,10 +37,11 @@ Rather than overloading an LLM's system prompt with every rule ever created, the
 ## Key Features
 
 - **Deterministic Scope Matching**: Evaluates the paths targeted by a task against the scopes of approved rules. Selects global rules (`MEMORY.md` and `/` or `*` scopes) along with sub-path specific active skills or constraints.
+- **Constraint Manifests**: Loads active hard constraints from `constraints/active/*.json` and selects them by path-scope overlap instead of semantic similarity.
 - **Conflict Detection**: Blocks compilation when selected active rules target the same codebase element or duplicate directive wording would give the coding agent contradictory instructions.
 - **Contradiction Guard**: Blocks compilation when selected guidance matches the target patterns of previously rejected proposals.
 - **Outcome-Driven Insights**: Inspects outcome logs to alert the agent if a selected rule was previously marked as `HARMFUL` or `IRRELEVANT` in past sessions, including developer comments.
-- **Validation Briefing**: Dynamically compiles targeted validation and test verification instructions registered with the selected rules into a validation plan.
+- **Validation Briefing**: Dynamically compiles selected guidance checks and selected active constraint commands into an authoritative validation plan with required rule identifiers.
 - **Loop Closure**: Prepares draft outcome feedback files so the agent can easily record what rules were helpful, irrelevant, or harmful at the end of the coding session.
 
 ---
@@ -96,11 +97,27 @@ Where `task-brief.json` is:
 
 #### Outputs Generated:
 - **`system.md`**: Combined system prompt meta-prompt briefing containing selected active rules and warnings.
-- **`validation-plan.md`**: Step-by-step test commands extracted from the selected rules to verify code compliance.
-- **`meta.json`**: Technical metadata recording exactly which rules were loaded.
-- **`recall-log.draft.json`**: A draft outcome log template populated with the selected rules to be completed at the end of the session.
+- **`validation-plan.md`**: Authoritative required validation commands, selected hard-constraint rule identifiers, and provenance.
+- **`meta.json`**: Technical metadata recording exactly which rules and constraints were loaded.
+- **`recall-log.draft.json`**: A draft outcome log template populated with the selected rules and constraints to be completed at the end of the session.
 
-Compilation fails before writing a misleading briefing when selected guidance cannot be trusted as a coherent instruction set. Blocking cases include unsupported schema versions, inactive selected rules, conflicting active rules, target overlap with rejected proposals, constraints without validation commands, and outcome records that reference unknown rules.
+Compilation fails before writing a misleading briefing when selected guidance cannot be trusted as a coherent instruction set. Blocking cases include unsupported schema versions, inactive selected rules, conflicting active rules, target overlap with rejected proposals, unknown constraint engines, superseded selected constraints, constraint commands that contradict their engine, constraints without validation commands, and outcome records that reference unknown rules.
+
+#### Constraint Manifest
+Active constraints are stored as small runtime manifests:
+
+```json
+{
+  "schema_version": "1.0",
+  "id": "constraint.project.translation.parameters",
+  "engine": "phpstan",
+  "rule_identifier": "project.translation.parameters",
+  "scope": ["src/"],
+  "validation_commands": ["vendor/bin/phpstan analyse"],
+  "source_proposal": "proposal.2026-06-13.001",
+  "status": "active"
+}
+```
 
 ---
 

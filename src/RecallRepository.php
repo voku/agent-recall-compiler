@@ -159,6 +159,30 @@ final class RecallRepository
         return $outcomes;
     }
 
+    /**
+     * @return list<ConstraintManifest>
+     */
+    public function loadConstraintManifests(string $root): array
+    {
+        $files = [];
+        foreach ([$root . '/constraints/active', $root . '/constraints'] as $dir) {
+            if (!is_dir($dir)) {
+                continue;
+            }
+            $matches = glob($dir . '/*.json');
+            if ($matches !== false) {
+                array_push($files, ...$matches);
+            }
+        }
+
+        $manifests = [];
+        foreach (array_values(array_unique($files)) as $file) {
+            $manifests[] = $this->parseConstraintManifest($file);
+        }
+
+        return $manifests;
+    }
+
     private function parseGuidanceFile(string $file, string $status): ?RecallGuidance
     {
         $content = file_get_contents($file);
@@ -202,5 +226,105 @@ final class RecallRepository
             is_array($validation) ? array_values(array_filter($validation, 'is_string')) : [],
             $status
         );
+    }
+
+    private function parseConstraintManifest(string $file): ConstraintManifest
+    {
+        $content = file_get_contents($file);
+        if ($content === false) {
+            throw new RuntimeException('cannot read constraint manifest: ' . $file);
+        }
+        try {
+            $data = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException $e) {
+            throw new RuntimeException('malformed constraint manifest JSON in ' . $file . ': ' . $e->getMessage());
+        }
+        if (!is_array($data)) {
+            throw new RuntimeException('constraint manifest must be a JSON object: ' . $file);
+        }
+        if (($data['schema_version'] ?? null) !== '1.0') {
+            throw new RuntimeException('unsupported constraint manifest schema version in ' . $file);
+        }
+
+        $engine = $this->requiredString($data, 'engine', $file);
+        if (!in_array($engine, ['phpstan', 'php_cs_fixer', 'test', 'ci'], true)) {
+            throw new RuntimeException('constraint references an unknown engine: ' . $engine);
+        }
+
+        $scope = $this->requiredStringList($data, 'scope', $file);
+        $commands = $this->requiredStringList($data, 'validation_commands', $file);
+        $ruleIdentifier = $this->requiredString($data, 'rule_identifier', $file);
+
+        $this->assertCommandMatchesEngine($engine, $commands, $file);
+
+        return new ConstraintManifest(
+            $this->requiredString($data, 'id', $file),
+            $engine,
+            $ruleIdentifier,
+            $scope,
+            $commands,
+            $this->requiredString($data, 'source_proposal', $file),
+            $this->requiredString($data, 'status', $file),
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function requiredString(array $data, string $key, string $file): string
+    {
+        $value = $data[$key] ?? null;
+        if (!is_string($value) || trim($value) === '') {
+            throw new RuntimeException(sprintf('constraint manifest %s requires non-empty string: %s', $file, $key));
+        }
+
+        return $value;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @return list<string>
+     */
+    private function requiredStringList(array $data, string $key, string $file): array
+    {
+        $value = $data[$key] ?? null;
+        if (!is_array($value) || $value === []) {
+            throw new RuntimeException(sprintf('constraint manifest %s requires non-empty list: %s', $file, $key));
+        }
+
+        $strings = [];
+        foreach ($value as $item) {
+            if (!is_string($item) || trim($item) === '') {
+                throw new RuntimeException(sprintf('constraint manifest %s list %s must contain only non-empty strings', $file, $key));
+            }
+            $strings[] = $item;
+        }
+
+        return $strings;
+    }
+
+    /**
+     * @param list<string> $commands
+     */
+    private function assertCommandMatchesEngine(string $engine, array $commands, string $file): void
+    {
+        $needle = match ($engine) {
+            'phpstan' => 'phpstan',
+            'php_cs_fixer' => 'php-cs-fixer',
+            'test' => '',
+            'ci' => '',
+            default => '',
+        };
+        if ($needle === '') {
+            return;
+        }
+
+        foreach ($commands as $command) {
+            if (str_contains($command, $needle)) {
+                return;
+            }
+        }
+
+        throw new RuntimeException(sprintf('constraint manifest %s validation command contradicts selected engine %s', $file, $engine));
     }
 }

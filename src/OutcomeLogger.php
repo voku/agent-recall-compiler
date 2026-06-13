@@ -60,14 +60,19 @@ final class OutcomeLogger
         foreach ($rejectedGuidance as $rg) {
             $validIds[] = $rg->id;
         }
+        foreach ($this->repository->loadConstraintManifests($root) as $constraint) {
+            $validIds[] = $constraint->id;
+            $validIds[] = $constraint->sourceProposal;
+        }
 
         $guidanceUsed = $data['guidance_used'] ?? [];
+        $constraintsUsed = $data['constraints_used'] ?? [];
         $appliedProposals = $data['applied_proposals'] ?? [];
         $helpful = $data['helpful'] ?? [];
         $irrelevant = $data['irrelevant'] ?? [];
         $harmful = $data['harmful'] ?? [];
 
-        $allRefs = array_unique(array_merge($guidanceUsed, $appliedProposals, $helpful, $irrelevant, $harmful));
+        $allRefs = array_unique(array_merge($guidanceUsed, $constraintsUsed, $appliedProposals, $helpful, $irrelevant, $harmful));
         foreach ($allRefs as $ref) {
             if (!is_string($ref) || trim($ref) === '') {
                 throw new RuntimeException('invalid or empty guidance reference in outcome list');
@@ -78,7 +83,18 @@ final class OutcomeLogger
         }
 
         $result = $data['result'] ?? 'successful';
-        $allowedResults = ['successful', 'partially_successful', 'failed', 'unknown'];
+        $allowedResults = [
+            'successful',
+            'partially_successful',
+            'failed',
+            'unknown',
+            'violation_detected',
+            'false_positive',
+            'rule_bypassed',
+            'rule_suppressed',
+            'rule_disabled',
+            'no_violation_observed',
+        ];
         if (!is_string($result) || !in_array($result, $allowedResults, true)) {
             throw new RuntimeException('unsupported outcome result value in draft');
         }
@@ -109,6 +125,7 @@ final class OutcomeLogger
             'session' => $data['session'] ?? 'sess_none',
             'created_at' => $now->format(DateTimeInterface::ATOM),
             'guidance_used' => array_values(array_filter($guidanceUsed, 'is_string')),
+            'constraints_used' => array_values(array_filter($constraintsUsed, 'is_string')),
             'applied_proposals' => array_values(array_filter($appliedProposals, 'is_string')),
             'selected' => array_values(array_filter($data['selected'] ?? $guidanceUsed, 'is_string')),
             'applied' => array_values(array_filter($data['applied'] ?? $appliedProposals, 'is_string')),

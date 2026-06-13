@@ -76,10 +76,11 @@ final class Cli
         $memory = $this->repository->loadMemory($root);
         $activeGuidance = $this->repository->loadActiveGuidance($root);
         $rejectedGuidance = $this->repository->loadRejectedGuidance($root);
+        $constraints = $this->repository->loadConstraintManifests($root);
         $outcomes = $this->repository->loadOutcomes($root);
 
         // Selection decision
-        $result = $this->decisionEngine->decide($task, $activeGuidance, $rejectedGuidance, $outcomes);
+        $result = $this->decisionEngine->decide($task, $activeGuidance, $rejectedGuidance, $outcomes, $constraints);
 
         // Build outputs
         $systemMd = $this->promptBuilder->buildSystemMd($task, $memory, $result);
@@ -94,7 +95,7 @@ final class Cli
         file_put_contents($outputDir . '/recall-log.draft.json', $logDraft);
 
         fwrite(STDOUT, sprintf("Briefing compiled successfully under: %s/\n", rtrim($outputDir, '/')));
-        fwrite(STDOUT, sprintf("- system.md (selected rules: %d)\n", count($result->selectedGuidance)));
+        fwrite(STDOUT, sprintf("- system.md (selected guidance: %d, selected constraints: %d)\n", count($result->selectedGuidance), count($result->selectedConstraints)));
         fwrite(STDOUT, sprintf("- validation-plan.md\n"));
         fwrite(STDOUT, sprintf("- recall-log.draft.json\n"));
 

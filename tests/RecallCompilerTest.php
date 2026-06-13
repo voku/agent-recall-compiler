@@ -24,6 +24,7 @@ final class RecallCompilerTest extends TestCase
         mkdir($this->root . '/proposals/approved', 0777, true);
         mkdir($this->root . '/proposals/applied', 0777, true);
         mkdir($this->root . '/proposals/rejected', 0777, true);
+        mkdir($this->root . '/constraints/active', 0777, true);
         mkdir($this->root . '/history', 0777, true);
     }
 
@@ -162,6 +163,63 @@ final class RecallCompilerTest extends TestCase
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage("Conflict: constraint 'g-1' exists but validation plan omits it.");
         $engine->decide($task, $activeGuidance, [], []);
+    }
+
+    public function testLoadsAndSelectsConstraintManifestByScope(): void
+    {
+        file_put_contents($this->root . '/constraints/active/constraint.project.auth.no-direct-session-access.json', json_encode([
+            'schema_version' => '1.0',
+            'id' => 'constraint.project.auth.no-direct-session-access',
+            'engine' => 'phpstan',
+            'rule_identifier' => 'project.auth.no-direct-session-access',
+            'scope' => ['src/Auth'],
+            'validation_commands' => ['vendor/bin/phpstan analyse'],
+            'source_proposal' => 'proposal.2026-06-13.001',
+            'status' => 'active',
+        ], JSON_THROW_ON_ERROR));
+
+        $constraints = (new RecallRepository())->loadConstraintManifests($this->root);
+        $result = (new RecallDecisionEngine())->decide(
+            new TaskBrief('ITPNG-123', 'Touch auth', ['src/Auth/Login.php']),
+            [],
+            [],
+            [],
+            $constraints,
+        );
+
+        self::assertCount(1, $result->selectedConstraints);
+        self::assertSame('constraint.project.auth.no-direct-session-access', $result->selectedConstraints[0]->id);
+
+        $validationPlan = (new RecallPromptBuilder())->buildValidationPlan(new TaskBrief('ITPNG-123', '', ['src/Auth/Login.php']), $result);
+        self::assertStringContainsString('### PHPStan', $validationPlan);
+        self::assertStringContainsString('vendor/bin/phpstan analyse', $validationPlan);
+        self::assertStringContainsString('`project.auth.no-direct-session-access`', $validationPlan);
+        self::assertStringContainsString('`proposal.2026-06-13.001`', $validationPlan);
+
+        $meta = json_decode((new RecallPromptBuilder())->buildMetaJson(new TaskBrief('ITPNG-123', '', ['src/Auth/Login.php']), $result), true);
+        self::assertSame('constraint.project.auth.no-direct-session-access', $meta['selected_constraints'][0]['id']);
+
+        $draft = json_decode((new RecallPromptBuilder())->buildRecallLogDraft(new TaskBrief('ITPNG-123', '', ['src/Auth/Login.php']), $result), true);
+        self::assertSame(['constraint.project.auth.no-direct-session-access'], $draft['constraints_used']);
+        self::assertSame(['proposal.2026-06-13.001'], $draft['applied_proposals']);
+    }
+
+    public function testRejectsUnknownConstraintEngine(): void
+    {
+        file_put_contents($this->root . '/constraints/active/constraint.bad.json', json_encode([
+            'schema_version' => '1.0',
+            'id' => 'constraint.bad',
+            'engine' => 'magic',
+            'rule_identifier' => 'project.bad',
+            'scope' => ['src/'],
+            'validation_commands' => ['vendor/bin/phpstan analyse'],
+            'source_proposal' => 'proposal.2026-06-13.001',
+            'status' => 'active',
+        ], JSON_THROW_ON_ERROR));
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('constraint references an unknown engine: magic');
+        (new RecallRepository())->loadConstraintManifests($this->root);
     }
 
     public function testDecidesThrowsOnUnknownRuleIdInOutcomes(): void

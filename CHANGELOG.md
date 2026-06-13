@@ -6,9 +6,17 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+### Added
+
+- Add constraint manifest parsing for active hard constraints.
+- Select active constraints deterministically by scope overlap and include global constraints for `*` or `/` scopes.
+- Include selected constraint IDs, rule identifiers, validation commands, and source proposal provenance in compiler outputs.
+- Support generated-rule outcome result types such as `violation_detected`, `false_positive`, `rule_suppressed`, and `rule_disabled`.
+
 ### Changed
 
 - Clarify README behavior for compile-blocking conflicts, rejected-guidance contradictions, schema validation, invalid active rules, missing constraint validation commands, and invalid outcome references.
+- Make `validation-plan.md` authoritative for selected constraints by listing required commands and rule identifiers.
 
 ## [0.0.2] - 2026-06-12
 

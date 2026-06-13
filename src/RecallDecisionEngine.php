@@ -10,16 +10,19 @@ final class RecallDecisionEngine
      * @param list<RecallGuidance> $activeGuidance
      * @param list<RecallRejection> $rejectedGuidance
      * @param list<array<string, mixed>> $outcomes
+     * @param list<ConstraintManifest> $constraints
      * @return RecallResult
      */
     public function decide(
         TaskBrief $task,
         array $activeGuidance,
         array $rejectedGuidance,
-        array $outcomes
+        array $outcomes,
+        array $constraints = [],
     ): RecallResult {
         $selectedGuidance = [];
         $selectedRejections = [];
+        $selectedConstraints = [];
         $warnings = [];
 
         // 1. Select active guidance matching task files
@@ -34,6 +37,26 @@ final class RecallDecisionEngine
             if ($this->matchesAnyScope($rg->scope, $task->files)) {
                 $selectedRejections[] = $rg;
             }
+        }
+
+        // 2b. Select constraints by scope, not semantic similarity.
+        foreach ($constraints as $constraint) {
+            if (!$this->matchesAnyScope($constraint->scope, $task->files)) {
+                continue;
+            }
+            if ($constraint->status === 'superseded') {
+                throw new \RuntimeException(sprintf("Compilation blocked: selected constraint '%s' is superseded.", $constraint->id));
+            }
+            if ($constraint->status !== 'active') {
+                continue;
+            }
+            if ($constraint->validationCommands === []) {
+                throw new \RuntimeException(sprintf("Compilation blocked: selected active constraint '%s' has no required validation command.", $constraint->id));
+            }
+            if ($constraint->ruleIdentifier === '') {
+                throw new \RuntimeException(sprintf("Compilation blocked: selected active constraint '%s' has no rule identifier.", $constraint->id));
+            }
+            $selectedConstraints[] = $constraint;
         }
 
         // 3. Process outcomes for selected guidance
@@ -71,6 +94,10 @@ final class RecallDecisionEngine
         $allKnownIds = [];
         foreach ($activeGuidance as $g) {
             $allKnownIds[] = $g->id;
+        }
+        foreach ($constraints as $constraint) {
+            $allKnownIds[] = $constraint->id;
+            $allKnownIds[] = $constraint->sourceProposal;
         }
         foreach ($rejectedGuidance as $rg) {
             $allKnownIds[] = $rg->id;
@@ -151,8 +178,9 @@ final class RecallDecisionEngine
         // Sort selected items deterministically
         usort($selectedGuidance, static fn(RecallGuidance $a, RecallGuidance $b) => strcmp($a->id, $b->id));
         usort($selectedRejections, static fn(RecallRejection $a, RecallRejection $b) => strcmp($a->id, $b->id));
+        usort($selectedConstraints, static fn(ConstraintManifest $a, ConstraintManifest $b) => strcmp($a->id, $b->id));
 
-        return new RecallResult($selectedGuidance, $selectedRejections, $warnings);
+        return new RecallResult($selectedGuidance, $selectedRejections, $warnings, $selectedConstraints);
     }
 
     /**
