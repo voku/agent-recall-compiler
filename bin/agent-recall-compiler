@@ -1,0 +1,26 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+// Resolve autoloader (either locally or inside project vendor)
+$autoloader = null;
+$paths = [
+    __DIR__ . '/../vendor/autoload.php',
+    __DIR__ . '/../../../autoload.php',
+];
+foreach ($paths as $path) {
+    if (is_file($path)) {
+        $autoloader = $path;
+        break;
+    }
+}
+
+if ($autoloader === null) {
+    fwrite(STDERR, "Cannot find Composer autoloader.\n");
+    exit(1);
+}
+
+require_once $autoloader;
+
+exit((new voku\AgentRecallCompiler\Cli())->run($argv));
