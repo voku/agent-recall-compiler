@@ -20,7 +20,7 @@ final class RecallRepository
             if (is_file($parentPath)) {
                 $path = $parentPath;
             } else {
-                $grandParentPath = dirname(dirname($root)) . '/MEMORY.md';
+                $grandParentPath = dirname($root, 2) . '/MEMORY.md';
                 if (is_file($grandParentPath)) {
                     $path = $grandParentPath;
                 } else {
@@ -147,6 +147,9 @@ final class RecallRepository
             try {
                 $record = json_decode($line, true, 512, JSON_THROW_ON_ERROR);
                 if (is_array($record)) {
+                    if (isset($record['schema_version']) && $record['schema_version'] !== '1.0') {
+                        throw new RuntimeException("unsupported outcomes schema version: " . $record['schema_version']);
+                    }
                     $outcomes[] = $record;
                 }
             } catch (\JsonException) {
@@ -169,6 +172,10 @@ final class RecallRepository
         }
         if (!is_array($data)) {
             return null;
+        }
+
+        if (isset($data['schema_version']) && $data['schema_version'] !== '1.0') {
+            throw new RuntimeException("unsupported guidance schema version in file " . $file . ": " . $data['schema_version']);
         }
 
         $id = $data['id'] ?? pathinfo($file, PATHINFO_FILENAME);

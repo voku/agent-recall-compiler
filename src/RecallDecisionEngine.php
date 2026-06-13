@@ -67,7 +67,39 @@ final class RecallDecisionEngine
             }
         }
 
-        // 4. Conflict detection: multiple active guidance with identical targets or duplicate directives
+        // Check for unknown rule IDs referenced in outcomes
+        $allKnownIds = [];
+        foreach ($activeGuidance as $g) {
+            $allKnownIds[] = $g->id;
+        }
+        foreach ($rejectedGuidance as $rg) {
+            $allKnownIds[] = $rg->id;
+        }
+        foreach ($outcomes as $outcome) {
+            $guidanceUsed = $outcome['guidance_used'] ?? [];
+            $appliedProposals = $outcome['applied_proposals'] ?? [];
+            foreach (array_merge($guidanceUsed, $appliedProposals) as $refId) {
+                if (!in_array($refId, $allKnownIds, true)) {
+                    throw new \RuntimeException(sprintf("Conflict: outcome references unknown rule ID '%s'.", $refId));
+                }
+            }
+        }
+
+        // 4. Stale or unapproved check
+        foreach ($selectedGuidance as $g) {
+            if ($g->status !== 'approved' && $g->status !== 'applied') {
+                throw new \RuntimeException(sprintf("Conflict: guidance '%s' is not approved or applied (status: %s)", $g->id, $g->status));
+            }
+        }
+
+        // 5. Constraint validation plan check
+        foreach ($selectedGuidance as $g) {
+            if ($g->targetType === 'constraint' && $g->validation === []) {
+                throw new \RuntimeException(sprintf("Conflict: constraint '%s' exists but validation plan omits it.", $g->id));
+            }
+        }
+
+        // 6. Conflict detection: multiple active guidance with identical targets or duplicate directives
         $guidanceByTarget = [];
         $guidanceByDirective = [];
         foreach ($selectedGuidance as $g) {
@@ -83,34 +115,34 @@ final class RecallDecisionEngine
         }
         foreach ($guidanceByTarget as $target => $ids) {
             if (count($ids) > 1) {
-                $warnings[] = sprintf(
+                throw new \RuntimeException(sprintf(
                     "Conflict: Multiple active guidance items target '%s' (%s).",
                     $target,
                     implode(', ', $ids)
-                );
+                ));
             }
         }
         foreach ($guidanceByDirective as $directive => $ids) {
             if (count($ids) > 1) {
-                $warnings[] = sprintf(
+                throw new \RuntimeException(sprintf(
                     "Conflict: Duplicate directive text detected in multiple guidance items (%s).",
                     implode(', ', $ids)
-                );
+                ));
             }
         }
 
-        // 5. Contradiction warning: selected guidance targets a known rejected proposal target
+        // 7. Contradiction warning: selected guidance targets a known rejected proposal target
         foreach ($selectedGuidance as $g) {
             if ($g->target !== null && trim($g->target) !== '') {
                 foreach ($rejectedGuidance as $rj) {
                     if ($rj->target !== null && trim($rj->target) !== '' && $g->target === $rj->target) {
-                        $warnings[] = sprintf(
-                            "Selected guidance '%s' targets '%s', which matches the target of rejected proposal '%s' (Rejection reason: %s).",
+                        throw new \RuntimeException(sprintf(
+                            "Conflict: Selected guidance '%s' targets '%s', which contradicts rejected proposal '%s' (Rejection reason: %s).",
                             $g->id,
                             $g->target,
                             $rj->id,
                             $rj->reason
-                        );
+                        ));
                     }
                 }
             }

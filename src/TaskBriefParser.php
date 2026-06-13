@@ -29,6 +29,10 @@ final class TaskBriefParser
             throw new RuntimeException('task brief must be a JSON object');
         }
 
+        if (isset($data['schema_version']) && $data['schema_version'] !== '1.0') {
+            throw new RuntimeException("unsupported task brief schema version: " . $data['schema_version']);
+        }
+
         $id = $data['id'] ?? $data['task_id'] ?? '';
         if (!is_string($id) || trim($id) === '') {
             throw new RuntimeException('missing or empty task ID in brief');

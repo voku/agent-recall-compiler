@@ -125,12 +125,15 @@ final class RecallPromptBuilder
         $selectedIds = array_map(static fn(RecallGuidance $g) => $g->id, $result->selectedGuidance);
         
         $data = [
+            'schema_version' => '1.0',
             'id' => 'outcome.' . (new DateTimeImmutable('now'))->format('Y-m-d') . '.000',
             'task_id' => $task->id,
             'session' => 'sess_placeholder',
             'created_at' => (new DateTimeImmutable('now'))->format(DateTimeInterface::ATOM),
             'guidance_used' => $selectedIds,
             'applied_proposals' => $selectedIds,
+            'selected' => $selectedIds,
+            'applied' => $selectedIds,
             'helpful' => $selectedIds,
             'irrelevant' => [],
             'harmful' => [],

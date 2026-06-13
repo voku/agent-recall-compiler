@@ -58,7 +58,7 @@ final class RecallCompilerTest extends TestCase
         ];
 
         $rejectedGuidance = [
-            new RecallRejection('r-1', 'Contradictory', ['src/Auth'], 'ADD', 'auth')
+            new RecallRejection('r-1', 'Contradictory', ['src/Auth'], 'ADD', 'auth-different-target')
         ];
 
         $outcomes = [
@@ -84,19 +84,46 @@ final class RecallCompilerTest extends TestCase
         self::assertCount(1, $result->selectedRejections);
         self::assertSame('r-1', $result->selectedRejections[0]->id);
 
-        // Outcome-driven warning should trigger for g-1, and contradiction warning
-        self::assertCount(2, $result->warnings);
+        // Outcome-driven warning should trigger for g-1
+        self::assertCount(1, $result->warnings);
         self::assertStringContainsString("Guidance 'g-1' was previously marked as HARMFUL in task 'ITPNG-100'. Reason: Caused side effects", $result->warnings[0]);
-        self::assertStringContainsString("Selected guidance 'g-1' targets 'auth', which matches the target of rejected proposal 'r-1'", $result->warnings[1]);
     }
 
-    public function testDecidesGuidanceConflictsAndContradictions(): void
+    public function testDecidesThrowsOnTargetConflict(): void
     {
         $activeGuidance = [
-            new RecallGuidance('g-1', 'ADD', 'skill', 'auth', ['src/Auth'], null, 'Duplicate wording', 'Reason 1', 'Boundary 1', [], 'approved'),
-            new RecallGuidance('g-2', 'ADD', 'skill', 'auth', ['src/Auth'], null, 'Duplicate wording', 'Reason 2', 'Boundary 2', [], 'approved'),
+            new RecallGuidance('g-1', 'ADD', 'skill', 'auth', ['src/Auth'], null, 'Wording 1', 'Reason 1', 'Boundary 1', [], 'approved'),
+            new RecallGuidance('g-2', 'ADD', 'skill', 'auth', ['src/Auth'], null, 'Wording 2', 'Reason 2', 'Boundary 2', [], 'approved'),
         ];
 
+        $engine = new RecallDecisionEngine();
+        $task = new TaskBrief('ITPNG-123', 'Implement auth logic', ['src/Auth/OAuth.php']);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage("Conflict: Multiple active guidance items target 'auth'");
+        $engine->decide($task, $activeGuidance, [], []);
+    }
+
+    public function testDecidesThrowsOnDirectiveConflict(): void
+    {
+        $activeGuidance = [
+            new RecallGuidance('g-1', 'ADD', 'skill', 'auth1', ['src/Auth'], null, 'Duplicate wording', 'Reason 1', 'Boundary 1', [], 'approved'),
+            new RecallGuidance('g-2', 'ADD', 'skill', 'auth2', ['src/Auth'], null, 'Duplicate wording', 'Reason 2', 'Boundary 2', [], 'approved'),
+        ];
+
+        $engine = new RecallDecisionEngine();
+        $task = new TaskBrief('ITPNG-123', 'Implement auth logic', ['src/Auth/OAuth.php']);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage("Conflict: Duplicate directive text detected in multiple guidance items");
+        $engine->decide($task, $activeGuidance, [], []);
+    }
+
+    public function testDecidesThrowsOnContradiction(): void
+    {
+        $activeGuidance = [
+            new RecallGuidance('g-1', 'ADD', 'skill', 'auth', ['src/Auth'], null, 'Wording 1', 'Reason 1', 'Boundary 1', [], 'approved'),
+        ];
         $rejectedGuidance = [
             new RecallRejection('r-1', 'Target is bad', ['src/Auth'], 'ADD', 'auth')
         ];
@@ -104,22 +131,55 @@ final class RecallCompilerTest extends TestCase
         $engine = new RecallDecisionEngine();
         $task = new TaskBrief('ITPNG-123', 'Implement auth logic', ['src/Auth/OAuth.php']);
 
-        $result = $engine->decide($task, $activeGuidance, $rejectedGuidance, []);
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage("Conflict: Selected guidance 'g-1' targets 'auth', which contradicts rejected proposal 'r-1'");
+        $engine->decide($task, $activeGuidance, $rejectedGuidance, []);
+    }
 
-        // Two active guidance matches
-        self::assertCount(2, $result->selectedGuidance);
+    public function testDecidesThrowsOnStaleSkill(): void
+    {
+        $activeGuidance = [
+            new RecallGuidance('g-1', 'ADD', 'skill', 'auth', ['src/Auth'], null, 'Wording 1', 'Reason 1', 'Boundary 1', [], 'candidate'),
+        ];
 
-        // We expect warnings for:
-        // 1. Conflict: Multiple active guidance items target 'auth' (g-1, g-2)
-        // 2. Conflict: Duplicate directive text detected in multiple guidance items (g-1, g-2)
-        // 3. Selected guidance 'g-1' targets 'auth', which matches the target of rejected proposal 'r-1' (Rejection reason: Target is bad)
-        // 4. Selected guidance 'g-2' targets 'auth', which matches the target of rejected proposal 'r-1' (Rejection reason: Target is bad)
-        
-        self::assertCount(4, $result->warnings);
-        self::assertStringContainsString("Conflict: Multiple active guidance items target 'auth'", $result->warnings[0]);
-        self::assertStringContainsString("Conflict: Duplicate directive text detected in multiple guidance items", $result->warnings[1]);
-        self::assertStringContainsString("Selected guidance 'g-1' targets 'auth', which matches the target of rejected proposal 'r-1'", $result->warnings[2]);
-        self::assertStringContainsString("Selected guidance 'g-2' targets 'auth', which matches the target of rejected proposal 'r-1'", $result->warnings[3]);
+        $engine = new RecallDecisionEngine();
+        $task = new TaskBrief('ITPNG-123', 'Implement auth logic', ['src/Auth/OAuth.php']);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage("Conflict: guidance 'g-1' is not approved or applied");
+        $engine->decide($task, $activeGuidance, [], []);
+    }
+
+    public function testDecidesThrowsOnConstraintWithoutValidation(): void
+    {
+        $activeGuidance = [
+            new RecallGuidance('g-1', 'ADD', 'constraint', 'auth', ['src/Auth'], null, 'Wording 1', 'Reason 1', 'Boundary 1', [], 'approved'),
+        ];
+
+        $engine = new RecallDecisionEngine();
+        $task = new TaskBrief('ITPNG-123', 'Implement auth logic', ['src/Auth/OAuth.php']);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage("Conflict: constraint 'g-1' exists but validation plan omits it.");
+        $engine->decide($task, $activeGuidance, [], []);
+    }
+
+    public function testDecidesThrowsOnUnknownRuleIdInOutcomes(): void
+    {
+        $outcomes = [
+            [
+                'task_id' => 'ITPNG-100',
+                'guidance_used' => ['g-unknown'],
+                'harmful' => []
+            ]
+        ];
+
+        $engine = new RecallDecisionEngine();
+        $task = new TaskBrief('ITPNG-123', 'Implement auth logic', ['src/Auth/OAuth.php']);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage("Conflict: outcome references unknown rule ID 'g-unknown'");
+        $engine->decide($task, [], [], $outcomes);
     }
 
     public function testPromptBuilderFormatsOutputs(): void

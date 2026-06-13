@@ -41,6 +41,10 @@ final class OutcomeLogger
             throw new RuntimeException('outcome draft must be a JSON object');
         }
 
+        if (isset($data['schema_version']) && $data['schema_version'] !== '1.0') {
+            throw new RuntimeException('unsupported outcome draft schema version: ' . $data['schema_version']);
+        }
+
         // Validate required fields
         $taskId = $data['task_id'] ?? null;
         if (!is_string($taskId) || trim($taskId) === '') {
@@ -99,12 +103,15 @@ final class OutcomeLogger
 
         // Format outcome line
         $outcomeRecord = [
+            'schema_version' => '1.0',
             'id' => $outcomeId,
             'task_id' => $taskId,
             'session' => $data['session'] ?? 'sess_none',
             'created_at' => $now->format(DateTimeInterface::ATOM),
             'guidance_used' => array_values(array_filter($guidanceUsed, 'is_string')),
             'applied_proposals' => array_values(array_filter($appliedProposals, 'is_string')),
+            'selected' => array_values(array_filter($data['selected'] ?? $guidanceUsed, 'is_string')),
+            'applied' => array_values(array_filter($data['applied'] ?? $appliedProposals, 'is_string')),
             'helpful' => array_values(array_filter($helpful, 'is_string')),
             'irrelevant' => array_values(array_filter($irrelevant, 'is_string')),
             'harmful' => array_values(array_filter($harmful, 'is_string')),
