@@ -37,8 +37,8 @@ Rather than overloading an LLM's system prompt with every rule ever created, the
 ## Key Features
 
 - **Deterministic Scope Matching**: Evaluates the paths targeted by a task against the scopes of approved rules. Selects global rules (`MEMORY.md` and `/` or `*` scopes) along with sub-path specific active skills or constraints.
-- **Conflict Detection**: Raises warnings if multiple active rules target the exact same codebase element or if duplicate directive wordings are detected.
-- **Contradiction Guard**: Warns the agent if selected guidance matches the target patterns of previously rejected proposals.
+- **Conflict Detection**: Blocks compilation when selected active rules target the same codebase element or duplicate directive wording would give the coding agent contradictory instructions.
+- **Contradiction Guard**: Blocks compilation when selected guidance matches the target patterns of previously rejected proposals.
 - **Outcome-Driven Insights**: Inspects outcome logs to alert the agent if a selected rule was previously marked as `HARMFUL` or `IRRELEVANT` in past sessions, including developer comments.
 - **Validation Briefing**: Dynamically compiles targeted validation and test verification instructions registered with the selected rules into a validation plan.
 - **Loop Closure**: Prepares draft outcome feedback files so the agent can easily record what rules were helpful, irrelevant, or harmful at the end of the coding session.
@@ -99,6 +99,8 @@ Where `task-brief.json` is:
 - **`validation-plan.md`**: Step-by-step test commands extracted from the selected rules to verify code compliance.
 - **`meta.json`**: Technical metadata recording exactly which rules were loaded.
 - **`recall-log.draft.json`**: A draft outcome log template populated with the selected rules to be completed at the end of the session.
+
+Compilation fails before writing a misleading briefing when selected guidance cannot be trusted as a coherent instruction set. Blocking cases include unsupported schema versions, inactive selected rules, conflicting active rules, target overlap with rejected proposals, constraints without validation commands, and outcome records that reference unknown rules.
 
 ---
 
