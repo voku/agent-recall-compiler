@@ -4,6 +4,12 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.1.1] - 2026-06-14
+
+- Emit selected hard constraints directly in `system.md` with a concrete execution contract and required validation commands.
+- Read `active_constraints_dir` from learning-root `config.json` when loading active hard-constraint manifests.
+- Expand root auto-discovery to the same common learning-root directories supported by `voku/agent-learning`.
+
 ## [0.1.0] - 2026-06-14
 
 ### Added

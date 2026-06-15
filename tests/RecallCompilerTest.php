@@ -13,6 +13,8 @@ use voku\AgentRecallCompiler\RecallPromptBuilder;
 use voku\AgentRecallCompiler\OutcomeLogger;
 use voku\AgentRecallCompiler\RecallGuidance;
 use voku\AgentRecallCompiler\RecallRejection;
+use voku\AgentRecallCompiler\RecallResult;
+use voku\AgentRecallCompiler\ConstraintManifest;
 
 final class RecallCompilerTest extends TestCase
 {
@@ -204,6 +206,30 @@ final class RecallCompilerTest extends TestCase
         self::assertSame(['proposal.2026-06-13.001'], $draft['applied_proposals']);
     }
 
+    public function testLoadsConstraintManifestsFromConfiguredActiveDirectory(): void
+    {
+        mkdir($this->root . '/active-hard-constraints', 0777, true);
+        file_put_contents($this->root . '/config.json', json_encode([
+            'schema_version' => '1.0',
+            'active_constraints_dir' => 'active-hard-constraints',
+        ], JSON_THROW_ON_ERROR));
+        file_put_contents($this->root . '/active-hard-constraints/constraint.project.auth.no-direct-session-access.json', json_encode([
+            'schema_version' => '1.0',
+            'id' => 'constraint.project.auth.no-direct-session-access',
+            'engine' => 'phpstan',
+            'rule_identifier' => 'project.auth.no-direct-session-access',
+            'scope' => ['src/Auth'],
+            'validation_commands' => ['vendor/bin/phpstan analyse'],
+            'source_proposal' => 'proposal.2026-06-13.001',
+            'status' => 'active',
+        ], JSON_THROW_ON_ERROR));
+
+        $constraints = (new RecallRepository())->loadConstraintManifests($this->root);
+
+        self::assertCount(1, $constraints);
+        self::assertSame('constraint.project.auth.no-direct-session-access', $constraints[0]->id);
+    }
+
     public function testRejectsUnknownConstraintEngine(): void
     {
         file_put_contents($this->root . '/constraints/active/constraint.bad.json', json_encode([
@@ -278,6 +304,30 @@ final class RecallCompilerTest extends TestCase
         $logData = json_decode($recallLog, true);
         self::assertSame('ITPNG-123', $logData['task_id']);
         self::assertSame(['g-1'], $logData['applied_proposals']);
+    }
+
+    public function testPromptBuilderIncludesHardConstraintExecutionContract(): void
+    {
+        $task = new TaskBrief('ITPNG-123', 'Modify inline rendering', ['modules/admin/SystemSession/SystemSessionView.php']);
+        $constraint = new ConstraintManifest(
+            'constraint.project.inlineTemplate.renderData',
+            'phpstan',
+            'project.inlineTemplate.renderData',
+            ['lib/application/view/', 'modules/'],
+            ['make phpstan STATIC_ANALYSE_FILES="modules/admin/SystemSession/SystemSessionView.php"'],
+            'proposal.2026-06-13.003',
+            'active',
+        );
+        $result = new RecallResult([], [], [], [$constraint]);
+
+        $systemMd = (new RecallPromptBuilder())->buildSystemMd($task, '', $result);
+
+        self::assertStringContainsString('## Selected Hard Constraints', $systemMd);
+        self::assertStringContainsString('Do not stop at prose, summaries, or recommendations', $systemMd);
+        self::assertStringContainsString('### Constraint: constraint.project.inlineTemplate.renderData', $systemMd);
+        self::assertStringContainsString('- **Engine**: PHPStan', $systemMd);
+        self::assertStringContainsString('- **Rule identifier**: `project.inlineTemplate.renderData`', $systemMd);
+        self::assertStringContainsString('make phpstan STATIC_ANALYSE_FILES="modules/admin/SystemSession/SystemSessionView.php"', $systemMd);
     }
 
     public function testOutcomeLoggerLogsOutcomeDraftSuccessfully(): void

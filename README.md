@@ -37,7 +37,7 @@ Rather than overloading an LLM's system prompt with every rule ever created, the
 ## Key Features
 
 - **Deterministic Scope Matching**: Evaluates the paths targeted by a task against the scopes of approved rules. Selects global rules (`MEMORY.md` and `/` or `*` scopes) along with sub-path specific active skills or constraints.
-- **Constraint Manifests**: Loads active hard constraints from `constraints/active/*.json` and selects them by path-scope overlap instead of semantic similarity.
+- **Constraint Manifests**: Loads active hard constraints from `constraints/active/*.json` or a configured `active_constraints_dir` and selects them by path-scope overlap instead of semantic similarity.
 - **Conflict Detection**: Blocks compilation when selected active rules target the same codebase element or duplicate directive wording would give the coding agent contradictory instructions.
 - **Contradiction Guard**: Blocks compilation when selected guidance matches the target patterns of previously rejected proposals.
 - **Outcome-Driven Insights**: Inspects outcome logs to alert the agent if a selected rule was previously marked as `HARMFUL` or `IRRELEVANT` in past sessions, including developer comments.
@@ -59,6 +59,17 @@ composer require --dev voku/agent-recall-compiler
 ## CLI Usage
 
 The package exposes a binary at `vendor/bin/agent-recall-compiler` supporting two main operations:
+
+Learning roots may define `config.json` to avoid hard-coding the active constraint manifest directory:
+
+```json
+{
+  "schema_version": "1.0",
+  "active_constraints_dir": "constraints/active"
+}
+```
+
+Relative paths are resolved from the learning root. Without configuration, the compiler keeps the legacy `constraints/active` and `constraints` lookup paths.
 
 ### 1. Compile a Task Briefing
 
@@ -172,6 +183,15 @@ agent_recall_log_outcome:
 ---
 
 ## Development & Testing
+
+### Bundled Agent Skills
+
+This package ships package-specific skills under `skills/`:
+
+- [`agent-recall-consumer`](skills/agent-recall-consumer/SKILL.md): for end users compiling L2 task briefings, reading validation plans, and logging outcomes.
+- [`agent-recall-compiler-maintainer`](skills/agent-recall-compiler-maintainer/SKILL.md): for maintainers changing `voku/agent-recall-compiler` source, tests, docs, or local vendor syncs.
+
+Generated hard constraints selected by recall are authored through the `agent-hard-constraint-author` skill shipped by `voku/agent-learning`.
 
 Run the test suite using PHPUnit:
 

@@ -54,6 +54,29 @@ final class RecallPromptBuilder
             $md[] = "";
         }
 
+        if ($result->selectedConstraints !== []) {
+            $md[] = "## Selected Hard Constraints";
+            $md[] = "The learning only counts when it changes or verifies enforceable repository behavior. Do not stop at prose, summaries, or recommendations while a selected hard constraint is in scope.";
+            $md[] = "";
+            $md[] = "Work until the relevant rule is active in the repository and the required validation command has been run. If implementation is blocked, report the concrete blocker and the rule identifier that could not be validated.";
+            $md[] = "";
+            foreach ($result->selectedConstraints as $constraint) {
+                $md[] = "### Constraint: " . $constraint->id;
+                $md[] = "- **Engine**: " . $this->formatEngine($constraint->engine);
+                $md[] = "- **Rule identifier**: `" . $constraint->ruleIdentifier . "`";
+                $md[] = "- **Scope**: " . implode(', ', $constraint->scope);
+                $md[] = "- **Source proposal**: `" . $constraint->sourceProposal . "`";
+                $md[] = "";
+                $md[] = "Required validation:";
+                foreach ($constraint->validationCommands as $command) {
+                    $md[] = "```bash";
+                    $md[] = $command;
+                    $md[] = "```";
+                }
+                $md[] = "";
+            }
+        }
+
         if ($result->selectedRejections !== []) {
             $md[] = "## Past Rejected Proposals (Warnings)";
             $md[] = "⚠️ **Do not implement the following patterns, as they were previously proposed and rejected:**";

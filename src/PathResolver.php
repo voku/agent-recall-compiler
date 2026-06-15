@@ -9,6 +9,16 @@ use InvalidArgumentException;
 final class PathResolver
 {
     /**
+     * @var list<string>
+     */
+    private const array LEARNING_ROOT_CANDIDATES = [
+        'infra/doc/agent-learning',
+        '.agent-learning',
+        'docs/agent-learning',
+        'agent-learning',
+    ];
+
+    /**
      * Resolve a path. If null, auto-discovers by searching up from CWD.
      */
     public function resolve(?string $path = null): string
@@ -30,8 +40,10 @@ final class PathResolver
 
         $dir = str_replace('\\', '/', $cwd);
         while (true) {
-            if (is_dir($dir . '/infra/doc/agent-learning')) {
-                return $dir . '/infra/doc/agent-learning';
+            foreach (self::LEARNING_ROOT_CANDIDATES as $candidate) {
+                if (is_dir($dir . '/' . $candidate)) {
+                    return $dir . '/' . $candidate;
+                }
             }
             if (is_dir($dir . '/findings') && is_dir($dir . '/proposals')) {
                 return $dir;

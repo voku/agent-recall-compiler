@@ -45,10 +45,12 @@ final class RecallRepository
             if (!is_dir($dirPath)) {
                 continue;
             }
+
             $files = glob($dirPath . '/*.json');
             if ($files === false) {
                 continue;
             }
+
             foreach ($files as $file) {
                 $item = $this->parseGuidanceFile($file, $dir);
                 if ($item !== null) {
@@ -56,6 +58,7 @@ final class RecallRepository
                 }
             }
         }
+
         return $guidance;
     }
 
@@ -165,7 +168,7 @@ final class RecallRepository
     public function loadConstraintManifests(string $root): array
     {
         $files = [];
-        foreach ([$root . '/constraints/active', $root . '/constraints'] as $dir) {
+        foreach ($this->activeConstraintDirectories($root) as $dir) {
             if (!is_dir($dir)) {
                 continue;
             }
@@ -181,6 +184,69 @@ final class RecallRepository
         }
 
         return $manifests;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function activeConstraintDirectories(string $root): array
+    {
+        $configuredDir = $this->configuredString($root, 'active_constraints_dir');
+        $dirs = [];
+        if ($configuredDir !== null) {
+            $dirs[] = $this->resolvePath($root, $configuredDir);
+        }
+        $dirs[] = $root . '/constraints/active';
+        $dirs[] = $root . '/constraints';
+
+        return array_values(array_unique($dirs));
+    }
+
+    private function configuredString(string $root, string $key): ?string
+    {
+        $configPath = $root . '/config.json';
+        if (!is_file($configPath)) {
+            return null;
+        }
+
+        $content = file_get_contents($configPath);
+        if ($content === false) {
+            throw new RuntimeException('cannot read path configuration: ' . $configPath);
+        }
+
+        try {
+            $config = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException $exception) {
+            throw new RuntimeException('malformed path configuration JSON: ' . $exception->getMessage());
+        }
+
+        if (!is_array($config)) {
+            throw new RuntimeException('path configuration must be a JSON object: ' . $configPath);
+        }
+
+        $value = $config[$key] ?? null;
+        if ($value === null) {
+            return null;
+        }
+        if (!is_string($value) || trim($value) === '') {
+            throw new RuntimeException('invalid path configuration field: ' . $key);
+        }
+
+        return $value;
+    }
+
+    private function resolvePath(string $root, string $path): string
+    {
+        $path = trim($path);
+        if (
+            str_starts_with($path, '/')
+            ||
+            preg_match('/^[A-Za-z]:[\\\\\\/]/', $path) === 1
+        ) {
+            return rtrim(str_replace('\\', '/', $path), '/');
+        }
+
+        return rtrim(str_replace('\\', '/', $root . '/' . $path), '/');
     }
 
     private function parseGuidanceFile(string $file, string $status): ?RecallGuidance
@@ -234,14 +300,17 @@ final class RecallRepository
         if ($content === false) {
             throw new RuntimeException('cannot read constraint manifest: ' . $file);
         }
+
         try {
             $data = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
         } catch (\JsonException $e) {
             throw new RuntimeException('malformed constraint manifest JSON in ' . $file . ': ' . $e->getMessage());
         }
+
         if (!is_array($data)) {
             throw new RuntimeException('constraint manifest must be a JSON object: ' . $file);
         }
+
         if (($data['schema_version'] ?? null) !== '1.0') {
             throw new RuntimeException('unsupported constraint manifest schema version in ' . $file);
         }
