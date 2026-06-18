@@ -61,11 +61,7 @@ final class EventHistoryWriter
                 continue;
             }
             $suffix = substr($id, strlen($datePrefix));
-            if (
-                is_numeric($suffix)
-                &&
-                (string)$suffix === (string)(int)$suffix
-            ) {
+            if (preg_match('/^\\d+$/', $suffix) === 1) {
                 $max = max($max, (int)$suffix);
             }
         }

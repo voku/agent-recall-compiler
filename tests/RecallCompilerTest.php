@@ -685,6 +685,70 @@ final class RecallCompilerTest extends TestCase
         self::assertFileDoesNotExist($this->root . '/history/recall-selections.jsonl');
     }
 
+    public function testInlineTaskInputResolvesToTaskBriefWithScopes(): void
+    {
+        $brief = (new \voku\AgentRecallCompiler\InlineTaskBriefResolver())->resolve(
+            ' PROJECT-123 ',
+            'Touch auth',
+            ['src/Auth/User.php', '', 'src/Auth/User.php'],
+            ['src/Auth', ' '],
+        );
+
+        self::assertSame('PROJECT-123', $brief->id);
+        self::assertSame('Touch auth', $brief->description);
+        self::assertSame(['src/Auth/User.php'], $brief->files);
+        self::assertSame(['src/Auth'], $brief->scopes);
+    }
+
+    public function testJsonTaskBriefResolverPreservesLegacyAndNewTaskBriefFields(): void
+    {
+        $briefPath = $this->root . '/task-brief-with-scopes.json';
+        file_put_contents($briefPath, json_encode([
+            'schema_version' => '1.0',
+            'task_id' => 'PROJECT-123',
+            'description' => 'Touch auth',
+            'files' => ['src/Auth/User.php'],
+            'scopes' => ['src/Auth'],
+        ], JSON_THROW_ON_ERROR));
+
+        $brief = (new \voku\AgentRecallCompiler\JsonTaskBriefResolver())->resolveFile($briefPath);
+
+        self::assertSame('PROJECT-123', $brief->id);
+        self::assertSame(['src/Auth/User.php'], $brief->files);
+        self::assertSame(['src/Auth'], $brief->scopes);
+    }
+
+    public function testRecallRootResolverExposesTypedConfigForConfiguredConstraintDirectory(): void
+    {
+        file_put_contents($this->root . '/config.json', json_encode([
+            'schema_version' => '1.0',
+            'active_constraints_dir' => 'active-hard-constraints',
+        ], JSON_THROW_ON_ERROR));
+
+        $config = (new \voku\AgentRecallCompiler\RecallRootResolver())->resolve($this->root);
+
+        self::assertSame($this->root, $config->root);
+        self::assertSame('active-hard-constraints', $config->activeConstraintsDir);
+    }
+
+    public function testSelectionResultAdaptsHistoricalRecallResultWithoutChangingOutput(): void
+    {
+        $result = (new RecallDecisionEngine())->decide(
+            new TaskBrief('PROJECT-123', 'Touch auth', ['src/Auth/UserService.php']),
+            [new RecallGuidance('proposal.2026-06-18.001', 'ADD', 'skill', 'auth', ['src/Auth'], null, 'Use auth context.', 'Reason', null, [], 'approved')],
+            [],
+            [],
+        );
+
+        $selectionResult = \voku\AgentRecallCompiler\SelectionResult::fromRecallResult($result);
+
+        self::assertSame('proposal.2026-06-18.001', $selectionResult->guidanceSelections[0]->guidanceId);
+        self::assertSame(
+            (new RecallPromptBuilder())->buildValidationPlan(new TaskBrief('PROJECT-123', 'Touch auth', ['src/Auth/UserService.php']), $result),
+            (new \voku\AgentRecallCompiler\ValidationPlanRenderer())->render(new TaskBrief('PROJECT-123', 'Touch auth', ['src/Auth/UserService.php']), $selectionResult),
+        );
+    }
+
     private function removeDirectory(string $dir): void
     {
         if (!is_dir($dir)) {

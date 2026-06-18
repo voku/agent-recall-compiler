@@ -227,3 +227,33 @@ vendor/bin/phpstan analyse --configuration=phpstan.neon.dist
 ## License
 
 This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+
+## Internal Pipeline and Compatibility
+
+The public CLI, Composer API classes, JSON field names, and generated file locations remain stable, but the implementation is organized around typed internal boundaries:
+
+1. **Task input normalization**: inline CLI input and JSON task briefs resolve to a `TaskBrief` before selection. Existing brief files using either `id` or legacy `task_id` continue to load.
+2. **Root/config resolution**: `RecallRootResolver` produces a `RecallRootConfig` from explicit `--root`, `config.json`, and legacy defaults. After that point, compiler services should receive typed config instead of rediscovering paths.
+3. **Guidance selection**: `RecallDecisionEngine` still returns the historical `RecallResult`, and `SelectionResult` / `GuidanceSelection` provide an additive typed adapter for the consolidated pipeline.
+4. **Rendering**: renderer facades consume `SelectionResult` or the legacy `RecallResult` and preserve the current `system.md`, `validation-plan.md`, `meta.json`, and `recall-log.draft.json` shapes.
+5. **Close-out**: `OutcomeCloseOutService` centralizes the typed close-out entry point while preserving `OutcomeLogger` for existing callers.
+
+### Event Vocabulary
+
+The compiler records observable facts only:
+
+- `evaluated`: a guidance candidate was considered by deterministic selection.
+- `eligible`: the candidate was valid for selection.
+- `selected`: the candidate was included in the compiled briefing/draft set.
+- `applied`: the close-out actor supplied that the guidance was applied.
+- `helpful`, `irrelevant`, `harmful`, `not_used`, `unknown`: the close-out outcome value supplied for a selected guidance item.
+
+Selection is **not** model access. Applied is **not** automatically helpful. Helpful is task-local evidence, not a universal promotion decision. Promotion and projection remain the responsibility of `voku/agent-learning`.
+
+### Compatibility Notes
+
+- `system.md`, `validation-plan.md`, `meta.json`, and `recall-log.draft.json` remain the supported output files.
+- `meta.json` remains the technical audit file.
+- `recall-log.draft.json` remains the editable close-out draft.
+- Legacy outcome drafts still route through the existing compatibility path.
+- Duplicate close-out retries are rejected before duplicate immutable event records are appended.
