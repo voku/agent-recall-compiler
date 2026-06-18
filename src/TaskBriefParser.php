@@ -48,13 +48,30 @@ final class TaskBriefParser
             throw new RuntimeException('task files must be an array');
         }
 
-        $fileList = [];
-        foreach ($files as $file) {
-            if (is_string($file) && trim($file) !== '') {
-                $fileList[] = trim($file);
+        $scopes = $data['scopes'] ?? [];
+        if (!is_array($scopes)) {
+            throw new RuntimeException('task scopes must be an array');
+        }
+
+        $fileList = $this->stringList($files);
+        $scopeList = $this->stringList($scopes);
+
+        return new TaskBrief($id, $description, $fileList, $scopeList);
+    }
+
+    /**
+     * @param array<mixed> $values
+     * @return list<string>
+     */
+    private function stringList(array $values): array
+    {
+        $list = [];
+        foreach ($values as $value) {
+            if (is_string($value) && trim($value) !== '') {
+                $list[] = trim($value);
             }
         }
 
-        return new TaskBrief($id, $description, $fileList);
+        return array_values(array_unique($list));
     }
 }

@@ -8,7 +8,7 @@ use Throwable;
 
 final class Cli
 {
-    private readonly PathResolver $pathResolver;
+    private readonly RecallRootResolver $rootResolver;
     private readonly RecallRepository $repository;
     private readonly RecallDecisionEngine $decisionEngine;
     private readonly RecallPromptBuilder $promptBuilder;
@@ -16,7 +16,7 @@ final class Cli
 
     public function __construct()
     {
-        $this->pathResolver = new PathResolver();
+        $this->rootResolver = new RecallRootResolver();
         $this->repository = new RecallRepository();
         $this->decisionEngine = new RecallDecisionEngine();
         $this->promptBuilder = new RecallPromptBuilder();
@@ -52,11 +52,12 @@ final class Cli
     {
         $parsed = $this->parseOptions($tokens);
         $rootOption = $this->stringOption($parsed['options'], 'root');
-        $root = $this->pathResolver->resolve($rootOption);
+        $rootConfig = $this->rootResolver->resolve($rootOption);
+        $root = $rootConfig->root;
 
         $briefPath = $this->stringOption($parsed['options'], 'task-brief');
         if ($briefPath !== null) {
-            $task = (new TaskBriefParser())->parseFile($briefPath);
+            $task = (new JsonTaskBriefResolver())->resolveFile($briefPath);
         } else {
             $taskId = $this->stringOption($parsed['options'], 'task');
             if ($taskId === null || trim($taskId) === '') {
@@ -64,7 +65,7 @@ final class Cli
             }
             $description = $this->stringOption($parsed['options'], 'description') ?? '';
             $files = $this->stringOptions($parsed['options'], 'file');
-            $task = new TaskBrief($taskId, $description, $files);
+            $task = (new InlineTaskBriefResolver())->resolve($taskId, $description, $files);
         }
 
         $outputDir = $this->stringOption($parsed['options'], 'output-dir') ?? '.';
@@ -117,7 +118,7 @@ final class Cli
     {
         $parsed = $this->parseOptions($tokens);
         $rootOption = $this->stringOption($parsed['options'], 'root');
-        $root = $this->pathResolver->resolve($rootOption);
+        $root = $this->rootResolver->resolve($rootOption)->root;
 
         $draft = $this->stringOption($parsed['options'], 'draft') ?? $parsed['arguments'][0] ?? null;
         if ($draft === null || trim($draft) === '') {
