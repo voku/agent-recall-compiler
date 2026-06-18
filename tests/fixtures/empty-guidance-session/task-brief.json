@@ -1,0 +1,9 @@
+{
+  "schema_version": "1.0",
+  "task_id": "dogfood-empty-guidance",
+  "description": "Synthetic regression fixture for an empty-guidance recall session.",
+  "files": [
+    "README.md",
+    "src/NoMatchingScope.php"
+  ]
+}

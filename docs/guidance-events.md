@@ -51,6 +51,12 @@ The command appends per-guidance events to `history/outcomes.jsonl`.
 It rejects duplicate event IDs, duplicate `compilation_id + guidance_id` pairs, selected guidance missing from the draft, non-selected guidance marked applied, unknown guidance IDs, unknown schemas, malformed timestamps, and secret-like values.
 Both JSONL files are updated under one lock; duplicate retry failures leave both files unchanged.
 
+## Empty-Guidance Sessions
+
+A compile can succeed with no selected guidance, no selected constraints, no selected rejections, and no evaluated guidance. In that case the outcome draft keeps `selected`, `guidance_outcomes`, `applied`, `helpful`, `irrelevant`, and `harmful` empty. Closing that draft is a valid session-level close-out, but it does not append per-guidance selection or outcome events because there is no guidance item to evaluate. Duplicate empty close-out retries are safe because no item-level event records are appended.
+
+Do not represent an empty selection with a synthetic guidance ID such as `none`, and do not turn empty arrays into `not_used`, `helpful`, `irrelevant`, `harmful`, or `applied` evidence.
+
 Selection is not model access and is not usefulness.
 It only means the guidance was included in the closed session’s evaluated/selected set.
 Use `applied` and explicit outcomes for promotion and review decisions in `voku/agent-learning`.
