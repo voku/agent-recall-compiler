@@ -160,6 +160,8 @@ Where `task-brief.json` is:
 
 Compilation fails before writing a misleading briefing when selected guidance cannot be trusted as a coherent instruction set. Blocking cases include unsupported schema versions, inactive selected rules, conflicting active rules, target overlap with rejected proposals, unknown constraint engines, superseded selected constraints, constraint commands that contradict their engine, constraints without validation commands, and outcome records that reference unknown rules.
 
+An empty-guidance compile is valid. When no active guidance, active constraints, or rejected guidance match the task scope, `selected_guidance`, `evaluated_guidance`, `selected_constraints`, `selected_rejections`, and the outcome draft guidance arrays remain empty. Close-out may record the session result, but it must not invent synthetic guidance such as `"none"` or create per-guidance `not_used`, `helpful`, `irrelevant`, `harmful`, or `applied` evidence.
+
 #### Constraint Manifest
 Active constraints are stored as small runtime manifests:
 

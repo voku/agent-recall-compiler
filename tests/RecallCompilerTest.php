@@ -502,6 +502,98 @@ final class RecallCompilerTest extends TestCase
         $logger->log($this->root, $draftPath, 'lars', 'commit_abc123');
     }
 
+
+    public function testCompileAllowsEmptyGuidanceSelection(): void
+    {
+        $fixtureRoot = $this->emptyGuidanceFixtureRoot();
+        $outputDir = $this->root . '/empty-guidance-out';
+
+        $exitCode = (new \voku\AgentRecallCompiler\Cli())->run([
+            'agent-recall-compiler',
+            'compile',
+            '--root',
+            $this->root,
+            '--task-brief',
+            $fixtureRoot . '/task-brief.json',
+            '--output-dir',
+            $outputDir,
+            '--compilation-id',
+            'compilation.dogfood-empty-guidance.2026-06-18.001',
+        ]);
+
+        self::assertSame(0, $exitCode);
+
+        $meta = json_decode((string)file_get_contents($outputDir . '/meta.json'), true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame('1.0', $meta['schema_version']);
+        self::assertSame('compilation.dogfood-empty-guidance.2026-06-18.001', $meta['compilation_id']);
+        self::assertSame('dogfood-empty-guidance', $meta['task_id']);
+        self::assertSame(['README.md', 'src/NoMatchingScope.php'], $meta['task_files']);
+        self::assertSame([], $meta['selected_guidance']);
+        self::assertSame([], $meta['evaluated_guidance']);
+        self::assertSame([], $meta['selected_constraints']);
+        self::assertSame([], $meta['selected_rejections']);
+        self::assertSame([], $meta['outcome_stats']);
+        self::assertSame([], $meta['warnings']);
+
+        $systemMd = (string)file_get_contents($outputDir . '/system.md');
+        self::assertStringContainsString("No active task-specific guidance matched this task's scope.", $systemMd);
+        self::assertStringNotContainsString('guidance_id = "none"', $systemMd);
+
+        $validationPlan = (string)file_get_contents($outputDir . '/validation-plan.md');
+        self::assertStringContainsString('No task-specific validation commands were registered for the matching guidance.', $validationPlan);
+        self::assertStringNotContainsString('phpunit', $validationPlan);
+        self::assertStringNotContainsString('phpstan', $validationPlan);
+    }
+
+    public function testOutcomeDraftAllowsEmptyGuidanceSelection(): void
+    {
+        $outputDir = $this->compileEmptyGuidanceFixture();
+
+        $draft = json_decode((string)file_get_contents($outputDir . '/recall-log.draft.json'), true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame('1.0', $draft['schema_version']);
+        self::assertSame('compilation.dogfood-empty-guidance.2026-06-18.001', $draft['compilation_id']);
+        self::assertSame('dogfood-empty-guidance', $draft['task_id']);
+        self::assertSame([], $draft['guidance_used']);
+        self::assertSame([], $draft['constraints_used']);
+        self::assertSame([], $draft['applied_proposals']);
+        self::assertSame([], $draft['selected']);
+        self::assertSame([], $draft['evaluated_guidance']);
+        self::assertSame([], $draft['guidance_outcomes']);
+        self::assertSame([], $draft['applied']);
+        self::assertSame([], $draft['helpful']);
+        self::assertSame([], $draft['irrelevant']);
+        self::assertSame([], $draft['harmful']);
+        self::assertSame('successful', $draft['result']);
+
+        self::assertStringNotContainsString('none', json_encode($draft, JSON_THROW_ON_ERROR));
+        self::assertStringNotContainsString('not_used', json_encode($draft, JSON_THROW_ON_ERROR));
+    }
+
+    public function testLogOutcomeDoesNotCreateGuidanceEventsForEmptySelection(): void
+    {
+        $outputDir = $this->compileEmptyGuidanceFixture();
+        $draftPath = $outputDir . '/recall-log.draft.json';
+
+        $result = (new OutcomeLogger())->log($this->root, $draftPath, 'dogfood-agent', 'commit_empty_guidance');
+
+        self::assertSame('compilation.dogfood-empty-guidance.2026-06-18.001', $result);
+        self::assertFileDoesNotExist($this->root . '/history/recall-selections.jsonl');
+        self::assertFileDoesNotExist($this->root . '/history/outcomes.jsonl');
+    }
+
+    public function testDuplicateEmptyGuidanceCloseOutDoesNotAppendDuplicateEvents(): void
+    {
+        $outputDir = $this->compileEmptyGuidanceFixture();
+        $draftPath = $outputDir . '/recall-log.draft.json';
+        $logger = new OutcomeLogger();
+
+        self::assertSame('compilation.dogfood-empty-guidance.2026-06-18.001', $logger->log($this->root, $draftPath, 'dogfood-agent', 'commit_empty_guidance'));
+        self::assertSame('compilation.dogfood-empty-guidance.2026-06-18.001', $logger->log($this->root, $draftPath, 'dogfood-agent', 'commit_empty_guidance'));
+
+        self::assertFileDoesNotExist($this->root . '/history/recall-selections.jsonl');
+        self::assertFileDoesNotExist($this->root . '/history/outcomes.jsonl');
+    }
+
     public function testCompileCommandUsesCallerSuppliedCompilationId(): void
     {
         $this->writeProposal('proposal.2026-06-18.001', 'skill', ['src/Auth']);
@@ -747,6 +839,32 @@ final class RecallCompilerTest extends TestCase
             (new RecallPromptBuilder())->buildValidationPlan(new TaskBrief('PROJECT-123', 'Touch auth', ['src/Auth/UserService.php']), $result),
             (new \voku\AgentRecallCompiler\ValidationPlanRenderer())->render(new TaskBrief('PROJECT-123', 'Touch auth', ['src/Auth/UserService.php']), $selectionResult),
         );
+    }
+
+
+    private function emptyGuidanceFixtureRoot(): string
+    {
+        return dirname(__DIR__) . '/tests/fixtures/empty-guidance-session';
+    }
+
+    private function compileEmptyGuidanceFixture(): string
+    {
+        $outputDir = $this->root . '/empty-guidance-out';
+        $exitCode = (new \voku\AgentRecallCompiler\Cli())->run([
+            'agent-recall-compiler',
+            'compile',
+            '--root',
+            $this->root,
+            '--task-brief',
+            $this->emptyGuidanceFixtureRoot() . '/task-brief.json',
+            '--output-dir',
+            $outputDir,
+            '--compilation-id',
+            'compilation.dogfood-empty-guidance.2026-06-18.001',
+        ]);
+        self::assertSame(0, $exitCode);
+
+        return $outputDir;
     }
 
     private function removeDirectory(string $dir): void
