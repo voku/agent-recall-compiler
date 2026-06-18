@@ -4,6 +4,13 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.3.2] - 2026-06-18
+
+### Changed
+
+- improve suffix validation (without 'ext-ctype')
+- simplify regex in secret assignment detection
+
 ## [0.3.1] - 2026-06-18
 
 ### Changed

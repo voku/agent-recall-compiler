@@ -6,7 +6,7 @@ namespace voku\AgentRecallCompiler;
 
 final class RedactionGuard
 {
-    private const string SECRET_ASSIGNMENT_PATTERN = '/(?<![a-z0-9_])(?:password|token|api[_-]?key|ms-Mcs-AdmPwd)\s*(?:=|:)\s*\S+/i';
+    private const string SECRET_ASSIGNMENT_PATTERN = '/(?<![a-z0-9_])(?:password|token|api[_-]?key|ms-Mcs-AdmPwd)\s*[=:]\s*\S+/i';
 
     /**
      * @param array<string, mixed>|string $value

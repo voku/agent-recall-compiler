@@ -61,7 +61,11 @@ final class EventHistoryWriter
                 continue;
             }
             $suffix = substr($id, strlen($datePrefix));
-            if (ctype_digit($suffix)) {
+            if (
+                is_numeric($suffix)
+                &&
+                (string)$suffix === (string)(int)$suffix
+            ) {
                 $max = max($max, (int)$suffix);
             }
         }
