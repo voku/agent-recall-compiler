@@ -16,12 +16,19 @@ final readonly class InlineTaskBriefResolver
             throw new \InvalidArgumentException('inline task input requires a non-empty task id');
         }
 
-        return new TaskBrief(trim($id), $description, $this->nonEmptyStrings($files), $this->nonEmptyStrings($scopes));
+        $normalizedFiles = $this->nonEmptyStrings($files);
+        $normalizedScopes = $this->nonEmptyStrings($scopes);
+
+        return new TaskBrief(trim($id), $description, $normalizedFiles, $normalizedScopes);
     }
 
-    /** @param list<string> $values @return list<string> */
+    /**
+     * @param list<string> $values
+     * @return list<string>
+     */
     private function nonEmptyStrings(array $values): array
     {
+        /** @var list<string> $normalized */
         $normalized = [];
         foreach ($values as $value) {
             $value = trim($value);
@@ -30,6 +37,9 @@ final readonly class InlineTaskBriefResolver
             }
         }
 
-        return array_values(array_unique($normalized));
+        /** @var list<string> $unique */
+        $unique = array_values(array_unique($normalized));
+
+        return $unique;
     }
 }
