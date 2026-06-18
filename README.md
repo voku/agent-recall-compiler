@@ -44,6 +44,7 @@ Rather than overloading an LLM's system prompt with every rule ever created, the
 - **Observable Usefulness Signals**: Separates `selected_count` from `helpful_count`, `irrelevant_count`, `harmful_count`, and `violation_detected_count`. Selection means a rule entered the prompt; it is not treated as proof that the rule improved the task.
 - **Validation Briefing**: Dynamically compiles selected guidance checks and selected active constraint commands into an authoritative validation plan with required rule identifiers.
 - **Loop Closure**: Prepares draft outcome feedback files so the agent can easily record what rules were helpful, irrelevant, or harmful at the end of the coding session.
+- **Immutable Guidance Events**: On governed close-out, appends recall-selection events and per-guidance outcome events for deterministic projection by `voku/agent-learning`.
 
 ---
 
@@ -126,7 +127,8 @@ vendor/bin/agent-recall-compiler compile \
   --description "Implement the new region-aware menu navigation" \
   --file "src/Navigation/MenuEntry.php" \
   --file "tests/Navigation/MenuEntryTest.php" \
-  --output-dir ".agent-recall/current"
+  --output-dir ".agent-recall/current" \
+  --compilation-id "compilation.PROJECT-367.2026-06-18.001"
 ```
 
 #### Inline vs. File-based Briefing
@@ -154,7 +156,7 @@ Where `task-brief.json` is:
 - **`system.md`**: Combined system prompt meta-prompt briefing containing selected active rules and warnings.
 - **`validation-plan.md`**: Authoritative required validation commands, selected hard-constraint rule identifiers, and provenance.
 - **`meta.json`**: Technical metadata recording exactly which rules and constraints were loaded.
-- **`recall-log.draft.json`**: A draft outcome log template populated with the selected rules and constraints to be completed at the end of the session.
+- **`recall-log.draft.json`**: A draft outcome log template populated with one `guidance_outcomes` row per selected rule or constraint.
 
 Compilation fails before writing a misleading briefing when selected guidance cannot be trusted as a coherent instruction set. Blocking cases include unsupported schema versions, inactive selected rules, conflicting active rules, target overlap with rejected proposals, unknown constraint engines, superseded selected constraints, constraint commands that contradict their engine, constraints without validation commands, and outcome records that reference unknown rules.
 
@@ -188,9 +190,12 @@ vendor/bin/agent-recall-compiler log-outcome \
   --commit "abc1234"
 ```
 
-This appends a permanent, structured entry to `history/outcomes.jsonl`, which the compiler reads during future compilations to generate outcome-driven warnings.
+This appends permanent, structured selection entries to `history/recall-selections.jsonl` and per-guidance outcome entries to `history/outcomes.jsonl`, which the compiler and `voku/agent-learning` can read during future evaluations.
 
-`recall-log.draft.json` intentionally leaves `helpful`, `irrelevant`, and `harmful` empty. At close-out, every selected rule must be placed in exactly one of those buckets. A rule being selected into the briefing is only an observable selection signal, not proof of usefulness.
+`recall-log.draft.json` defaults every selected rule to `outcome=unknown` and `applied=false`. Selected means the rule was included in the closed session’s selected guidance set; it is not proof of model attention, application, or usefulness.
+Events are written at close-out so abandoned or repeatedly recompiled briefings do not inflate promotion evidence. Duplicate retries fail without partially appending duplicate records.
+
+Full schema details and retry behavior are documented in [`docs/guidance-events.md`](docs/guidance-events.md). A small end-to-end fixture is available under [`examples/end-to-end`](examples/end-to-end).
 
 ---
 

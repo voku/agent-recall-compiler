@@ -12,6 +12,7 @@ final readonly class RecallResult
      * @param list<string> $warnings
      * @param list<ConstraintManifest> $selectedConstraints
      * @param array<string, array{selected_count: int, helpful_count: int, irrelevant_count: int, harmful_count: int, violation_detected_count: int}> $outcomeStats
+     * @param list<EvaluatedGuidance> $evaluatedGuidance
      */
     public function __construct(
         public array $selectedGuidance,
@@ -19,6 +20,7 @@ final readonly class RecallResult
         public array $warnings,
         public array $selectedConstraints = [],
         public array $outcomeStats = [],
+        public array $evaluatedGuidance = [],
     ) {
     }
 }

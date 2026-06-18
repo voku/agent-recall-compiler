@@ -16,8 +16,8 @@ For a repo-local wrapper, copy the shorter example in `examples/agents/skills/pr
 3. Compile from a task brief or inline task data, always passing concrete file paths when available.
 4. Treat compile-blocking conflicts as real: inactive guidance, duplicate directives, contradictory rejected proposals, unknown constraint engines, or invalid outcome references should be fixed before using the briefing.
 5. Use `validation-plan.md` as the authoritative command list for selected guidance and constraints.
-6. At session end, complete `recall-log.draft.json` and append it with `log-outcome` after validation succeeds.
-7. Treat `selected` as exposure only. Mark each selected rule as exactly one of `helpful`, `irrelevant`, or `harmful`; do not leave selected guidance unclassified and do not mark it helpful by default.
+6. At session end, complete every `guidance_outcomes` row in `recall-log.draft.json` and append it with `log-outcome` after validation succeeds.
+7. Treat `selected` as exposure only. Set `applied=true` only when the guidance changed the work, and choose one outcome from `helpful`, `irrelevant`, `harmful`, `not_used`, or `unknown`; do not mark guidance helpful by default.
 
 ## Commands
 
@@ -43,4 +43,7 @@ vendor/bin/agent-recall-compiler log-outcome \
 - `system.md`: selected guidance, warnings, and hard-constraint execution contract.
 - `validation-plan.md`: required commands and rule identifiers.
 - `meta.json`: selected guidance and constraint IDs.
-- `recall-log.draft.json`: outcome template to complete after the task; usefulness buckets start empty by design.
+- `recall-log.draft.json`: outcome template to complete after the task; every selected guidance item has an explicit `guidance_outcomes` row defaulting to `unknown` and `applied=false`.
+
+Close-out appends immutable events to `history/recall-selections.jsonl` and `history/outcomes.jsonl`.
+Duplicate retries fail without partial appends.

@@ -111,21 +111,30 @@ final class RecallPromptBuilder
         return implode("\n", $md);
     }
 
-    public function buildMetaJson(TaskBrief $task, RecallResult $result): string
+    /**
+     * @param array<string, string> $outputHashes
+     */
+    public function buildMetaJson(TaskBrief $task, RecallResult $result, ?string $compilationId = null, array $outputHashes = []): string
     {
         $data = [
+            'schema_version' => '1.0',
+            'compilation_id' => $compilationId,
             'task_id' => $task->id,
+            'task_files' => $task->files,
             'compiled_at' => (new DateTimeImmutable('now'))->format(DateTimeInterface::ATOM),
             'selected_guidance' => array_map(static fn(RecallGuidance $g) => $g->id, $result->selectedGuidance),
+            'evaluated_guidance' => array_map(static fn(EvaluatedGuidance $g) => $g->toArray(), $result->evaluatedGuidance),
             'selected_constraints' => array_map(static fn(ConstraintManifest $c) => [
                 'id' => $c->id,
                 'engine' => $c->engine,
                 'rule_identifier' => $c->ruleIdentifier,
                 'source_proposal' => $c->sourceProposal,
+                'selection_reason' => SelectionReason::CONSTRAINT_SCOPE->value,
             ], $result->selectedConstraints),
             'selected_rejections' => array_map(static fn(RecallRejection $rj) => $rj->id, $result->selectedRejections),
             'outcome_stats' => $result->outcomeStats,
             'warnings' => $result->warnings,
+            'output_hashes' => $outputHashes,
         ];
 
         return json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
@@ -186,28 +195,74 @@ final class RecallPromptBuilder
         return implode("\n", $md);
     }
 
-    public function buildRecallLogDraft(TaskBrief $task, RecallResult $result): string
+    public function buildRecallLogDraft(TaskBrief $task, RecallResult $result, ?string $compilationId = null): string
     {
         $selectedIds = array_map(static fn(RecallGuidance $g) => $g->id, $result->selectedGuidance);
         $selectedConstraintIds = array_map(static fn(ConstraintManifest $c) => $c->id, $result->selectedConstraints);
         $sourceProposalIds = array_map(static fn(ConstraintManifest $c) => $c->sourceProposal, $result->selectedConstraints);
+        $selectedById = [];
+        foreach ($result->evaluatedGuidance as $evaluatedGuidance) {
+            if ($evaluatedGuidance->selected) {
+                $selectedById[$evaluatedGuidance->guidanceId] = $evaluatedGuidance;
+            }
+        }
+        if ($selectedById === []) {
+            foreach ($result->selectedGuidance as $guidance) {
+                $selectedById[$guidance->id] = new EvaluatedGuidance(
+                    $guidance->id,
+                    GuidanceType::tryFrom((string)$guidance->targetType) ?? GuidanceType::SKILL,
+                    true,
+                    true,
+                    SelectionReason::SCOPE_OVERLAP,
+                    null,
+                    $task->files,
+                );
+            }
+            foreach ($result->selectedConstraints as $constraint) {
+                $selectedById[$constraint->id] = new EvaluatedGuidance(
+                    $constraint->id,
+                    GuidanceType::CONSTRAINT,
+                    true,
+                    true,
+                    SelectionReason::CONSTRAINT_SCOPE,
+                    null,
+                    $task->files,
+                    $constraint->sourceProposal,
+                );
+            }
+            ksort($selectedById);
+        }
         
         $data = [
             'schema_version' => '1.0',
             'id' => 'outcome.' . (new DateTimeImmutable('now'))->format('Y-m-d') . '.000',
+            'compilation_id' => $compilationId,
             'task_id' => $task->id,
+            'task_files' => $task->files,
             'session' => 'sess_placeholder',
             'created_at' => (new DateTimeImmutable('now'))->format(DateTimeInterface::ATOM),
             'guidance_used' => $selectedIds,
             'constraints_used' => $selectedConstraintIds,
             'applied_proposals' => array_values(array_unique([...$selectedIds, ...$sourceProposalIds])),
             'selected' => array_values(array_unique([...$selectedIds, ...$selectedConstraintIds])),
+            'evaluated_guidance' => array_map(static fn(EvaluatedGuidance $g) => $g->toArray(), $result->evaluatedGuidance),
+            'guidance_outcomes' => array_map(
+                static fn(EvaluatedGuidance $g) => [
+                    'guidance_id' => $g->guidanceId,
+                    'guidance_type' => $g->guidanceType->value,
+                    'selected' => true,
+                    'applied' => false,
+                    'outcome' => OutcomeValue::UNKNOWN->value,
+                    'comment' => null,
+                ],
+                array_values($selectedById),
+            ),
             'applied' => [],
             'helpful' => [],
             'irrelevant' => [],
             'harmful' => [],
             'result' => 'successful',
-            'comment' => 'Complete helpful, irrelevant, and harmful after the session. Selection alone is not proof of usefulness.',
+            'comment' => 'Complete guidance_outcomes after the session. Selection alone is not proof of usefulness.',
         ];
 
         return json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);

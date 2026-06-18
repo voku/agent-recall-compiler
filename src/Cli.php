@@ -71,6 +71,7 @@ final class Cli
         if (!is_dir($outputDir)) {
             mkdir($outputDir, 0777, true);
         }
+        $compilationId = $this->stringOption($parsed['options'], 'compilation-id') ?? $this->generateCompilationId($task->id);
 
         // Load guidance repo
         $memory = $this->repository->loadMemory($root);
@@ -84,9 +85,13 @@ final class Cli
 
         // Build outputs
         $systemMd = $this->promptBuilder->buildSystemMd($task, $memory, $result);
-        $metaJson = $this->promptBuilder->buildMetaJson($task, $result);
         $validationPlan = $this->promptBuilder->buildValidationPlan($task, $result);
-        $logDraft = $this->promptBuilder->buildRecallLogDraft($task, $result);
+        $logDraft = $this->promptBuilder->buildRecallLogDraft($task, $result, $compilationId);
+        $metaJson = $this->promptBuilder->buildMetaJson($task, $result, $compilationId, [
+            'system.md' => hash('sha256', $systemMd),
+            'validation-plan.md' => hash('sha256', $validationPlan),
+            'recall-log.draft.json' => hash('sha256', $logDraft),
+        ]);
 
         // Write outputs
         file_put_contents($outputDir . '/system.md', $systemMd);
@@ -95,6 +100,7 @@ final class Cli
         file_put_contents($outputDir . '/recall-log.draft.json', $logDraft);
 
         fwrite(STDOUT, sprintf("Briefing compiled successfully under: %s/\n", rtrim($outputDir, '/')));
+        fwrite(STDOUT, sprintf("- compilation ID: %s\n", $compilationId));
         fwrite(STDOUT, sprintf("- system.md (selected guidance: %d, selected constraints: %d)\n", count($result->selectedGuidance), count($result->selectedConstraints)));
         fwrite(STDOUT, sprintf("- validation-plan.md\n"));
         fwrite(STDOUT, sprintf("- recall-log.draft.json\n"));
@@ -145,6 +151,7 @@ final class Cli
         fwrite(STDOUT, "  --task ID                Inline task ID selector.\n");
         fwrite(STDOUT, "  --description DESC       Inline task description text.\n");
         fwrite(STDOUT, "  --file PATH              Inline changed file path. Repeatable.\n");
+        fwrite(STDOUT, "  --compilation-id ID      Stable ID for this compile session.\n");
         fwrite(STDOUT, "  --draft PATH             Outcome draft file path for log-outcome.\n");
         fwrite(STDOUT, "  --by ACTOR               Actor name for log-outcome.\n");
         fwrite(STDOUT, "  --commit HASH            Commit hash or reference for log-outcome.\n\n");
@@ -157,6 +164,16 @@ final class Cli
         fwrite(STDERR, "Unknown command: " . $command . "\n");
         fwrite(STDERR, "Run 'agent-recall-compiler help' to view usage.\n");
         return 1;
+    }
+
+    private function generateCompilationId(string $taskId): string
+    {
+        $safeTaskId = preg_replace('/[^A-Za-z0-9_-]+/', '-', $taskId);
+        if (!is_string($safeTaskId) || trim($safeTaskId) === '') {
+            $safeTaskId = 'task';
+        }
+
+        return sprintf('compilation.%s.%s.%s', trim($safeTaskId, '-'), gmdate('Y-m-d-His'), bin2hex(random_bytes(4)));
     }
 
     /**

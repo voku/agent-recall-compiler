@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.0",
+  "compilation_id": "compilation.PROJECT-123.2026-06-18.001",
+  "task_id": "PROJECT-123",
+  "task_files": [
+    "src/Auth/UserService.php"
+  ],
+  "evaluated_guidance": [
+    {
+      "guidance_id": "skill.auth-context",
+      "guidance_type": "skill",
+      "eligible": true,
+      "selected": true,
+      "selection_reason": "scope_overlap",
+      "exclusion_reason": null,
+      "task_files": [
+        "src/Auth/UserService.php"
+      ]
+    }
+  ],
+  "guidance_outcomes": [
+    {
+      "guidance_id": "skill.auth-context",
+      "guidance_type": "skill",
+      "selected": true,
+      "applied": true,
+      "outcome": "helpful",
+      "comment": "Prevented direct session access in the service layer."
+    }
+  ]
+}

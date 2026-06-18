@@ -11,10 +11,12 @@ use RuntimeException;
 final class OutcomeLogger
 {
     private readonly RecallRepository $repository;
+    private readonly EventHistoryWriter $eventHistoryWriter;
 
     public function __construct()
     {
         $this->repository = new RecallRepository();
+        $this->eventHistoryWriter = new EventHistoryWriter();
     }
 
     /**
@@ -43,6 +45,10 @@ final class OutcomeLogger
 
         if (isset($data['schema_version']) && $data['schema_version'] !== '1.0') {
             throw new RuntimeException('unsupported outcome draft schema version: ' . $data['schema_version']);
+        }
+
+        if (isset($data['compilation_id']) || isset($data['guidance_outcomes']) || isset($data['evaluated_guidance'])) {
+            return $this->logEventDraft($root, $draftPath, $data, $actor, $commit);
         }
 
         // Validate required fields
@@ -209,5 +215,295 @@ final class OutcomeLogger
         }
 
         return array_values(array_filter($value, 'is_string'));
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function logEventDraft(string $root, string $draftPath, array $data, string $actor, string $commit): string
+    {
+        $taskId = $this->requiredString($data, 'task_id', $draftPath);
+        $compilationId = $this->requiredString($data, 'compilation_id', $draftPath);
+        $taskFiles = $this->stringList($data['task_files'] ?? []);
+        $evaluatedGuidance = $this->parseEvaluatedGuidance($data['evaluated_guidance'] ?? null, $draftPath);
+        $guidanceOutcomes = $this->parseGuidanceOutcomes($data['guidance_outcomes'] ?? null, $draftPath);
+
+        $knownTypes = $this->knownGuidanceTypesById($root);
+        $selected = [];
+        foreach ($evaluatedGuidance as $eventDraft) {
+            if (!isset($knownTypes[$eventDraft->guidanceId])) {
+                throw new RuntimeException(sprintf("referenced guidance '%s' does not exist in learning repository", $eventDraft->guidanceId));
+            }
+            if ($knownTypes[$eventDraft->guidanceId] !== $eventDraft->guidanceType) {
+                throw new RuntimeException(sprintf("guidance '%s' type mismatch in outcome draft", $eventDraft->guidanceId));
+            }
+            if ($eventDraft->selected) {
+                $selected[$eventDraft->guidanceId] = $eventDraft;
+            }
+        }
+
+        $seenOutcomes = [];
+        foreach ($guidanceOutcomes as $outcome) {
+            $guidanceId = $outcome['guidance_id'];
+            if (!isset($selected[$guidanceId])) {
+                throw new RuntimeException(sprintf("outcome guidance '%s' was not selected for compilation %s", $guidanceId, $compilationId));
+            }
+            if (isset($seenOutcomes[$guidanceId])) {
+                throw new RuntimeException(sprintf("duplicate outcome guidance '%s' in draft", $guidanceId));
+            }
+            if ($outcome['guidance_type'] !== $selected[$guidanceId]->guidanceType) {
+                throw new RuntimeException(sprintf("outcome guidance '%s' type mismatch in draft", $guidanceId));
+            }
+            if ($outcome['selected'] !== true) {
+                throw new RuntimeException(sprintf("outcome guidance '%s' must keep selected=true", $guidanceId));
+            }
+            $seenOutcomes[$guidanceId] = true;
+        }
+
+        foreach (array_keys($selected) as $guidanceId) {
+            if (!isset($seenOutcomes[$guidanceId])) {
+                throw new RuntimeException(sprintf("selected guidance '%s' is missing from guidance_outcomes", $guidanceId));
+            }
+        }
+
+        $recordedAt = (new DateTimeImmutable('now'))->format(DateTimeInterface::ATOM);
+        $selectionIds = $this->nextEventIds($root, 'recall-selections.jsonl', 'recall-selection', count($evaluatedGuidance));
+        $outcomeIds = $this->nextEventIds($root, 'outcomes.jsonl', 'guidance-outcome', count($guidanceOutcomes));
+
+        $selectionEvents = [];
+        foreach ($evaluatedGuidance as $index => $eventDraft) {
+            $selectionEvents[] = new RecallSelectionEvent(
+                $selectionIds[$index],
+                $compilationId,
+                $taskId,
+                $eventDraft->guidanceId,
+                $eventDraft->guidanceType,
+                $eventDraft->eligible,
+                $eventDraft->selected,
+                $eventDraft->selectionReason,
+                $eventDraft->exclusionReason,
+                $eventDraft->taskFiles === [] ? $taskFiles : $eventDraft->taskFiles,
+                $recordedAt,
+            );
+        }
+
+        $outcomeEvents = [];
+        foreach ($guidanceOutcomes as $index => $outcome) {
+            $outcomeEvents[] = new GuidanceOutcomeEvent(
+                $outcomeIds[$index],
+                $compilationId,
+                $taskId,
+                $outcome['guidance_id'],
+                $outcome['outcome'],
+                $outcome['applied'],
+                $outcome['comment'],
+                $commit,
+                $actor,
+                $recordedAt,
+            );
+        }
+
+        $this->eventHistoryWriter->append($root, $selectionEvents, $outcomeEvents);
+
+        return $compilationId;
+    }
+
+    /**
+     * @return array<string, GuidanceType>
+     */
+    private function knownGuidanceTypesById(string $root): array
+    {
+        $known = [];
+        foreach ($this->repository->loadActiveGuidance($root) as $guidance) {
+            $known[$guidance->id] = GuidanceType::tryFrom((string)$guidance->targetType) ?? GuidanceType::SKILL;
+        }
+        foreach ($this->repository->loadConstraintManifests($root) as $constraint) {
+            $known[$constraint->id] = GuidanceType::CONSTRAINT;
+        }
+
+        return $known;
+    }
+
+    /**
+     * @return list<EvaluatedGuidance>
+     */
+    private function parseEvaluatedGuidance(mixed $value, string $file): array
+    {
+        if (!is_array($value)) {
+            throw new RuntimeException('outcome draft requires evaluated_guidance list');
+        }
+
+        $items = [];
+        $seen = [];
+        foreach (array_values($value) as $index => $item) {
+            if (!is_array($item)) {
+                throw new RuntimeException(sprintf('evaluated_guidance[%d] must be an object', $index));
+            }
+            /** @var array<string, mixed> $item */
+            $guidanceId = $this->requiredString($item, 'guidance_id', $file);
+            if (isset($seen[$guidanceId])) {
+                throw new RuntimeException(sprintf("duplicate evaluated guidance '%s' in draft", $guidanceId));
+            }
+            $seen[$guidanceId] = true;
+            $guidanceType = $this->guidanceType($this->requiredString($item, 'guidance_type', $file), $guidanceId);
+            $eligible = $this->requiredBool($item, 'eligible', $file);
+            $selected = $this->requiredBool($item, 'selected', $file);
+            $selectionReason = $this->nullableSelectionReason($item['selection_reason'] ?? null, $guidanceId);
+            $exclusionReason = $this->nullableExclusionReason($item['exclusion_reason'] ?? null, $guidanceId);
+            $items[] = new EvaluatedGuidance(
+                $guidanceId,
+                $guidanceType,
+                $eligible,
+                $selected,
+                $selectionReason,
+                $exclusionReason,
+                $this->requiredStringList($item, 'task_files', $file),
+                is_string($item['source_proposal'] ?? null) ? $item['source_proposal'] : null,
+            );
+        }
+
+        return $items;
+    }
+
+    /**
+     * @return list<array{guidance_id: string, guidance_type: GuidanceType, selected: bool, applied: bool, outcome: OutcomeValue, comment: string|null}>
+     */
+    private function parseGuidanceOutcomes(mixed $value, string $file): array
+    {
+        if (!is_array($value)) {
+            throw new RuntimeException('outcome draft requires guidance_outcomes list');
+        }
+
+        $items = [];
+        foreach (array_values($value) as $index => $item) {
+            if (!is_array($item)) {
+                throw new RuntimeException(sprintf('guidance_outcomes[%d] must be an object', $index));
+            }
+            /** @var array<string, mixed> $item */
+            $guidanceId = $this->requiredString($item, 'guidance_id', $file);
+            $outcome = OutcomeValue::tryFrom($this->requiredString($item, 'outcome', $file));
+            if (!$outcome instanceof OutcomeValue) {
+                throw new RuntimeException(sprintf("unknown outcome value for guidance '%s'", $guidanceId));
+            }
+            $comment = $item['comment'] ?? null;
+            if ($comment !== null && !is_string($comment)) {
+                throw new RuntimeException(sprintf("guidance outcome '%s' comment must be string or null", $guidanceId));
+            }
+            $items[] = [
+                'guidance_id' => $guidanceId,
+                'guidance_type' => $this->guidanceType($this->requiredString($item, 'guidance_type', $file), $guidanceId),
+                'selected' => $this->requiredBool($item, 'selected', $file),
+                'applied' => $this->requiredBool($item, 'applied', $file),
+                'outcome' => $outcome,
+                'comment' => $comment,
+            ];
+        }
+
+        return $items;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function nextEventIds(string $root, string $fileName, string $prefix, int $count): array
+    {
+        if ($count === 0) {
+            return [];
+        }
+        $first = $this->eventHistoryWriter->nextEventId($root, $fileName, $prefix);
+        $lastDot = strrpos($first, '.');
+        if ($lastDot === false) {
+            throw new RuntimeException('invalid generated event id: ' . $first);
+        }
+        $base = substr($first, 0, $lastDot + 1);
+        $next = (int)substr($first, $lastDot + 1);
+        $ids = [];
+        for ($i = 0; $i < $count; $i++) {
+            $ids[] = $base . sprintf('%03d', $next + $i);
+        }
+
+        return $ids;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function requiredString(array $data, string $key, string $file): string
+    {
+        $value = $data[$key] ?? null;
+        if (!is_string($value) || trim($value) === '') {
+            throw new RuntimeException(sprintf('%s requires non-empty string: %s', $file, $key));
+        }
+
+        return $value;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function requiredBool(array $data, string $key, string $file): bool
+    {
+        $value = $data[$key] ?? null;
+        if (!is_bool($value)) {
+            throw new RuntimeException(sprintf('%s requires boolean: %s', $file, $key));
+        }
+
+        return $value;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @return list<string>
+     */
+    private function requiredStringList(array $data, string $key, string $file): array
+    {
+        $value = $data[$key] ?? null;
+        if (!is_array($value)) {
+            throw new RuntimeException(sprintf('%s requires string list: %s', $file, $key));
+        }
+
+        $strings = [];
+        foreach ($value as $item) {
+            if (!is_string($item)) {
+                throw new RuntimeException(sprintf('%s list %s must contain only strings', $file, $key));
+            }
+            $strings[] = $item;
+        }
+
+        return $strings;
+    }
+
+    private function guidanceType(string $value, string $guidanceId): GuidanceType
+    {
+        $type = GuidanceType::tryFrom($value);
+        if (!$type instanceof GuidanceType) {
+            throw new RuntimeException(sprintf("guidance '%s' has unknown guidance type '%s'", $guidanceId, $value));
+        }
+
+        return $type;
+    }
+
+    private function nullableSelectionReason(mixed $value, string $guidanceId): ?SelectionReason
+    {
+        if ($value === null) {
+            return null;
+        }
+        if (!is_string($value) || !SelectionReason::tryFrom($value) instanceof SelectionReason) {
+            throw new RuntimeException(sprintf("guidance '%s' has unknown selection reason", $guidanceId));
+        }
+
+        return SelectionReason::from($value);
+    }
+
+    private function nullableExclusionReason(mixed $value, string $guidanceId): ?ExclusionReason
+    {
+        if ($value === null) {
+            return null;
+        }
+        if (!is_string($value) || !ExclusionReason::tryFrom($value) instanceof ExclusionReason) {
+            throw new RuntimeException(sprintf("guidance '%s' has unknown exclusion reason", $guidanceId));
+        }
+
+        return ExclusionReason::from($value);
     }
 }

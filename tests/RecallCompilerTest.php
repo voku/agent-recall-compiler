@@ -167,6 +167,23 @@ final class RecallCompilerTest extends TestCase
         $engine->decide($task, $activeGuidance, [], []);
     }
 
+    public function testLegacyFileTargetTypeIsProjectedAsMemoryGuidance(): void
+    {
+        $activeGuidance = [
+            new RecallGuidance('proposal.2026-06-12.001', 'ADD', 'file', 'MEMORY.md', ['src/Auth'], null, 'Wording 1', 'Reason 1', 'Boundary 1', [], 'applied'),
+        ];
+
+        $result = (new RecallDecisionEngine())->decide(
+            new TaskBrief('ITPNG-123', 'Implement auth logic', ['src/Auth/OAuth.php']),
+            $activeGuidance,
+            [],
+            [],
+        );
+
+        self::assertCount(1, $result->evaluatedGuidance);
+        self::assertSame('memory', $result->evaluatedGuidance[0]->guidanceType->value);
+    }
+
     public function testLoadsAndSelectsConstraintManifestByScope(): void
     {
         file_put_contents($this->root . '/constraints/active/constraint.project.auth.no-direct-session-access.json', json_encode([
@@ -485,6 +502,189 @@ final class RecallCompilerTest extends TestCase
         $logger->log($this->root, $draftPath, 'lars', 'commit_abc123');
     }
 
+    public function testCompileCommandUsesCallerSuppliedCompilationId(): void
+    {
+        $this->writeProposal('proposal.2026-06-18.001', 'skill', ['src/Auth']);
+        $outputDir = $this->root . '/out';
+
+        $exitCode = (new \voku\AgentRecallCompiler\Cli())->run([
+            'agent-recall-compiler',
+            'compile',
+            '--root',
+            $this->root,
+            '--task',
+            'PROJECT-123',
+            '--description',
+            'Touch auth',
+            '--file',
+            'src/Auth/UserService.php',
+            '--output-dir',
+            $outputDir,
+            '--compilation-id',
+            'compilation.PROJECT-123.2026-06-18.001',
+        ]);
+
+        self::assertSame(0, $exitCode);
+        $meta = json_decode((string)file_get_contents($outputDir . '/meta.json'), true);
+        self::assertSame('compilation.PROJECT-123.2026-06-18.001', $meta['compilation_id']);
+        self::assertSame(['src/Auth/UserService.php'], $meta['task_files']);
+        self::assertArrayHasKey('system.md', $meta['output_hashes']);
+
+        $draft = json_decode((string)file_get_contents($outputDir . '/recall-log.draft.json'), true);
+        self::assertSame('compilation.PROJECT-123.2026-06-18.001', $draft['compilation_id']);
+        self::assertSame('proposal.2026-06-18.001', $draft['guidance_outcomes'][0]['guidance_id']);
+        self::assertFalse($draft['guidance_outcomes'][0]['applied']);
+        self::assertSame('unknown', $draft['guidance_outcomes'][0]['outcome']);
+    }
+
+    public function testCompileCommandGeneratesCompilationIdWhenOmitted(): void
+    {
+        $this->writeProposal('proposal.2026-06-18.001', 'skill', ['src/Auth']);
+        $outputDir = $this->root . '/out-generated';
+
+        $exitCode = (new \voku\AgentRecallCompiler\Cli())->run([
+            'agent-recall-compiler',
+            'compile',
+            '--root',
+            $this->root,
+            '--task',
+            'PROJECT-123',
+            '--file',
+            'src/Auth/UserService.php',
+            '--output-dir',
+            $outputDir,
+        ]);
+
+        self::assertSame(0, $exitCode);
+        $meta = json_decode((string)file_get_contents($outputDir . '/meta.json'), true);
+        self::assertIsString($meta['compilation_id']);
+        self::assertStringStartsWith('compilation.PROJECT-123.', $meta['compilation_id']);
+    }
+
+    public function testDecisionRecordsEvaluatedGuidanceDeterministicallyWithReasons(): void
+    {
+        $activeGuidance = [
+            new RecallGuidance('skill.z', 'ADD', 'skill', 'z', ['src/Z'], null, 'Z', 'Reason', 'Boundary', [], 'approved'),
+            new RecallGuidance('skill.a', 'ADD', 'skill', 'a', ['src/Auth'], null, 'A', 'Reason', 'Boundary', [], 'approved'),
+            new RecallGuidance('skill.global', 'ADD', 'skill', 'global', ['/'], null, 'G', 'Reason', 'Boundary', [], 'approved'),
+        ];
+
+        $result = (new RecallDecisionEngine())->decide(
+            new TaskBrief('PROJECT-123', 'Touch auth', ['src/Auth/UserService.php']),
+            $activeGuidance,
+            [],
+            [],
+        );
+
+        self::assertSame(['skill.a', 'skill.global', 'skill.z'], array_map(static fn($g) => $g->guidanceId, $result->evaluatedGuidance));
+        self::assertTrue($result->evaluatedGuidance[0]->selected);
+        self::assertSame('scope_overlap', $result->evaluatedGuidance[0]->selectionReason?->value);
+        self::assertSame('global', $result->evaluatedGuidance[1]->selectionReason?->value);
+        self::assertFalse($result->evaluatedGuidance[2]->selected);
+        self::assertSame('no_scope_overlap', $result->evaluatedGuidance[2]->exclusionReason?->value);
+    }
+
+    public function testOutcomeLoggerAppendsSelectionAndOutcomeEvents(): void
+    {
+        $this->writeProposal('proposal.2026-06-18.001', 'skill', ['src/Auth']);
+        $draftPath = $this->buildEventDraft('compilation.PROJECT-123.2026-06-18.001');
+        $draft = json_decode((string)file_get_contents($draftPath), true);
+        $draft['guidance_outcomes'][0]['applied'] = true;
+        $draft['guidance_outcomes'][0]['outcome'] = 'helpful';
+        $draft['guidance_outcomes'][0]['comment'] = 'Prevented direct session access.';
+        file_put_contents($draftPath, json_encode($draft, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+
+        $result = (new OutcomeLogger())->log($this->root, $draftPath, 'Lars Moelleken', 'abc1234');
+
+        self::assertSame('compilation.PROJECT-123.2026-06-18.001', $result);
+        $selectionEvents = $this->jsonlRecords($this->root . '/history/recall-selections.jsonl');
+        $outcomeEvents = $this->jsonlRecords($this->root . '/history/outcomes.jsonl');
+
+        self::assertCount(1, $selectionEvents);
+        self::assertSame('proposal.2026-06-18.001', $selectionEvents[0]['guidance_id']);
+        self::assertSame('scope_overlap', $selectionEvents[0]['selection_reason']);
+
+        self::assertCount(1, $outcomeEvents);
+        self::assertStringStartsWith('guidance-outcome.', $outcomeEvents[0]['id']);
+        self::assertSame('helpful', $outcomeEvents[0]['outcome']);
+        self::assertTrue($outcomeEvents[0]['applied']);
+        self::assertSame('abc1234', $outcomeEvents[0]['commit']);
+    }
+
+    public function testDuplicateLogOutcomeFailsWithoutPartialWrites(): void
+    {
+        $this->writeProposal('proposal.2026-06-18.001', 'skill', ['src/Auth']);
+        $draftPath = $this->buildEventDraft('compilation.PROJECT-123.2026-06-18.001');
+        $draft = json_decode((string)file_get_contents($draftPath), true);
+        $draft['guidance_outcomes'][0]['outcome'] = 'not_used';
+        file_put_contents($draftPath, json_encode($draft, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+
+        $logger = new OutcomeLogger();
+        $logger->log($this->root, $draftPath, 'lars', 'commit_1');
+        $selectionBefore = (string)file_get_contents($this->root . '/history/recall-selections.jsonl');
+        $outcomesBefore = (string)file_get_contents($this->root . '/history/outcomes.jsonl');
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('duplicate selection event for compilation compilation.PROJECT-123.2026-06-18.001');
+        try {
+            $logger->log($this->root, $draftPath, 'lars', 'commit_1');
+        } finally {
+            self::assertSame($selectionBefore, (string)file_get_contents($this->root . '/history/recall-selections.jsonl'));
+            self::assertSame($outcomesBefore, (string)file_get_contents($this->root . '/history/outcomes.jsonl'));
+        }
+    }
+
+    public function testOutcomeLoggerRejectsNonSelectedAppliedGuidance(): void
+    {
+        $this->writeProposal('proposal.2026-06-18.001', 'skill', ['src/Auth']);
+        $this->writeProposal('proposal.2026-06-18.002', 'skill', ['src/Other']);
+        $draftPath = $this->buildEventDraft('compilation.PROJECT-123.2026-06-18.001');
+        $draft = json_decode((string)file_get_contents($draftPath), true);
+        $draft['guidance_outcomes'][] = [
+            'guidance_id' => 'proposal.2026-06-18.002',
+            'guidance_type' => 'skill',
+            'selected' => true,
+            'applied' => true,
+            'outcome' => 'helpful',
+            'comment' => 'Bad row',
+        ];
+        file_put_contents($draftPath, json_encode($draft, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage("outcome guidance 'proposal.2026-06-18.002' was not selected");
+        (new OutcomeLogger())->log($this->root, $draftPath, 'lars', 'commit_1');
+        self::assertFileDoesNotExist($this->root . '/history/recall-selections.jsonl');
+    }
+
+    public function testOutcomeLoggerRejectsUnknownSchemaWithoutWritingEvents(): void
+    {
+        $draftPath = $this->root . '/bad-recall-log.draft.json';
+        file_put_contents($draftPath, json_encode([
+            'schema_version' => '2.0',
+            'task_id' => 'PROJECT-123',
+        ], JSON_THROW_ON_ERROR));
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('unsupported outcome draft schema version: 2.0');
+        (new OutcomeLogger())->log($this->root, $draftPath, 'lars', 'commit_1');
+        self::assertFileDoesNotExist($this->root . '/history/recall-selections.jsonl');
+        self::assertFileDoesNotExist($this->root . '/history/outcomes.jsonl');
+    }
+
+    public function testOutcomeLoggerRedactsSecretLikeOutcomeValues(): void
+    {
+        $this->writeProposal('proposal.2026-06-18.001', 'skill', ['src/Auth']);
+        $draftPath = $this->buildEventDraft('compilation.PROJECT-123.2026-06-18.001');
+        $draft = json_decode((string)file_get_contents($draftPath), true);
+        $draft['guidance_outcomes'][0]['comment'] = 'token: super-secret';
+        file_put_contents($draftPath, json_encode($draft, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('sensitive-data match');
+        (new OutcomeLogger())->log($this->root, $draftPath, 'lars', 'commit_1');
+        self::assertFileDoesNotExist($this->root . '/history/recall-selections.jsonl');
+    }
+
     private function removeDirectory(string $dir): void
     {
         if (!is_dir($dir)) {
@@ -496,5 +696,64 @@ final class RecallCompilerTest extends TestCase
             is_dir($path) ? $this->removeDirectory($path) : unlink($path);
         }
         rmdir($dir);
+    }
+
+    /**
+     * @param list<string> $scope
+     */
+    private function writeProposal(string $id, string $targetType, array $scope): void
+    {
+        file_put_contents($this->root . '/proposals/approved/' . $id . '.json', json_encode([
+            'schema_version' => '1.0',
+            'id' => $id,
+            'created_at' => '2026-06-18T10:00:00+00:00',
+            'action' => 'ADD',
+            'target_type' => $targetType,
+            'target' => $id,
+            'scope' => $scope,
+            'source_findings' => ['finding.2026-06-18.001'],
+            'new' => 'Use the repository auth context for service-layer authentication.',
+            'reason' => 'Repeated auth tasks need the same procedure.',
+            'boundary' => 'Only service-layer auth code.',
+            'validation' => ['vendor/bin/phpunit'],
+            'status' => 'approved',
+            'proposed_by' => 'test',
+            'approved_by' => 'test',
+            'approved_at' => '2026-06-18T10:10:00+00:00',
+        ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+    }
+
+    private function buildEventDraft(string $compilationId): string
+    {
+        $result = (new RecallDecisionEngine())->decide(
+            new TaskBrief('PROJECT-123', 'Touch auth', ['src/Auth/UserService.php']),
+            (new RecallRepository())->loadActiveGuidance($this->root),
+            [],
+            [],
+        );
+        $draftPath = $this->root . '/recall-log.draft.json';
+        file_put_contents($draftPath, (new RecallPromptBuilder())->buildRecallLogDraft(
+            new TaskBrief('PROJECT-123', 'Touch auth', ['src/Auth/UserService.php']),
+            $result,
+            $compilationId,
+        ));
+
+        return $draftPath;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function jsonlRecords(string $path): array
+    {
+        $records = [];
+        foreach (file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
+            $decoded = json_decode($line, true, 512, JSON_THROW_ON_ERROR);
+            self::assertIsArray($decoded);
+            /** @var array<string, mixed> $decoded */
+            $records[] = $decoded;
+        }
+
+        return $records;
     }
 }

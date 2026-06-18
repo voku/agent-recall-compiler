@@ -1,0 +1,7 @@
+{
+  "id": "PROJECT-123",
+  "description": "Update auth service boundary handling.",
+  "files": [
+    "src/Auth/UserService.php"
+  ]
+}

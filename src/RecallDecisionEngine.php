@@ -24,10 +24,22 @@ final class RecallDecisionEngine
         $selectedRejections = [];
         $selectedConstraints = [];
         $warnings = [];
+        $evaluatedGuidance = [];
 
         // 1. Select active guidance matching task files
         foreach ($activeGuidance as $g) {
-            if ($this->matchesAnyScope($g->scope, $task->files)) {
+            $matchingFiles = $this->matchingTaskFiles($g->scope, $task->files);
+            $matches = $matchingFiles !== [];
+            $evaluatedGuidance[] = new EvaluatedGuidance(
+                $g->id,
+                $this->guidanceType($g->targetType, $g->id),
+                $matches,
+                $matches,
+                $matches ? $this->selectionReason($g->scope) : null,
+                $matches ? null : ExclusionReason::NO_SCOPE_OVERLAP,
+                $matchingFiles,
+            );
+            if ($matches) {
                 $selectedGuidance[] = $g;
             }
         }
@@ -41,13 +53,34 @@ final class RecallDecisionEngine
 
         // 2b. Select constraints by scope, not semantic similarity.
         foreach ($constraints as $constraint) {
-            if (!$this->matchesAnyScope($constraint->scope, $task->files)) {
+            $matchingFiles = $this->matchingTaskFiles($constraint->scope, $task->files);
+            if ($matchingFiles === []) {
+                $evaluatedGuidance[] = new EvaluatedGuidance(
+                    $constraint->id,
+                    GuidanceType::CONSTRAINT,
+                    false,
+                    false,
+                    null,
+                    ExclusionReason::NO_SCOPE_OVERLAP,
+                    [],
+                    $constraint->sourceProposal,
+                );
                 continue;
             }
             if ($constraint->status === 'superseded') {
                 throw new \RuntimeException(sprintf("Compilation blocked: selected constraint '%s' is superseded.", $constraint->id));
             }
             if ($constraint->status !== 'active') {
+                $evaluatedGuidance[] = new EvaluatedGuidance(
+                    $constraint->id,
+                    GuidanceType::CONSTRAINT,
+                    false,
+                    false,
+                    null,
+                    ExclusionReason::INACTIVE,
+                    $matchingFiles,
+                    $constraint->sourceProposal,
+                );
                 continue;
             }
             if ($constraint->validationCommands === []) {
@@ -56,6 +89,16 @@ final class RecallDecisionEngine
             if ($constraint->ruleIdentifier === '') {
                 throw new \RuntimeException(sprintf("Compilation blocked: selected active constraint '%s' has no rule identifier.", $constraint->id));
             }
+            $evaluatedGuidance[] = new EvaluatedGuidance(
+                $constraint->id,
+                GuidanceType::CONSTRAINT,
+                true,
+                true,
+                SelectionReason::CONSTRAINT_SCOPE,
+                null,
+                $matchingFiles,
+                $constraint->sourceProposal,
+            );
             $selectedConstraints[] = $constraint;
         }
 
@@ -66,6 +109,27 @@ final class RecallDecisionEngine
         $selectedOutcomeIds = array_values(array_unique([...$selectedGuidanceIds, ...$selectedConstraintIds, ...$selectedConstraintSourceProposals]));
         $outcomeStats = $this->buildOutcomeStats($selectedOutcomeIds, $outcomes);
         foreach ($outcomes as $outcome) {
+            if (isset($outcome['guidance_id'], $outcome['outcome']) && is_string($outcome['guidance_id']) && is_string($outcome['outcome'])) {
+                if (in_array($outcome['guidance_id'], $selectedOutcomeIds, true)) {
+                    if ($outcome['outcome'] === OutcomeValue::HARMFUL->value) {
+                        $warnings[] = sprintf(
+                            "Guidance '%s' was previously marked as HARMFUL in task '%s'. Reason: %s",
+                            $outcome['guidance_id'],
+                            $outcome['task_id'] ?? 'unknown',
+                            $outcome['comment'] ?? 'None provided',
+                        );
+                    }
+                    if ($outcome['outcome'] === OutcomeValue::IRRELEVANT->value) {
+                        $warnings[] = sprintf(
+                            "Guidance '%s' was previously marked as IRRELEVANT in task '%s'.",
+                            $outcome['guidance_id'],
+                            $outcome['task_id'] ?? 'unknown',
+                        );
+                    }
+                }
+                continue;
+            }
+
             $guidanceUsed = $outcome['guidance_used'] ?? [];
             $appliedProposals = $outcome['applied_proposals'] ?? [];
             
@@ -107,6 +171,11 @@ final class RecallDecisionEngine
             $allKnownIds[] = $rg->id;
         }
         foreach ($outcomes as $outcome) {
+            if (isset($outcome['guidance_id']) && is_string($outcome['guidance_id'])) {
+                if (!in_array($outcome['guidance_id'], $allKnownIds, true)) {
+                    throw new \RuntimeException(sprintf("Conflict: outcome references unknown rule ID '%s'.", $outcome['guidance_id']));
+                }
+            }
             $guidanceUsed = $outcome['guidance_used'] ?? [];
             $appliedProposals = $outcome['applied_proposals'] ?? [];
             foreach (array_merge($guidanceUsed, $appliedProposals) as $refId) {
@@ -183,8 +252,9 @@ final class RecallDecisionEngine
         usort($selectedGuidance, static fn(RecallGuidance $a, RecallGuidance $b) => strcmp($a->id, $b->id));
         usort($selectedRejections, static fn(RecallRejection $a, RecallRejection $b) => strcmp($a->id, $b->id));
         usort($selectedConstraints, static fn(ConstraintManifest $a, ConstraintManifest $b) => strcmp($a->id, $b->id));
+        usort($evaluatedGuidance, static fn(EvaluatedGuidance $a, EvaluatedGuidance $b) => strcmp($a->guidanceId, $b->guidanceId));
 
-        return new RecallResult($selectedGuidance, $selectedRejections, $warnings, $selectedConstraints, $outcomeStats);
+        return new RecallResult($selectedGuidance, $selectedRejections, $warnings, $selectedConstraints, $outcomeStats, $evaluatedGuidance);
     }
 
     /**
@@ -206,6 +276,24 @@ final class RecallDecisionEngine
         }
 
         foreach ($outcomes as $outcome) {
+            if (isset($outcome['guidance_id'], $outcome['outcome']) && is_string($outcome['guidance_id']) && is_string($outcome['outcome'])) {
+                $id = $outcome['guidance_id'];
+                if (!isset($stats[$id])) {
+                    continue;
+                }
+                $stats[$id]['selected_count']++;
+                if ($outcome['outcome'] === OutcomeValue::HELPFUL->value) {
+                    $stats[$id]['helpful_count']++;
+                }
+                if ($outcome['outcome'] === OutcomeValue::IRRELEVANT->value) {
+                    $stats[$id]['irrelevant_count']++;
+                }
+                if ($outcome['outcome'] === OutcomeValue::HARMFUL->value) {
+                    $stats[$id]['harmful_count']++;
+                }
+                continue;
+            }
+
             $selected = $this->stringList($outcome['selected'] ?? array_merge(
                 $this->stringList($outcome['guidance_used'] ?? []),
                 $this->stringList($outcome['constraints_used'] ?? []),
@@ -258,6 +346,80 @@ final class RecallDecisionEngine
         }
 
         return array_values(array_filter($value, 'is_string'));
+    }
+
+    /**
+     * @param list<string> $guidanceScopes
+     * @param list<string> $taskFiles
+     * @return list<string>
+     */
+    private function matchingTaskFiles(array $guidanceScopes, array $taskFiles): array
+    {
+        if (!$this->matchesAnyScope($guidanceScopes, $taskFiles)) {
+            return [];
+        }
+        if ($this->isGlobalScope($guidanceScopes) || $guidanceScopes === [] || $taskFiles === []) {
+            return $taskFiles;
+        }
+
+        $matched = [];
+        foreach ($guidanceScopes as $scope) {
+            $scope = trim($scope);
+            if ($scope === '') {
+                continue;
+            }
+            $scopeNormalized = rtrim(str_replace('\\', '/', $scope), '/');
+            foreach ($taskFiles as $taskFile) {
+                $taskFileNormalized = rtrim(str_replace('\\', '/', trim($taskFile)), '/');
+                if (
+                    $taskFileNormalized === $scopeNormalized
+                    ||
+                    str_starts_with($taskFileNormalized, $scopeNormalized . '/')
+                    ||
+                    str_starts_with($scopeNormalized, $taskFileNormalized . '/')
+                ) {
+                    $matched[] = $taskFile;
+                }
+            }
+        }
+
+        return array_values(array_unique($matched));
+    }
+
+    /**
+     * @param list<string> $scope
+     */
+    private function selectionReason(array $scope): SelectionReason
+    {
+        return $this->isGlobalScope($scope) || $scope === [] ? SelectionReason::GLOBAL : SelectionReason::SCOPE_OVERLAP;
+    }
+
+    /**
+     * @param list<string> $scope
+     */
+    private function isGlobalScope(array $scope): bool
+    {
+        foreach ($scope as $scopePrefix) {
+            $normalized = trim($scopePrefix);
+            if ($normalized === '/' || $normalized === '*' || $normalized === '') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function guidanceType(?string $targetType, string $id): GuidanceType
+    {
+        if ($targetType === 'file') {
+            return GuidanceType::MEMORY;
+        }
+        $type = $targetType === null || trim($targetType) === '' ? GuidanceType::SKILL : GuidanceType::tryFrom($targetType);
+        if (!$type instanceof GuidanceType) {
+            throw new \RuntimeException(sprintf("guidance '%s' has unknown guidance type '%s'", $id, (string)$targetType));
+        }
+
+        return $type;
     }
 
     /**

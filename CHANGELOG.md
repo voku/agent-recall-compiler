@@ -4,6 +4,27 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.3.0] - 2026-06-18
+
+### Added
+
+- Add stable compilation IDs to compile output, with optional `--compilation-id` support and generated IDs when omitted.
+- Add evaluated-guidance tracking with typed guidance types, selection reasons, and exclusion reasons.
+- Add immutable recall-selection and per-guidance outcome event models.
+- Add transactional event history appends to `history/recall-selections.jsonl` and `history/outcomes.jsonl` during governed `log-outcome` close-out.
+- Add duplicate protection for event IDs and `compilation_id + guidance_id` pairs.
+- Add redaction checks for generated event records.
+- Add `meta.json` fields for schema version, compilation ID, task files, evaluated guidance, selection/exclusion reasons, selected constraint reasons, and output hashes.
+- Add one editable `guidance_outcomes` row per selected guidance item in `recall-log.draft.json`, defaulting to `applied=false` and `outcome=unknown`.
+- Add schema documentation and an end-to-end fixture for compile, selected guidance, completed feedback, and immutable event histories.
+- Add regression coverage for supplied and generated compilation IDs, evaluated-guidance ordering, selected guidance draft rows, event appends, duplicate retry safety, unknown schemas, non-selected applied guidance rejection, and secret-like value redaction.
+
+### Changed
+
+- Extend legacy outcome-stat handling so new per-guidance outcome events and older aggregate outcome records can coexist.
+- Treat legacy proposal `target_type=file` records as memory guidance when projecting evaluated guidance events.
+- Update README and bundled skills to distinguish eligible, selected, applied, and helpful signals and to document close-out event writing.
+
 ## [0.2.0] - 2026-06-18
 
 ### Added
