@@ -69,7 +69,9 @@ final class Cli
 
         $outputDir = $this->stringOption($parsed['options'], 'output-dir') ?? '.';
         if (!is_dir($outputDir)) {
-            mkdir($outputDir, 0777, true);
+            if (!mkdir($outputDir, 0777, true) && !is_dir($outputDir)) {
+                throw new \RuntimeException(sprintf('Directory "%s" was not created', $outputDir));
+            }
         }
         $compilationId = $this->stringOption($parsed['options'], 'compilation-id') ?? $this->generateCompilationId($task->id);
 
