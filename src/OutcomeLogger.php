@@ -68,11 +68,12 @@ final class OutcomeLogger
         $guidanceUsed = $data['guidance_used'] ?? [];
         $constraintsUsed = $data['constraints_used'] ?? [];
         $appliedProposals = $data['applied_proposals'] ?? [];
+        $selected = $data['selected'] ?? array_values(array_unique(array_merge($guidanceUsed, $constraintsUsed)));
         $helpful = $data['helpful'] ?? [];
         $irrelevant = $data['irrelevant'] ?? [];
         $harmful = $data['harmful'] ?? [];
 
-        $allRefs = array_unique(array_merge($guidanceUsed, $constraintsUsed, $appliedProposals, $helpful, $irrelevant, $harmful));
+        $allRefs = array_unique(array_merge($guidanceUsed, $constraintsUsed, $appliedProposals, $selected, $helpful, $irrelevant, $harmful));
         foreach ($allRefs as $ref) {
             if (!is_string($ref) || trim($ref) === '') {
                 throw new RuntimeException('invalid or empty guidance reference in outcome list');
@@ -81,6 +82,7 @@ final class OutcomeLogger
                 throw new RuntimeException(sprintf("referenced guidance '%s' does not exist in learning repository", $ref));
             }
         }
+        $this->assertSelectedFeedbackIsExplicit($selected, $helpful, $irrelevant, $harmful);
 
         $result = $data['result'] ?? 'successful';
         $allowedResults = [
@@ -127,7 +129,7 @@ final class OutcomeLogger
             'guidance_used' => array_values(array_filter($guidanceUsed, 'is_string')),
             'constraints_used' => array_values(array_filter($constraintsUsed, 'is_string')),
             'applied_proposals' => array_values(array_filter($appliedProposals, 'is_string')),
-            'selected' => array_values(array_filter($data['selected'] ?? $guidanceUsed, 'is_string')),
+            'selected' => array_values(array_filter($selected, 'is_string')),
             'applied' => array_values(array_filter($data['applied'] ?? $appliedProposals, 'is_string')),
             'helpful' => array_values(array_filter($helpful, 'is_string')),
             'irrelevant' => array_values(array_filter($irrelevant, 'is_string')),
@@ -142,7 +144,9 @@ final class OutcomeLogger
 
         $historyDir = $root . '/history';
         if (!is_dir($historyDir)) {
-            mkdir($historyDir, 0777, true);
+            if (!mkdir($historyDir, 0777, true) && !is_dir($historyDir)) {
+                throw new \RuntimeException(sprintf('Directory "%s" was not created', $historyDir));
+            }
         }
         $outcomesPath = $historyDir . '/outcomes.jsonl';
         
@@ -152,5 +156,58 @@ final class OutcomeLogger
         }
 
         return $outcomeId;
+    }
+
+    /**
+     * @param mixed $selected
+     * @param mixed $helpful
+     * @param mixed $irrelevant
+     * @param mixed $harmful
+     */
+    private function assertSelectedFeedbackIsExplicit(mixed $selected, mixed $helpful, mixed $irrelevant, mixed $harmful): void
+    {
+        $selectedList = $this->stringList($selected);
+        if ($selectedList === []) {
+            return;
+        }
+
+        $helpfulList = $this->stringList($helpful);
+        $irrelevantList = $this->stringList($irrelevant);
+        $harmfulList = $this->stringList($harmful);
+        $feedback = array_merge($helpfulList, $irrelevantList, $harmfulList);
+
+        foreach ($selectedList as $id) {
+            $matches = 0;
+            foreach ([$helpfulList, $irrelevantList, $harmfulList] as $bucket) {
+                if (in_array($id, $bucket, true)) {
+                    $matches++;
+                }
+            }
+            if ($matches === 0) {
+                throw new RuntimeException(sprintf("selected guidance '%s' must be marked helpful, irrelevant, or harmful", $id));
+            }
+            if ($matches > 1) {
+                throw new RuntimeException(sprintf("selected guidance '%s' must not appear in multiple feedback buckets", $id));
+            }
+        }
+
+        foreach ($feedback as $id) {
+            if (!in_array($id, $selectedList, true)) {
+                throw new RuntimeException(sprintf("feedback guidance '%s' was not selected for this session", $id));
+            }
+        }
+    }
+
+    /**
+     * @param mixed $value
+     * @return list<string>
+     */
+    private function stringList(mixed $value): array
+    {
+        if (!is_array($value)) {
+            return [];
+        }
+
+        return array_values(array_filter($value, 'is_string'));
     }
 }

@@ -61,6 +61,10 @@ final class RecallDecisionEngine
 
         // 3. Process outcomes for selected guidance
         $selectedGuidanceIds = array_map(static fn(RecallGuidance $g) => $g->id, $selectedGuidance);
+        $selectedConstraintIds = array_map(static fn(ConstraintManifest $constraint) => $constraint->id, $selectedConstraints);
+        $selectedConstraintSourceProposals = array_map(static fn(ConstraintManifest $constraint) => $constraint->sourceProposal, $selectedConstraints);
+        $selectedOutcomeIds = array_values(array_unique([...$selectedGuidanceIds, ...$selectedConstraintIds, ...$selectedConstraintSourceProposals]));
+        $outcomeStats = $this->buildOutcomeStats($selectedOutcomeIds, $outcomes);
         foreach ($outcomes as $outcome) {
             $guidanceUsed = $outcome['guidance_used'] ?? [];
             $appliedProposals = $outcome['applied_proposals'] ?? [];
@@ -180,7 +184,80 @@ final class RecallDecisionEngine
         usort($selectedRejections, static fn(RecallRejection $a, RecallRejection $b) => strcmp($a->id, $b->id));
         usort($selectedConstraints, static fn(ConstraintManifest $a, ConstraintManifest $b) => strcmp($a->id, $b->id));
 
-        return new RecallResult($selectedGuidance, $selectedRejections, $warnings, $selectedConstraints);
+        return new RecallResult($selectedGuidance, $selectedRejections, $warnings, $selectedConstraints, $outcomeStats);
+    }
+
+    /**
+     * @param list<string> $selectedIds
+     * @param list<array<string, mixed>> $outcomes
+     * @return array<string, array{selected_count: int, helpful_count: int, irrelevant_count: int, harmful_count: int, violation_detected_count: int}>
+     */
+    private function buildOutcomeStats(array $selectedIds, array $outcomes): array
+    {
+        $stats = [];
+        foreach ($selectedIds as $id) {
+            $stats[$id] = [
+                'selected_count' => 0,
+                'helpful_count' => 0,
+                'irrelevant_count' => 0,
+                'harmful_count' => 0,
+                'violation_detected_count' => 0,
+            ];
+        }
+
+        foreach ($outcomes as $outcome) {
+            $selected = $this->stringList($outcome['selected'] ?? array_merge(
+                $this->stringList($outcome['guidance_used'] ?? []),
+                $this->stringList($outcome['constraints_used'] ?? []),
+            ));
+            $helpful = $this->stringList($outcome['helpful'] ?? []);
+            $irrelevant = $this->stringList($outcome['irrelevant'] ?? []);
+            $harmful = $this->stringList($outcome['harmful'] ?? []);
+            $referenced = array_values(array_unique([...$selected, ...$helpful, ...$irrelevant, ...$harmful]));
+
+            foreach ($selected as $id) {
+                if (isset($stats[$id])) {
+                    $stats[$id]['selected_count']++;
+                }
+            }
+            foreach ($helpful as $id) {
+                if (isset($stats[$id])) {
+                    $stats[$id]['helpful_count']++;
+                }
+            }
+            foreach ($irrelevant as $id) {
+                if (isset($stats[$id])) {
+                    $stats[$id]['irrelevant_count']++;
+                }
+            }
+            foreach ($harmful as $id) {
+                if (isset($stats[$id])) {
+                    $stats[$id]['harmful_count']++;
+                }
+            }
+            if (($outcome['result'] ?? null) === 'violation_detected') {
+                foreach ($referenced as $id) {
+                    if (isset($stats[$id])) {
+                        $stats[$id]['violation_detected_count']++;
+                    }
+                }
+            }
+        }
+
+        return $stats;
+    }
+
+    /**
+     * @param mixed $value
+     * @return list<string>
+     */
+    private function stringList(mixed $value): array
+    {
+        if (!is_array($value)) {
+            return [];
+        }
+
+        return array_values(array_filter($value, 'is_string'));
     }
 
     /**

@@ -4,6 +4,21 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.2.0] - 2026-06-18
+
+### Added
+
+- Add outcome statistics for selected guidance and constraints, separating `selected_count`, `helpful_count`, `irrelevant_count`, `harmful_count`, and `violation_detected_count`.
+- Include outcome signal counts in generated `system.md` and `meta.json` outputs when prior outcome data exists.
+- Add tests proving selection is tracked separately from usefulness.
+
+### Changed
+
+- Generate `recall-log.draft.json` with empty usefulness buckets instead of pre-marking selected guidance as helpful.
+- Require every selected rule in a logged outcome to be classified exactly once as `helpful`, `irrelevant`, or `harmful`.
+- Reject outcome feedback for rules that were not selected for the session.
+- Update consumer guidance to state that prompt selection is exposure only, not evidence of usefulness.
+
 ## [0.1.1] - 2026-06-14
 
 - Emit selected hard constraints directly in `system.md` with a concrete execution contract and required validation commands.

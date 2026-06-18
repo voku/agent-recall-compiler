@@ -41,6 +41,7 @@ Rather than overloading an LLM's system prompt with every rule ever created, the
 - **Conflict Detection**: Blocks compilation when selected active rules target the same codebase element or duplicate directive wording would give the coding agent contradictory instructions.
 - **Contradiction Guard**: Blocks compilation when selected guidance matches the target patterns of previously rejected proposals.
 - **Outcome-Driven Insights**: Inspects outcome logs to alert the agent if a selected rule was previously marked as `HARMFUL` or `IRRELEVANT` in past sessions, including developer comments.
+- **Observable Usefulness Signals**: Separates `selected_count` from `helpful_count`, `irrelevant_count`, `harmful_count`, and `violation_detected_count`. Selection means a rule entered the prompt; it is not treated as proof that the rule improved the task.
 - **Validation Briefing**: Dynamically compiles selected guidance checks and selected active constraint commands into an authoritative validation plan with required rule identifiers.
 - **Loop Closure**: Prepares draft outcome feedback files so the agent can easily record what rules were helpful, irrelevant, or harmful at the end of the coding session.
 
@@ -71,6 +72,49 @@ Learning roots may define `config.json` to avoid hard-coding the active constrai
 
 Relative paths are resolved from the learning root. Without configuration, the compiler keeps the legacy `constraints/active` and `constraints` lookup paths.
 
+## Starter Integration Pattern
+
+Use the examples instead of embedding a long recall policy in every task:
+
+- [examples/agent-learning/config.json](examples/agent-learning/config.json): starter recall-related learning-root policy.
+- [examples/agents/skills/project-agent-recall/SKILL.md](examples/agents/skills/project-agent-recall/SKILL.md): optional repo-local recall wrapper.
+- [skills/agent-recall-consumer/SKILL.md](skills/agent-recall-consumer/SKILL.md): package-neutral consumer skill.
+
+Copy this shorter contract into `AGENTS.md`, an existing learning/guidance skill, or a pre/post-task hook:
+
+```text
+Before editing, run:
+vendor/bin/agent-recall-compiler compile \
+  --root infra/doc/agent-learning \
+  --task "<ticket-or-TODO@id>" \
+  --description "<short task description>" \
+  --file "<path touched by this task>" \
+  --output-dir ".agent-recall/current"
+
+Read:
+- .agent-recall/current/system.md
+- .agent-recall/current/validation-plan.md
+
+Before final response:
+1. Run the validation plan.
+2. Complete recall-log.draft.json.
+3. Put every selected rule in exactly one bucket: helpful, irrelevant, or harmful.
+4. Mark helpful only when the rule changed execution, prevented a mistake, or improved validation.
+
+Then run:
+vendor/bin/agent-recall-compiler log-outcome \
+  --root infra/doc/agent-learning \
+  --draft ".agent-recall/current/recall-log.draft.json" \
+  --by "<agent-or-human>" \
+  --commit "<commit-or-working-tree>"
+```
+
+Selection is not usefulness. It only proves the rule entered the prompt. Use later `helpful`, `irrelevant`, and `harmful` outcomes for promotion, review, and retirement decisions.
+
+---
+
+## CLI Reference
+
 ### 1. Compile a Task Briefing
 
 Prepares the system briefing, validation plan, metadata log, and draft outcome files for an active task.
@@ -78,11 +122,11 @@ Prepares the system briefing, validation plan, metadata log, and draft outcome f
 ```bash
 vendor/bin/agent-recall-compiler compile \
   --root infra/doc/agent-learning \
-  --task "ITPNG-367" \
+  --task "PROJECT-367" \
   --description "Implement the new region-aware menu navigation" \
-  --file "lib/application/navigation/entries/MenuEntryHead_M365_57.php" \
-  --file "lib/application/navigation/MenuEntry_UnitCest.php" \
-  --output-dir "."
+  --file "src/Navigation/MenuEntry.php" \
+  --file "tests/Navigation/MenuEntryTest.php" \
+  --output-dir ".agent-recall/current"
 ```
 
 #### Inline vs. File-based Briefing
@@ -97,11 +141,11 @@ vendor/bin/agent-recall-compiler compile \
 Where `task-brief.json` is:
 ```json
 {
-  "id": "ITPNG-367",
+  "id": "PROJECT-367",
   "description": "Implement the new region-aware menu navigation",
   "files": [
-    "lib/application/navigation/entries/MenuEntryHead_M365_57.php",
-    "lib/application/navigation/MenuEntry_UnitCest.php"
+    "src/Navigation/MenuEntry.php",
+    "tests/Navigation/MenuEntryTest.php"
   ]
 }
 ```
@@ -146,39 +190,7 @@ vendor/bin/agent-recall-compiler log-outcome \
 
 This appends a permanent, structured entry to `history/outcomes.jsonl`, which the compiler reads during future compilations to generate outcome-driven warnings.
 
----
-
-## Integration Example
-
-Integrating this into your project's `Makefile` automates the loop for any agent or human workflow:
-
-```makefile
-.PHONY: agent_recall_compile
-agent_recall_compile:
-	@if [ -z "$(TASK)" ]; then \
-		echo "❌ Missing TASK parameter"; \
-		echo "   Usage: make agent_recall_compile TASK=ITPNG-367 [FILE=path/to/file.php]"; \
-		exit 1; \
-	fi
-	vendor/bin/agent-recall-compiler compile \
-		--root infra/doc/agent-learning \
-		--task "$(TASK)" \
-		$(if $(DESC),--description "$(DESC)") \
-		$(if $(FILE),--file "$(FILE)")
-
-.PHONY: agent_recall_log_outcome
-agent_recall_log_outcome:
-	@if [ -z "$(DRAFT)" ] || [ -z "$(BY)" ] || [ -z "$(COMMIT)" ]; then \
-		echo "❌ Missing DRAFT, BY, or COMMIT parameter"; \
-		echo "   Usage: make agent_recall_log_outcome DRAFT=recall-log.draft.json BY=lars COMMIT=abc1234"; \
-		exit 1; \
-	fi
-	vendor/bin/agent-recall-compiler log-outcome \
-		--root infra/doc/agent-learning \
-		--draft "$(DRAFT)" \
-		--by "$(BY)" \
-		--commit "$(COMMIT)"
-```
+`recall-log.draft.json` intentionally leaves `helpful`, `irrelevant`, and `harmful` empty. At close-out, every selected rule must be placed in exactly one of those buckets. A rule being selected into the briefing is only an observable selection signal, not proof of usefulness.
 
 ---
 

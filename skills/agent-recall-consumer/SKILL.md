@@ -7,6 +7,8 @@ description: Use voku/agent-recall-compiler in a consuming repository to compile
 
 Use this skill when a project wants task-scoped L2 prompt material from a learning root. Recall should select only relevant active guidance and hard constraints for the files in the current task.
 
+For a repo-local wrapper, copy the shorter example in `examples/agents/skills/project-agent-recall/SKILL.md`. For starter config, copy `examples/agent-learning/config.json`.
+
 ## Fast Path
 
 1. Validate that the learning root contains proposals, history, and any active constraints needed for the task.
@@ -15,6 +17,7 @@ Use this skill when a project wants task-scoped L2 prompt material from a learni
 4. Treat compile-blocking conflicts as real: inactive guidance, duplicate directives, contradictory rejected proposals, unknown constraint engines, or invalid outcome references should be fixed before using the briefing.
 5. Use `validation-plan.md` as the authoritative command list for selected guidance and constraints.
 6. At session end, complete `recall-log.draft.json` and append it with `log-outcome` after validation succeeds.
+7. Treat `selected` as exposure only. Mark each selected rule as exactly one of `helpful`, `irrelevant`, or `harmful`; do not leave selected guidance unclassified and do not mark it helpful by default.
 
 ## Commands
 
@@ -40,4 +43,4 @@ vendor/bin/agent-recall-compiler log-outcome \
 - `system.md`: selected guidance, warnings, and hard-constraint execution contract.
 - `validation-plan.md`: required commands and rule identifiers.
 - `meta.json`: selected guidance and constraint IDs.
-- `recall-log.draft.json`: outcome template to complete after the task.
+- `recall-log.draft.json`: outcome template to complete after the task; usefulness buckets start empty by design.

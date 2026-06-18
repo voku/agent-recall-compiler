@@ -304,6 +304,51 @@ final class RecallCompilerTest extends TestCase
         $logData = json_decode($recallLog, true);
         self::assertSame('ITPNG-123', $logData['task_id']);
         self::assertSame(['g-1'], $logData['applied_proposals']);
+        self::assertSame([], $logData['helpful']);
+        self::assertStringContainsString('Selection alone is not proof', $logData['comment']);
+    }
+
+    public function testOutcomeStatsSeparateSelectionFromUsefulness(): void
+    {
+        $activeGuidance = [
+            new RecallGuidance('g-1', 'ADD', 'skill', 'auth', ['src/Auth'], null, 'Wording 1', 'Reason 1', 'Boundary 1', ['make test'], 'approved'),
+        ];
+        $outcomes = [
+            [
+                'task_id' => 'ITPNG-100',
+                'selected' => ['g-1'],
+                'helpful' => [],
+                'irrelevant' => ['g-1'],
+                'harmful' => [],
+                'result' => 'successful',
+            ],
+            [
+                'task_id' => 'ITPNG-101',
+                'selected' => ['g-1'],
+                'helpful' => ['g-1'],
+                'irrelevant' => [],
+                'harmful' => [],
+                'result' => 'violation_detected',
+            ],
+        ];
+
+        $result = (new RecallDecisionEngine())->decide(
+            new TaskBrief('ITPNG-123', 'Implement auth logic', ['src/Auth/OAuth.php']),
+            $activeGuidance,
+            [],
+            $outcomes,
+        );
+
+        self::assertSame([
+            'selected_count' => 2,
+            'helpful_count' => 1,
+            'irrelevant_count' => 1,
+            'harmful_count' => 0,
+            'violation_detected_count' => 1,
+        ], $result->outcomeStats['g-1']);
+
+        $systemMd = (new RecallPromptBuilder())->buildSystemMd(new TaskBrief('ITPNG-123', '', ['src/Auth/OAuth.php']), '', $result);
+        self::assertStringContainsString('selected=2, helpful=1, irrelevant=1, harmful=0, violation_detected=1', $systemMd);
     }
 
     public function testPromptBuilderIncludesHardConstraintExecutionContract(): void
@@ -387,6 +432,36 @@ final class RecallCompilerTest extends TestCase
         $logger = new OutcomeLogger();
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage("referenced guidance 'non_existent_proposal' does not exist");
+        $logger->log($this->root, $draftPath, 'lars', 'commit_abc123');
+    }
+
+    public function testOutcomeLoggerRequiresExplicitFeedbackForSelectedGuidance(): void
+    {
+        $proposalData = [
+            'id' => 'proposal.2026-06-08.001',
+            'action' => 'ADD',
+            'target_type' => 'skill',
+            'target' => 'auth',
+            'scope' => ['src/Auth'],
+            'status' => 'approved'
+        ];
+        file_put_contents($this->root . '/proposals/approved/proposal.2026-06-08.001.json', json_encode($proposalData));
+
+        $draftPath = $this->root . '/recall-log.draft.json';
+        file_put_contents($draftPath, json_encode([
+            'task_id' => 'ITPNG-123',
+            'session' => 'session_123',
+            'guidance_used' => ['proposal.2026-06-08.001'],
+            'selected' => ['proposal.2026-06-08.001'],
+            'applied_proposals' => ['proposal.2026-06-08.001'],
+            'helpful' => [],
+            'irrelevant' => [],
+            'harmful' => [],
+        ]));
+
+        $logger = new OutcomeLogger();
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage("selected guidance 'proposal.2026-06-08.001' must be marked helpful, irrelevant, or harmful");
         $logger->log($this->root, $draftPath, 'lars', 'commit_abc123');
     }
 

@@ -34,6 +34,10 @@ final class RecallPromptBuilder
                 $md[] = "### Guidance: " . $g->id;
                 $md[] = "- **Target**: " . ($g->target ?? 'global');
                 $md[] = "- **Scope**: " . implode(', ', $g->scope);
+                $statsLine = $this->formatOutcomeStats($result, $g->id);
+                if ($statsLine !== null) {
+                    $md[] = "- **Outcome signals**: " . $statsLine;
+                }
                 if ($g->boundary !== null && $g->boundary !== '') {
                     $md[] = "- **Boundary**: " . $g->boundary;
                 }
@@ -66,6 +70,10 @@ final class RecallPromptBuilder
                 $md[] = "- **Rule identifier**: `" . $constraint->ruleIdentifier . "`";
                 $md[] = "- **Scope**: " . implode(', ', $constraint->scope);
                 $md[] = "- **Source proposal**: `" . $constraint->sourceProposal . "`";
+                $statsLine = $this->formatOutcomeStats($result, $constraint->id);
+                if ($statsLine !== null) {
+                    $md[] = "- **Outcome signals**: " . $statsLine;
+                }
                 $md[] = "";
                 $md[] = "Required validation:";
                 foreach ($constraint->validationCommands as $command) {
@@ -116,6 +124,7 @@ final class RecallPromptBuilder
                 'source_proposal' => $c->sourceProposal,
             ], $result->selectedConstraints),
             'selected_rejections' => array_map(static fn(RecallRejection $rj) => $rj->id, $result->selectedRejections),
+            'outcome_stats' => $result->outcomeStats,
             'warnings' => $result->warnings,
         ];
 
@@ -193,12 +202,12 @@ final class RecallPromptBuilder
             'constraints_used' => $selectedConstraintIds,
             'applied_proposals' => array_values(array_unique([...$selectedIds, ...$sourceProposalIds])),
             'selected' => array_values(array_unique([...$selectedIds, ...$selectedConstraintIds])),
-            'applied' => array_values(array_unique([...$selectedIds, ...$selectedConstraintIds])),
-            'helpful' => array_values(array_unique([...$selectedIds, ...$selectedConstraintIds])),
+            'applied' => [],
+            'helpful' => [],
             'irrelevant' => [],
             'harmful' => [],
             'result' => 'successful',
-            'comment' => 'Guidance was helpful.',
+            'comment' => 'Complete helpful, irrelevant, and harmful after the session. Selection alone is not proof of usefulness.',
         ];
 
         return json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
@@ -227,6 +236,36 @@ final class RecallPromptBuilder
             'ci' => 'CI',
             default => ucfirst($engine),
         };
+    }
+
+    private function formatOutcomeStats(RecallResult $result, string $id): ?string
+    {
+        $stats = $result->outcomeStats[$id] ?? null;
+        if ($stats === null) {
+            return null;
+        }
+        if (
+            $stats['selected_count'] === 0
+            &&
+            $stats['helpful_count'] === 0
+            &&
+            $stats['irrelevant_count'] === 0
+            &&
+            $stats['harmful_count'] === 0
+            &&
+            $stats['violation_detected_count'] === 0
+        ) {
+            return null;
+        }
+
+        return sprintf(
+            'selected=%d, helpful=%d, irrelevant=%d, harmful=%d, violation_detected=%d',
+            $stats['selected_count'],
+            $stats['helpful_count'],
+            $stats['irrelevant_count'],
+            $stats['harmful_count'],
+            $stats['violation_detected_count'],
+        );
     }
 
     /**
