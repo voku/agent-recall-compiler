@@ -4,6 +4,12 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.3.1] - 2026-06-18
+
+### Changed
+
+- fix: handle mkdir failure when creating output directory
+
 ## [0.3.0] - 2026-06-18
 
 ### Added
