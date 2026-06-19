@@ -315,7 +315,7 @@ final class OutcomeLogger
     {
         $known = [];
         foreach ($this->repository->loadActiveGuidance($root) as $guidance) {
-            $known[$guidance->id] = GuidanceType::tryFrom((string)$guidance->targetType) ?? GuidanceType::SKILL;
+            $known[$guidance->id] = GuidanceType::fromTargetType($guidance->targetType, $guidance->id);
         }
         foreach ($this->repository->loadConstraintManifests($root) as $constraint) {
             $known[$constraint->id] = GuidanceType::CONSTRAINT;

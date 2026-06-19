@@ -411,15 +411,7 @@ final class RecallDecisionEngine
 
     private function guidanceType(?string $targetType, string $id): GuidanceType
     {
-        if ($targetType === 'file') {
-            return GuidanceType::MEMORY;
-        }
-        $type = $targetType === null || trim($targetType) === '' ? GuidanceType::SKILL : GuidanceType::tryFrom($targetType);
-        if (!$type instanceof GuidanceType) {
-            throw new \RuntimeException(sprintf("guidance '%s' has unknown guidance type '%s'", $id, (string)$targetType));
-        }
-
-        return $type;
+        return GuidanceType::fromTargetType($targetType, $id);
     }
 
     /**

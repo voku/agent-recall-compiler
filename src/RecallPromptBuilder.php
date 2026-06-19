@@ -210,7 +210,7 @@ final class RecallPromptBuilder
             foreach ($result->selectedGuidance as $guidance) {
                 $selectedById[$guidance->id] = new EvaluatedGuidance(
                     $guidance->id,
-                    GuidanceType::tryFrom((string)$guidance->targetType) ?? GuidanceType::SKILL,
+                    GuidanceType::fromTargetType($guidance->targetType, $guidance->id),
                     true,
                     true,
                     SelectionReason::SCOPE_OVERLAP,

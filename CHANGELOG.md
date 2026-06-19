@@ -4,6 +4,21 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.4.1] - 2026-06-19
+
+### Fixed
+
+- `OutcomeLogger::log()` could throw a spurious `type mismatch` error for any
+  `log-outcome` draft that evaluated a legacy `target_type: "file"` guidance
+  entry (e.g. a MEMORY.md-targeting proposal), even when that entry was not
+  selected. `RecallDecisionEngine` projected `"file"` onto `GuidanceType::MEMORY`
+  at compile time, but `OutcomeLogger::knownGuidanceTypesById()` re-derived the
+  type independently and fell back to `GuidanceType::SKILL`, disagreeing with
+  the compiled draft.
+- Centralized guidance-type derivation in `GuidanceType::fromTargetType()` so
+  `RecallDecisionEngine`, `OutcomeLogger`, and `RecallPromptBuilder` can no
+  longer drift apart on this mapping.
+
 ## [0.4.0] - 2026-06-19
 
 ### Changed

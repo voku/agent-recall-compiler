@@ -703,6 +703,36 @@ final class RecallCompilerTest extends TestCase
         self::assertSame('abc1234', $outcomeEvents[0]['commit']);
     }
 
+    public function testOutcomeLoggerToleratesUnselectedLegacyFileTargetTypeInEvaluatedGuidance(): void
+    {
+        // Reproduces a real session: an unrelated MEMORY.md-style "file" proposal
+        // is evaluated (and excluded for no scope overlap) alongside a selected
+        // skill proposal. Compile-time and log-outcome-time guidance-type
+        // derivation must agree, or this throws a spurious type mismatch.
+        $this->writeProposal('proposal.2026-06-12.001', 'file', ['unrelated/Scope.php']);
+        $this->writeProposal('proposal.2026-06-18.001', 'skill', ['src/Auth']);
+        $draftPath = $this->buildEventDraft('compilation.PROJECT-123.2026-06-18.003');
+
+        $draft = json_decode((string)file_get_contents($draftPath), true);
+        $evaluatedTypesById = array_column($draft['evaluated_guidance'], 'guidance_type', 'guidance_id');
+        self::assertSame('memory', $evaluatedTypesById['proposal.2026-06-12.001']);
+
+        $draft['guidance_outcomes'][0]['outcome'] = 'helpful';
+        file_put_contents($draftPath, json_encode($draft, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+
+        $result = (new OutcomeLogger())->log($this->root, $draftPath, 'lars', 'commit_1');
+
+        self::assertSame('compilation.PROJECT-123.2026-06-18.003', $result);
+        $selectionEvents = $this->jsonlRecords($this->root . '/history/recall-selections.jsonl');
+        $eventsById = array_column($selectionEvents, null, 'guidance_id');
+
+        self::assertCount(2, $eventsById);
+        self::assertFalse($eventsById['proposal.2026-06-12.001']['selected']);
+        self::assertSame('memory', $eventsById['proposal.2026-06-12.001']['guidance_type']);
+        self::assertTrue($eventsById['proposal.2026-06-18.001']['selected']);
+        self::assertSame('skill', $eventsById['proposal.2026-06-18.001']['guidance_type']);
+    }
+
     public function testDuplicateLogOutcomeFailsWithoutPartialWrites(): void
     {
         $this->writeProposal('proposal.2026-06-18.001', 'skill', ['src/Auth']);
