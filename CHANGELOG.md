@@ -4,6 +4,14 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.4.0] - 2026-06-19
+
+### Changed
+
+- Refactor recall compiler internals
+- Fix duplicate event id sequencing
+- Tighten inline task resolver types
+
 ## [0.3.2] - 2026-06-18
 
 ### Changed
