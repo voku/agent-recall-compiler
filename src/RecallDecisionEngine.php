@@ -7,6 +7,10 @@ namespace voku\AgentRecallCompiler;
 final class RecallDecisionEngine
 {
     /**
+     * Conflicts and unresolved-state issues are raised as
+     * {@see RecallCompilationBlockedException} so the CLI can fail closed with a
+     * clear BLOCKED surface instead of emitting a degraded briefing.
+     *
      * @param list<RecallGuidance> $activeGuidance
      * @param list<RecallRejection> $rejectedGuidance
      * @param list<array<string, mixed>> $outcomes
@@ -68,7 +72,7 @@ final class RecallDecisionEngine
                 continue;
             }
             if ($constraint->status === 'superseded') {
-                throw new \RuntimeException(sprintf("Compilation blocked: selected constraint '%s' is superseded.", $constraint->id));
+                throw new RecallCompilationBlockedException(sprintf("Compilation blocked: selected constraint '%s' is superseded.", $constraint->id));
             }
             if ($constraint->status !== 'active') {
                 $evaluatedGuidance[] = new EvaluatedGuidance(
@@ -84,10 +88,10 @@ final class RecallDecisionEngine
                 continue;
             }
             if ($constraint->validationCommands === []) {
-                throw new \RuntimeException(sprintf("Compilation blocked: selected active constraint '%s' has no required validation command.", $constraint->id));
+                throw new RecallCompilationBlockedException(sprintf("Compilation blocked: selected active constraint '%s' has no required validation command.", $constraint->id));
             }
             if ($constraint->ruleIdentifier === '') {
-                throw new \RuntimeException(sprintf("Compilation blocked: selected active constraint '%s' has no rule identifier.", $constraint->id));
+                throw new RecallCompilationBlockedException(sprintf("Compilation blocked: selected active constraint '%s' has no rule identifier.", $constraint->id));
             }
             $evaluatedGuidance[] = new EvaluatedGuidance(
                 $constraint->id,
@@ -173,14 +177,14 @@ final class RecallDecisionEngine
         foreach ($outcomes as $outcome) {
             if (isset($outcome['guidance_id']) && is_string($outcome['guidance_id'])) {
                 if (!in_array($outcome['guidance_id'], $allKnownIds, true)) {
-                    throw new \RuntimeException(sprintf("Conflict: outcome references unknown rule ID '%s'.", $outcome['guidance_id']));
+                    throw new RecallCompilationBlockedException(sprintf("Conflict: outcome references unknown rule ID '%s'.", $outcome['guidance_id']));
                 }
             }
             $guidanceUsed = $outcome['guidance_used'] ?? [];
             $appliedProposals = $outcome['applied_proposals'] ?? [];
             foreach (array_merge($guidanceUsed, $appliedProposals) as $refId) {
                 if (!in_array($refId, $allKnownIds, true)) {
-                    throw new \RuntimeException(sprintf("Conflict: outcome references unknown rule ID '%s'.", $refId));
+                    throw new RecallCompilationBlockedException(sprintf("Conflict: outcome references unknown rule ID '%s'.", $refId));
                 }
             }
         }
@@ -188,14 +192,14 @@ final class RecallDecisionEngine
         // 4. Stale or unapproved check
         foreach ($selectedGuidance as $g) {
             if ($g->status !== 'approved' && $g->status !== 'applied') {
-                throw new \RuntimeException(sprintf("Conflict: guidance '%s' is not approved or applied (status: %s)", $g->id, $g->status));
+                throw new RecallCompilationBlockedException(sprintf("Conflict: guidance '%s' is not approved or applied (status: %s)", $g->id, $g->status));
             }
         }
 
         // 5. Constraint validation plan check
         foreach ($selectedGuidance as $g) {
             if ($g->targetType === 'constraint' && $g->validation === []) {
-                throw new \RuntimeException(sprintf("Conflict: constraint '%s' exists but validation plan omits it.", $g->id));
+                throw new RecallCompilationBlockedException(sprintf("Conflict: constraint '%s' exists but validation plan omits it.", $g->id));
             }
         }
 
@@ -215,7 +219,7 @@ final class RecallDecisionEngine
         }
         foreach ($guidanceByTarget as $target => $ids) {
             if (count($ids) > 1) {
-                throw new \RuntimeException(sprintf(
+                throw new RecallCompilationBlockedException(sprintf(
                     "Conflict: Multiple active guidance items target '%s' (%s).",
                     $target,
                     implode(', ', $ids)
@@ -224,7 +228,7 @@ final class RecallDecisionEngine
         }
         foreach ($guidanceByDirective as $directive => $ids) {
             if (count($ids) > 1) {
-                throw new \RuntimeException(sprintf(
+                throw new RecallCompilationBlockedException(sprintf(
                     "Conflict: Duplicate directive text detected in multiple guidance items (%s).",
                     implode(', ', $ids)
                 ));
@@ -236,7 +240,7 @@ final class RecallDecisionEngine
             if ($g->target !== null && trim($g->target) !== '') {
                 foreach ($rejectedGuidance as $rj) {
                     if ($rj->target !== null && trim($rj->target) !== '' && $g->target === $rj->target) {
-                        throw new \RuntimeException(sprintf(
+                        throw new RecallCompilationBlockedException(sprintf(
                             "Conflict: Selected guidance '%s' targets '%s', which contradicts rejected proposal '%s' (Rejection reason: %s).",
                             $g->id,
                             $g->target,

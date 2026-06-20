@@ -39,6 +39,10 @@ final class Cli
                 'help', '--help', '-h' => $this->helpCommand(),
                 default => $this->unknownCommand($command),
             };
+        } catch (RecallCompilationBlockedException $e) {
+            fwrite(STDERR, "BLOCKED: " . $e->getMessage() . "\n");
+            fwrite(STDERR, "Resolve the conflict in the approved guidance, then recompile.\n");
+            return 1;
         } catch (Throwable $e) {
             fwrite(STDERR, "Error: " . $e->getMessage() . "\n");
             return 1;
@@ -83,30 +87,66 @@ final class Cli
         $constraints = $this->repository->loadConstraintManifests($root);
         $outcomes = $this->repository->loadOutcomes($root);
 
-        // Selection decision
-        $result = $this->decisionEngine->decide($task, $activeGuidance, $rejectedGuidance, $outcomes, $constraints);
+        // Optional untrusted peer feedback from another agent.
+        $feedbackPath = $this->stringOption($parsed['options'], 'feedback');
+        $feedback = ($feedbackPath !== null && trim($feedbackPath) !== '')
+            ? (new FeedbackParser())->parseFile($feedbackPath)
+            : null;
+
+        // Selection decision. Fail closed on unresolved conflicts: write a
+        // blocked meta.json for inspection, then surface BLOCKED via run().
+        try {
+            $result = $this->decisionEngine->decide($task, $activeGuidance, $rejectedGuidance, $outcomes, $constraints);
+        } catch (RecallCompilationBlockedException $e) {
+            $blockedMeta = $this->promptBuilder->buildMetaJson(
+                $task,
+                new RecallResult([], [], [$e->getMessage()]),
+                $compilationId,
+                [],
+                true,
+                $e->getMessage(),
+            );
+            file_put_contents($outputDir . '/meta.json', $blockedMeta);
+
+            throw $e;
+        }
 
         // Build outputs
-        $systemMd = $this->promptBuilder->buildSystemMd($task, $memory, $result);
+        $systemMd = $this->promptBuilder->buildSystemMd($task, $memory, $result, $feedback);
         $validationPlan = $this->promptBuilder->buildValidationPlan($task, $result);
         $logDraft = $this->promptBuilder->buildRecallLogDraft($task, $result, $compilationId);
-        $metaJson = $this->promptBuilder->buildMetaJson($task, $result, $compilationId, [
+
+        $outputHashes = [
             'system.md' => hash('sha256', $systemMd),
             'validation-plan.md' => hash('sha256', $validationPlan),
             'recall-log.draft.json' => hash('sha256', $logDraft),
-        ]);
+        ];
+
+        $feedbackAssessment = null;
+        if ($feedback !== null && !$feedback->isEmpty()) {
+            $feedbackAssessment = (new FeedbackAssessmentRenderer())->render($task, $feedback, $compilationId);
+            $outputHashes['feedback-assessment.draft.json'] = hash('sha256', $feedbackAssessment);
+        }
+
+        $metaJson = $this->promptBuilder->buildMetaJson($task, $result, $compilationId, $outputHashes);
 
         // Write outputs
         file_put_contents($outputDir . '/system.md', $systemMd);
         file_put_contents($outputDir . '/meta.json', $metaJson);
         file_put_contents($outputDir . '/validation-plan.md', $validationPlan);
         file_put_contents($outputDir . '/recall-log.draft.json', $logDraft);
+        if ($feedbackAssessment !== null) {
+            file_put_contents($outputDir . '/feedback-assessment.draft.json', $feedbackAssessment);
+        }
 
         fwrite(STDOUT, sprintf("Briefing compiled successfully under: %s/\n", rtrim($outputDir, '/')));
         fwrite(STDOUT, sprintf("- compilation ID: %s\n", $compilationId));
         fwrite(STDOUT, sprintf("- system.md (selected guidance: %d, selected constraints: %d)\n", count($result->selectedGuidance), count($result->selectedConstraints)));
         fwrite(STDOUT, sprintf("- validation-plan.md\n"));
         fwrite(STDOUT, sprintf("- recall-log.draft.json\n"));
+        if ($feedbackAssessment !== null) {
+            fwrite(STDOUT, "- feedback-assessment.draft.json (untrusted peer feedback to verify)\n");
+        }
 
         return 0;
     }
@@ -154,6 +194,7 @@ final class Cli
         fwrite(STDOUT, "  --task ID                Inline task ID selector.\n");
         fwrite(STDOUT, "  --description DESC       Inline task description text.\n");
         fwrite(STDOUT, "  --file PATH              Inline changed file path. Repeatable.\n");
+        fwrite(STDOUT, "  --feedback PATH          Untrusted peer-agent feedback file to assess (JSON or text).\n");
         fwrite(STDOUT, "  --compilation-id ID      Stable ID for this compile session.\n");
         fwrite(STDOUT, "  --draft PATH             Outcome draft file path for log-outcome.\n");
         fwrite(STDOUT, "  --by ACTOR               Actor name for log-outcome.\n");
