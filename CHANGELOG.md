@@ -4,6 +4,12 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.5.0] - 2026-06-20
+
+### Added
+
+- feat: add untrusted peer feedback handling and compilation conflict resolution
+
 ## [0.4.1] - 2026-06-19
 
 ### Fixed
