@@ -283,6 +283,32 @@ final class RecallCompilerTest extends TestCase
         $engine->decide($task, [], [], $outcomes);
     }
 
+    public function testDecidesDoesNotBlockOnHistoricalOutcomeReferencingRetiredProposal(): void
+    {
+        // Reproduces a real regression: once a proposal is retired (voku/agent-learning 0.7.0
+        // ProposalStatus::RETIRED), it disappears from activeGuidance, but a historical outcome
+        // recorded while it was still applied legitimately still references its ID. Without
+        // telling the engine about retired IDs, every later compile blocked with "unknown rule ID"
+        // even though nothing about the task or the guidance itself was actually wrong.
+        $outcomes = [
+            [
+                'task_id' => 'ITPNG-100',
+                'guidance_used' => ['proposal.2026-06-13.002'],
+                'applied_proposals' => ['proposal.2026-06-13.002'],
+                'selected' => ['proposal.2026-06-13.002'],
+                'helpful' => ['proposal.2026-06-13.002'],
+                'harmful' => [],
+            ],
+        ];
+
+        $engine = new RecallDecisionEngine();
+        $task = new TaskBrief('ITPNG-123', 'Implement auth logic', ['src/Auth/OAuth.php']);
+
+        $result = $engine->decide($task, [], [], $outcomes, [], ['proposal.2026-06-13.002']);
+
+        self::assertSame([], $result->selectedGuidance);
+    }
+
     public function testPromptBuilderFormatsOutputs(): void
     {
         $task = new TaskBrief('ITPNG-123', 'Task description', ['src/Auth/OAuth.php']);
@@ -900,6 +926,25 @@ final class RecallCompilerTest extends TestCase
 
         self::assertNotContains('proposal.2026-06-23.999', $activeIds);
         self::assertContains('proposal.2026-06-23.998', $activeIds);
+    }
+
+    public function testLoadRetiredProposalIdsReturnsOnlyRetiredDirectoryIds(): void
+    {
+        mkdir($this->root . '/proposals/retired', 0777, true);
+        file_put_contents(
+            $this->root . '/proposals/retired/proposal.2026-06-13.002.json',
+            json_encode(['id' => 'proposal.2026-06-13.002', 'status' => 'retired'], JSON_THROW_ON_ERROR)
+        );
+        $this->writeProposal('proposal.2026-06-23.997', 'skill', ['src/Auth']);
+
+        $retiredIds = (new RecallRepository())->loadRetiredProposalIds($this->root);
+
+        self::assertSame(['proposal.2026-06-13.002'], $retiredIds);
+    }
+
+    public function testLoadRetiredProposalIdsReturnsEmptyListWithoutRetiredDirectory(): void
+    {
+        self::assertSame([], (new RecallRepository())->loadRetiredProposalIds($this->root));
     }
 
     private function emptyGuidanceFixtureRoot(): string

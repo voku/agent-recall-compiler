@@ -4,6 +4,24 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.5.2] - 2026-06-23
+
+### Fixed
+
+- Retiring a `voku/agent-learning` proposal (0.7.0 `ProposalStatus::RETIRED`) removed it from
+  `loadActiveGuidance()` as intended, but `RecallDecisionEngine::decide()`'s "unknown rule ID" check
+  builds its known-ID set only from active guidance, constraints, and rejections. A historical
+  `outcomes.jsonl` event recorded while the proposal was still `applied` legitimately still
+  references its ID, so every later `recall compile` for any task BLOCKED with `Conflict: outcome
+  references unknown rule ID '<id>'` the moment that proposal was retired, even though nothing about
+  the requested task was wrong. Found by dogfooding against a real repository (IT-Portal) immediately
+  after retiring a proposal there for the first time.
+- Added `RecallRepository::loadRetiredProposalIds()` (reads `proposals/retired/*.json`, IDs only) and
+  a new `decide(..., array $retiredProposalIds = [])` parameter so retired IDs stay known to the
+  conflict check without ever being selectable as guidance. `Cli.php`'s `compile` command now loads
+  and passes them through. Default value keeps the signature change backward compatible for direct
+  `RecallDecisionEngine::decide()` callers that omit the new argument.
+
 ## [0.5.1] - 2026-06-23
 
 ### Added

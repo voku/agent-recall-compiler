@@ -86,6 +86,7 @@ final class Cli
         $rejectedGuidance = $this->repository->loadRejectedGuidance($root);
         $constraints = $this->repository->loadConstraintManifests($root);
         $outcomes = $this->repository->loadOutcomes($root);
+        $retiredProposalIds = $this->repository->loadRetiredProposalIds($root);
 
         // Optional untrusted peer feedback from another agent.
         $feedbackPath = $this->stringOption($parsed['options'], 'feedback');
@@ -96,7 +97,7 @@ final class Cli
         // Selection decision. Fail closed on unresolved conflicts: write a
         // blocked meta.json for inspection, then surface BLOCKED via run().
         try {
-            $result = $this->decisionEngine->decide($task, $activeGuidance, $rejectedGuidance, $outcomes, $constraints);
+            $result = $this->decisionEngine->decide($task, $activeGuidance, $rejectedGuidance, $outcomes, $constraints, $retiredProposalIds);
         } catch (RecallCompilationBlockedException $e) {
             $blockedMeta = $this->promptBuilder->buildMetaJson(
                 $task,

@@ -15,6 +15,10 @@ final class RecallDecisionEngine
      * @param list<RecallRejection> $rejectedGuidance
      * @param list<array<string, mixed>> $outcomes
      * @param list<ConstraintManifest> $constraints
+     * @param list<string> $retiredProposalIds IDs of proposals retired (voku/agent-learning
+     *        ProposalStatus::RETIRED) after their durable change was fully captured in its target.
+     *        Never selectable as guidance, but historical outcome events still legitimately
+     *        reference them, so they must stay "known" or every later compile would BLOCK.
      * @return RecallResult
      */
     public function decide(
@@ -23,6 +27,7 @@ final class RecallDecisionEngine
         array $rejectedGuidance,
         array $outcomes,
         array $constraints = [],
+        array $retiredProposalIds = [],
     ): RecallResult {
         $selectedGuidance = [];
         $selectedRejections = [];
@@ -173,6 +178,9 @@ final class RecallDecisionEngine
         }
         foreach ($rejectedGuidance as $rg) {
             $allKnownIds[] = $rg->id;
+        }
+        foreach ($retiredProposalIds as $retiredId) {
+            $allKnownIds[] = $retiredId;
         }
         foreach ($outcomes as $outcome) {
             if (isset($outcome['guidance_id']) && is_string($outcome['guidance_id'])) {

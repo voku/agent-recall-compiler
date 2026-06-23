@@ -63,6 +63,45 @@ final class RecallRepository
     }
 
     /**
+     * Retired proposals (voku/agent-learning ProposalStatus::RETIRED) are never selectable as
+     * active guidance, but historical outcome events legitimately reference them by ID, so the
+     * decision engine still needs to know they exist to avoid blocking on an "unknown rule ID".
+     *
+     * @return list<string>
+     */
+    public function loadRetiredProposalIds(string $root): array
+    {
+        $dirPath = $root . '/proposals/retired';
+        if (!is_dir($dirPath)) {
+            return [];
+        }
+
+        $files = glob($dirPath . '/*.json');
+        if ($files === false) {
+            return [];
+        }
+
+        $ids = [];
+        foreach ($files as $file) {
+            $content = file_get_contents($file);
+            if ($content === false) {
+                continue;
+            }
+            try {
+                $data = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
+            } catch (\JsonException) {
+                continue;
+            }
+            $id = is_array($data) ? ($data['id'] ?? null) : null;
+            if (is_string($id) && $id !== '') {
+                $ids[] = $id;
+            }
+        }
+
+        return $ids;
+    }
+
+    /**
      * @return list<RecallRejection>
      */
     public function loadRejectedGuidance(string $root): array
