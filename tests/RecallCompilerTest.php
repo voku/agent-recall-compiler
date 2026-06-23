@@ -871,6 +871,36 @@ final class RecallCompilerTest extends TestCase
         );
     }
 
+    public function testLoadActiveGuidanceNeverReturnsRetiredProposals(): void
+    {
+        // voku/agent-learning 0.7.0 added ProposalStatus::RETIRED for proposals whose durable
+        // change is already fully captured in its target skill/doc/memory home, reachable only
+        // from 'applied'. loadActiveGuidance() must keep excluding proposals/retired/ by omission
+        // (it only ever scans 'approved' and 'applied'), so a retired proposal is never read into
+        // the active recall guidance pool again instead of accumulating there forever.
+        mkdir($this->root . '/proposals/retired', 0777, true);
+        $this->writeProposal('proposal.2026-06-23.999', 'skill', ['src/Auth']);
+        rename(
+            $this->root . '/proposals/approved/proposal.2026-06-23.999.json',
+            $this->root . '/proposals/retired/proposal.2026-06-23.999.json'
+        );
+        $retired = json_decode((string)file_get_contents($this->root . '/proposals/retired/proposal.2026-06-23.999.json'), true);
+        $retired['status'] = 'retired';
+        $retired['retired_by'] = 'lars';
+        $retired['retired_at'] = '2026-06-23T12:00:00+00:00';
+        $retired['reason'] = 'Fully captured in the target skill.';
+        file_put_contents($this->root . '/proposals/retired/proposal.2026-06-23.999.json', json_encode($retired, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+
+        // A still-active proposal in the same root proves loadActiveGuidance() keeps working
+        // normally and is not just returning an empty list for an unrelated reason.
+        $this->writeProposal('proposal.2026-06-23.998', 'skill', ['src/Auth']);
+
+        $activeGuidance = (new RecallRepository())->loadActiveGuidance($this->root);
+        $activeIds = array_map(static fn(RecallGuidance $g) => $g->id, $activeGuidance);
+
+        self::assertNotContains('proposal.2026-06-23.999', $activeIds);
+        self::assertContains('proposal.2026-06-23.998', $activeIds);
+    }
 
     private function emptyGuidanceFixtureRoot(): string
     {

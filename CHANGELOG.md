@@ -4,6 +4,17 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.5.1] - 2026-06-23
+
+### Added
+
+- Added `RecallCompilerTest::testLoadActiveGuidanceNeverReturnsRetiredProposals()`, a regression
+  test locking in that `RecallRepository::loadActiveGuidance()` only ever scans `proposals/approved/`
+  and `proposals/applied/`. `voku/agent-learning` 0.7.0 added a `retired` `ProposalStatus` for
+  proposals whose durable change is already fully captured in its target skill/doc/memory home; this
+  package needed no behavior change to support it (a retired proposal already lived in a directory
+  this package never reads), but the invariant was previously only documented, not tested.
+
 ## [0.5.0] - 2026-06-20
 
 ### Added
