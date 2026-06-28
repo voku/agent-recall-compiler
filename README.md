@@ -60,7 +60,7 @@ composer require --dev voku/agent-recall-compiler
 
 ## CLI Usage
 
-The package exposes a binary at `vendor/bin/agent-recall-compiler` supporting two main operations:
+The package exposes a binary at `vendor/bin/agent-recall-compiler` supporting compile, outcome logging, and deterministic review helpers:
 
 Learning roots may define `config.json` to avoid hard-coding the active constraint manifest directory:
 
@@ -198,6 +198,24 @@ This appends permanent, structured selection entries to `history/recall-selectio
 Events are written at close-out so abandoned or repeatedly recompiled briefings do not inflate promotion evidence. Duplicate retries fail without partially appending duplicate records.
 
 Full schema details and retry behavior are documented in [`docs/guidance-events.md`](docs/guidance-events.md). A small end-to-end fixture is available under [`examples/end-to-end`](examples/end-to-end).
+
+
+### 3. Review Recall Artifacts
+
+After implementation validation and before close-out, generate deterministic blind-spot reports and L2 review prompts without calling an LLM from the CLI:
+
+```bash
+vendor/bin/agent-recall-compiler review blindspots PROJECT-367 \
+  --output-dir ".agent-recall/current"
+
+vendor/bin/agent-recall-compiler review code PROJECT-367 \
+  --output-dir ".agent-recall/current"
+```
+
+`review blindspots` writes `.agent-recall/reviews/<task-id>.blindspots.{md,json,prompt.md}`. `review code` writes `.agent-recall/reviews/<task-id>.code.prompt.md`. The deterministic report checks recall outputs plus related session and board artifacts for missing recall metadata, missing validation plans, absent validation evidence, absent outcome close-out evidence, missing review checkpoints, token-noise risks, and security-sensitive context markers. Generated prompts are handoff artifacts for a receiving reviewer or harness; they do not approve code or durable learning.
+
+A follow-up integration prompt for moving this workflow into `voku/agent-loop` lives at [`docs/agent-loop-review-follow-up-prompt.md`](docs/agent-loop-review-follow-up-prompt.md).
+
 
 ---
 
