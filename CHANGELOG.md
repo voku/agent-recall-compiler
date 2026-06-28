@@ -4,6 +4,26 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [Unreleased]
+
+### Added
+
+- Added a deterministic `review` CLI workflow with `blindspots` and `code` subcommands. The workflow writes audit-ready Markdown/JSON review reports plus L2 blind-spot and code-review prompts under `.agent-recall/reviews/` without invoking an LLM.
+- Added review domain objects and prompt builders for blind-spot findings, severity/status projection, report writing, bounded artifact collection, safe task-file inclusion from `meta.json`, boundary-aware session artifact matching, and Markdown fence-safe prompt rendering.
+- Added `docs/agent-loop-review-follow-up-prompt.md` to carry the dogfooded review workflow and safety corrections into `voku/agent-loop`.
+- Added command-level PHPUnit coverage for option parsing and review workflow coverage for task-id validation, report contents, CLI dispatch, malformed meta handling, session matching, and generated prompt formatting.
+
+### Changed
+
+- Refactored the monolithic CLI implementation into command classes for `compile` and `log-outcome`, plus shared parsed-option value objects, so existing commands use the same command-oriented architecture as the new review workflow.
+
+### Fixed
+
+- Compile artifact writes now fail fast when `file_put_contents()` fails instead of printing success with missing or partial output.
+- Long CLI options that require values now reject bare `--name` tokens instead of silently treating them as empty strings.
+- Review artifact collection now honors `--root`, rejects traversal in output paths, bounds recursive session reads, and avoids pulling unrelated session notes through substring task-id matches.
+
+
 ## [0.5.2] - 2026-06-23
 
 ### Fixed
