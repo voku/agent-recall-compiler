@@ -84,7 +84,7 @@ final class CompileCommand
                 true,
                 $e->getMessage(),
             );
-            file_put_contents($outputDir . '/meta.json', $blockedMeta);
+            $this->writeFile($outputDir . '/meta.json', $blockedMeta);
 
             throw $e;
         }
@@ -107,12 +107,12 @@ final class CompileCommand
 
         $metaJson = $this->promptBuilder->buildMetaJson($task, $result, $compilationId, $outputHashes);
 
-        file_put_contents($outputDir . '/system.md', $systemMd);
-        file_put_contents($outputDir . '/meta.json', $metaJson);
-        file_put_contents($outputDir . '/validation-plan.md', $validationPlan);
-        file_put_contents($outputDir . '/recall-log.draft.json', $logDraft);
+        $this->writeFile($outputDir . '/system.md', $systemMd);
+        $this->writeFile($outputDir . '/meta.json', $metaJson);
+        $this->writeFile($outputDir . '/validation-plan.md', $validationPlan);
+        $this->writeFile($outputDir . '/recall-log.draft.json', $logDraft);
         if ($feedbackAssessment !== null) {
-            file_put_contents($outputDir . '/feedback-assessment.draft.json', $feedbackAssessment);
+            $this->writeFile($outputDir . '/feedback-assessment.draft.json', $feedbackAssessment);
         }
 
         fwrite(\STDOUT, sprintf("Briefing compiled successfully under: %s/\n", rtrim($outputDir, '/')));
@@ -125,6 +125,13 @@ final class CompileCommand
         }
 
         return 0;
+    }
+
+    private function writeFile(string $path, string $content): void
+    {
+        if (file_put_contents($path, $content) === false) {
+            throw new \RuntimeException('Unable to write compile artifact: ' . $path);
+        }
     }
 
     private function generateCompilationId(string $taskId): string

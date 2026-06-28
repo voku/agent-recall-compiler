@@ -22,9 +22,16 @@ final class ReviewCli
             return 0;
         }
 
+        if (!in_array($command, ['blindspots', 'code'], true)) {
+            return $this->unknownCommand($command);
+        }
+
         $parsed = $this->parseOptions($tokens);
         $taskId = $parsed['arguments'][0] ?? '';
-        $outputDir = $this->stringOption($parsed['options'], 'output-dir') ?? '.agent-recall/current';
+        $outputDir = $this->stringOption($parsed['options'], 'output-dir');
+        if ($outputDir === null || trim($outputDir) === '') {
+            $outputDir = '.agent-recall/current';
+        }
 
         if (!BlindSpotReviewer::isValidTaskId($taskId)) {
             fwrite(\STDERR, "[ERROR] Invalid or missing task id. Use an alphanumeric first character followed by letters, numbers, dots, underscores, or hyphens.\n");
@@ -35,7 +42,6 @@ final class ReviewCli
             return match ($command) {
                 'blindspots' => $this->runBlindspots($taskId, $outputDir),
                 'code' => $this->runCode($taskId, $outputDir),
-                default => $this->unknownCommand($command),
             };
         } catch (RuntimeException $exception) {
             fwrite(\STDERR, '[ERROR] ' . $exception->getMessage() . "\n");

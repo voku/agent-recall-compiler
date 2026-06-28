@@ -14,11 +14,13 @@ final class BlindSpotReviewer
     /** @var list<string> */
     private const array VALIDATION_MARKERS = ['PHPStan', 'phpstan', 'PHPUnit', 'phpunit', 'composer ci', 'composer test', 'tests passed'];
     /** @var list<string> */
-    private const array OUTCOME_MARKERS = ['log-outcome', 'recall-log.draft.json', 'outcome='];
+    private const array OUTCOME_MARKERS = ['log-outcome', 'recall-log.draft.json', 'outcome=', '"outcome"'];
     /** @var list<string> */
     private const array REVIEW_MARKERS = ['review blindspots', 'review-blindspots', 'L2 blind-spot'];
     /** @var list<string> */
     private const array TOKEN_NOISE_MARKERS = ['docker compose logs', 'grep -R', 'composer install', 'npm install'];
+    private const int MAX_SESSION_FILE_BYTES = 2097152;
+
     /** @var list<string> */
     private const array SECURITY_MARKERS = ['auth', 'login', 'password', 'csrf', 'xss', 'sql', 'permission', 'role'];
 
@@ -48,7 +50,7 @@ final class BlindSpotReviewer
             $findings[] = new BlindSpotFinding('missing_validation_plan', ReviewSeverity::FAIL, 'The compiled validation plan is missing.', ['Expected file: ' . $validation]);
         }
 
-        $text = $this->collectReviewText($outputDir);
+        $text = $this->collectReviewText($taskId, $outputDir);
         if ($this->matchedMarkers($text, self::VALIDATION_MARKERS) === []) {
             $findings[] = new BlindSpotFinding('missing_validation_evidence', ReviewSeverity::WARN, 'No validation evidence marker was found near recall artifacts.', ['Searched markers: ' . implode(', ', self::VALIDATION_MARKERS)]);
         }
@@ -71,7 +73,7 @@ final class BlindSpotReviewer
         return new ReviewReport($taskId, $findings);
     }
 
-    private function collectReviewText(string $outputDir): string
+    private function collectReviewText(string $taskId, string $outputDir): string
     {
         $chunks = [];
         foreach (['system.md', 'validation-plan.md', 'meta.json', 'recall-log.draft.json', 'feedback-assessment.draft.json'] as $name) {
@@ -83,7 +85,7 @@ final class BlindSpotReviewer
                 }
             }
         }
-        $sessionText = $this->collectRelatedSessionText($outputDir);
+        $sessionText = $this->collectRelatedSessionText($taskId);
         if ($sessionText !== '') {
             $chunks[] = $sessionText;
         }
@@ -91,18 +93,17 @@ final class BlindSpotReviewer
         return implode("\n", $chunks);
     }
 
-    private function collectRelatedSessionText(string $outputDir): string
+    private function collectRelatedSessionText(string $taskId): string
     {
-        $taskId = $this->taskIdFromMeta($outputDir);
         $root = $this->path('session_plan');
-        if ($taskId === null || !is_dir($root)) {
+        if (!is_dir($root)) {
             return '';
         }
 
         $chunks = [];
         $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, RecursiveDirectoryIterator::SKIP_DOTS));
         foreach ($iterator as $item) {
-            if (!$item instanceof SplFileInfo || !$item->isFile() || !$item->isReadable() || !$this->looksTextFile($item)) {
+            if (!$item instanceof SplFileInfo || !$item->isFile() || !$item->isReadable() || $item->getSize() > self::MAX_SESSION_FILE_BYTES || !$this->looksTextFile($item)) {
                 continue;
             }
 
@@ -112,7 +113,7 @@ final class BlindSpotReviewer
                 continue;
             }
 
-            if (str_contains($this->relativeToWorkspace($path), $taskId) || str_contains($content, $taskId)) {
+            if ($this->containsTaskId($this->relativeToWorkspace($path), $taskId) || $this->containsTaskId($content, $taskId)) {
                 $chunks[] = $this->stripTemplatePlaceholders($content);
             }
         }
@@ -120,24 +121,9 @@ final class BlindSpotReviewer
         return implode("\n", $chunks);
     }
 
-    private function taskIdFromMeta(string $outputDir): ?string
+    private function containsTaskId(string $haystack, string $taskId): bool
     {
-        $path = $this->path($this->relative($outputDir) . '/meta.json');
-        if (!is_file($path) || !is_readable($path)) {
-            return null;
-        }
-
-        $content = file_get_contents($path);
-        if ($content === false) {
-            return null;
-        }
-
-        $decoded = json_decode($content, true);
-        if (!is_array($decoded) || !isset($decoded['task_id']) || !is_string($decoded['task_id'])) {
-            return null;
-        }
-
-        return self::isValidTaskId($decoded['task_id']) ? $decoded['task_id'] : null;
+        return preg_match('/(?<![A-Za-z0-9._-])' . preg_quote($taskId, '/') . '(?![A-Za-z0-9._-])/i', $haystack) === 1;
     }
 
     private function stripTemplatePlaceholders(string $text): string
@@ -188,15 +174,36 @@ final class BlindSpotReviewer
         if ($path === '') {
             return '.';
         }
+
         if (str_starts_with($path, '/')) {
             $root = rtrim($this->workspacePath, '/') . '/';
-            return str_starts_with($path, $root) ? rtrim(substr($path, strlen($root)), '/') : ltrim($path, '/');
+            if (!str_starts_with($path, $root)) {
+                throw new RuntimeException('Path escapes workspace root.');
+            }
+            $path = rtrim(substr($path, strlen($root)), '/');
         }
-        return rtrim($path, '/');
+
+        return $this->safeRelative($path);
+    }
+
+    private function safeRelative(string $relative): string
+    {
+        $relative = trim($relative, '/');
+        if ($relative === '') {
+            return '.';
+        }
+
+        foreach (explode('/', $relative) as $segment) {
+            if ($segment === '..') {
+                throw new RuntimeException('Path traversal is not allowed.');
+            }
+        }
+
+        return $relative;
     }
 
     private function path(string $relative): string
     {
-        return rtrim($this->workspacePath, '/') . '/' . ltrim($relative, '/');
+        return rtrim($this->workspacePath, '/') . '/' . $this->safeRelative($relative);
     }
 }

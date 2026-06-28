@@ -12,12 +12,13 @@ use SplFileInfo;
 final class ReviewPromptBuilder
 {
     private const int MAX_BYTES = 5000;
+    private const int MAX_SESSION_FILE_BYTES = 2097152;
 
     public function __construct(private readonly string $workspacePath) {}
 
     public function buildBlindSpotPrompt(ReviewReport $report, string $outputDir): string
     {
-        $artifacts = $this->collectArtifacts($outputDir);
+        $artifacts = $this->collectArtifacts($report->taskId, $outputDir);
         $lines = [
             '# L2 blind-spot analysis prompt for ' . $report->taskId,
             '',
@@ -42,7 +43,7 @@ final class ReviewPromptBuilder
         if (!BlindSpotReviewer::isValidTaskId($taskId)) {
             throw new RuntimeException('Invalid task id.');
         }
-        $artifacts = $this->collectArtifacts($outputDir);
+        $artifacts = $this->collectArtifacts($taskId, $outputDir);
         foreach ($this->taskFilesFromMeta($outputDir) as $file) {
             $this->addArtifact($artifacts, $file);
         }
@@ -67,19 +68,19 @@ final class ReviewPromptBuilder
         return $this->appendArtifacts($lines, $artifacts);
     }
 
-    /** @return array<string,string> */
-    private function collectArtifacts(string $outputDir): array
+    /** @return array<string, string> */
+    private function collectArtifacts(string $taskId, string $outputDir): array
     {
         $artifacts = [];
         foreach (['system.md', 'validation-plan.md', 'meta.json', 'recall-log.draft.json', 'feedback-assessment.draft.json'] as $name) {
             $this->addArtifact($artifacts, $this->relative($outputDir) . '/' . $name);
         }
 
-        foreach ($this->taskIdSpecificArtifacts($outputDir) as $relative) {
+        foreach ($this->taskIdSpecificArtifacts($taskId) as $relative) {
             $this->addArtifact($artifacts, $relative);
         }
 
-        foreach ($this->relatedSessionFiles($outputDir) as $relative) {
+        foreach ($this->relatedSessionFiles($taskId) as $relative) {
             $this->addArtifact($artifacts, $relative);
         }
 
@@ -87,15 +88,9 @@ final class ReviewPromptBuilder
         return $artifacts;
     }
 
-
     /** @return list<string> */
-    private function taskIdSpecificArtifacts(string $outputDir): array
+    private function taskIdSpecificArtifacts(string $taskId): array
     {
-        $taskId = $this->taskIdFromMeta($outputDir);
-        if ($taskId === null) {
-            return [];
-        }
-
         return [
             'tasks/' . $taskId . '.md',
             'todo/cards/' . $taskId . '.md',
@@ -108,11 +103,10 @@ final class ReviewPromptBuilder
     }
 
     /** @return list<string> */
-    private function relatedSessionFiles(string $outputDir): array
+    private function relatedSessionFiles(string $taskId): array
     {
-        $taskId = $this->taskIdFromMeta($outputDir);
         $root = $this->path('session_plan');
-        if ($taskId === null || !is_dir($root)) {
+        if (!is_dir($root)) {
             return [];
         }
 
@@ -120,7 +114,7 @@ final class ReviewPromptBuilder
         $groups = [];
         $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, RecursiveDirectoryIterator::SKIP_DOTS));
         foreach ($iterator as $item) {
-            if (!$item instanceof SplFileInfo || !$item->isFile() || !$item->isReadable() || !$this->looksTextFile($item)) {
+            if (!$item instanceof SplFileInfo || !$item->isFile() || !$item->isReadable() || $item->getSize() > self::MAX_SESSION_FILE_BYTES || !$this->looksTextFile($item)) {
                 continue;
             }
 
@@ -134,7 +128,7 @@ final class ReviewPromptBuilder
             $groupKey = $this->sessionGroupKey($relative);
             $groups[$groupKey] ??= ['related' => false, 'files' => []];
             $groups[$groupKey]['files'][] = $relative;
-            if (str_contains($relative, $taskId) || str_contains($content, $taskId)) {
+            if ($this->containsTaskId($relative, $taskId) || $this->containsTaskId($content, $taskId)) {
                 $groups[$groupKey]['related'] = true;
             }
         }
@@ -150,24 +144,9 @@ final class ReviewPromptBuilder
         return $files;
     }
 
-    private function taskIdFromMeta(string $outputDir): ?string
+    private function containsTaskId(string $haystack, string $taskId): bool
     {
-        $path = $this->path($this->relative($outputDir) . '/meta.json');
-        if (!is_file($path) || !is_readable($path)) {
-            return null;
-        }
-
-        $content = file_get_contents($path);
-        if ($content === false) {
-            return null;
-        }
-
-        $decoded = json_decode($content, true);
-        if (!is_array($decoded) || !isset($decoded['task_id']) || !is_string($decoded['task_id'])) {
-            return null;
-        }
-
-        return BlindSpotReviewer::isValidTaskId($decoded['task_id']) ? $decoded['task_id'] : null;
+        return preg_match('/(?<![A-Za-z0-9._-])' . preg_quote($taskId, '/') . '(?![A-Za-z0-9._-])/i', $haystack) === 1;
     }
 
     private function looksTextFile(SplFileInfo $file): bool
@@ -216,7 +195,7 @@ final class ReviewPromptBuilder
         return $files;
     }
 
-    /** @param array<string,string> $artifacts */
+    /** @param array<string, string> $artifacts */
     private function addArtifact(array &$artifacts, string $relative): void
     {
         if (!$this->isSafeRelative($relative)) {
@@ -242,29 +221,66 @@ final class ReviewPromptBuilder
             $lines[] = '_No artifacts found._';
         }
         foreach ($artifacts as $path => $content) {
-            array_push($lines, '### ' . $path, '', '```text', $content, '```', '');
+            $fence = $this->fenceFor($content);
+            array_push($lines, '### ' . $path, '', $fence . 'text', $content, $fence, '');
         }
         return rtrim(implode("\n", $lines)) . "\n";
     }
 
+    private function fenceFor(string $content): string
+    {
+        preg_match_all('/`+/', $content, $matches);
+        $max = 2;
+        foreach ($matches[0] as $match) {
+            $max = max($max, strlen($match));
+        }
+
+        return str_repeat('`', $max + 1);
+    }
+
     private function isSafeRelative(string $relative): bool
     {
-        return $relative !== '' && !str_starts_with($relative, '/') && !str_contains($relative, '\\') && !str_contains($relative, '..');
+        if ($relative === '' || str_starts_with($relative, '/') || str_contains($relative, '\\')) {
+            return false;
+        }
+
+        foreach (explode('/', trim($relative, '/')) as $segment) {
+            if ($segment === '..') {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private function relative(string $path): string
     {
         $path = trim($path);
-        if ($path === '') return '.';
+        if ($path === '') {
+            return '.';
+        }
+
         if (str_starts_with($path, '/')) {
             $root = rtrim($this->workspacePath, '/') . '/';
-            return str_starts_with($path, $root) ? rtrim(substr($path, strlen($root)), '/') : ltrim($path, '/');
+            if (!str_starts_with($path, $root)) {
+                throw new RuntimeException('Path escapes workspace root.');
+            }
+            $path = rtrim(substr($path, strlen($root)), '/');
         }
+
+        if (!$this->isSafeRelative($path)) {
+            throw new RuntimeException('Path traversal is not allowed.');
+        }
+
         return rtrim($path, '/');
     }
 
     private function path(string $relative): string
     {
+        if (!$this->isSafeRelative($relative)) {
+            throw new RuntimeException('Path traversal is not allowed.');
+        }
+
         return rtrim($this->workspacePath, '/') . '/' . ltrim($relative, '/');
     }
 }

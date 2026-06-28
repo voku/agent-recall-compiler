@@ -31,8 +31,12 @@ final class ReviewTest extends TestCase
     public function testValidTaskIdMustStartWithAlphanumeric(): void
     {
         self::assertTrue(BlindSpotReviewer::isValidTaskId('ABC-123'));
+        self::assertTrue(BlindSpotReviewer::isValidTaskId('A'));
+        self::assertTrue(BlindSpotReviewer::isValidTaskId('1'));
+        self::assertFalse(BlindSpotReviewer::isValidTaskId(''));
         self::assertFalse(BlindSpotReviewer::isValidTaskId('.'));
         self::assertFalse(BlindSpotReviewer::isValidTaskId('_ABC'));
+        self::assertFalse(BlindSpotReviewer::isValidTaskId('a..b'));
         self::assertFalse(BlindSpotReviewer::isValidTaskId('../ABC'));
     }
 
@@ -40,8 +44,11 @@ final class ReviewTest extends TestCase
     {
         $report = (new BlindSpotReviewer($this->root))->review('ABC-123', '.agent-recall/current');
 
+        $findingIds = array_map(static fn ($finding): string => $finding->id, $report->findings);
+
         self::assertSame('fail', $report->status());
-        self::assertSame('missing_recall_meta', $report->findings[0]->id);
+        self::assertContains('missing_recall_meta', $findingIds);
+        self::assertContains('missing_validation_plan', $findingIds);
     }
 
     public function testWriterCreatesReportsAndPrompt(): void
@@ -53,9 +60,17 @@ final class ReviewTest extends TestCase
         $report = (new BlindSpotReviewer($this->root))->review('ABC-123', '.agent-recall/current');
         (new ReviewReportWriter($this->root))->write($report, '.agent-recall/current');
 
+        self::assertSame('warn', $report->status());
+
+        $json = (string) file_get_contents($this->root . '/.agent-recall/reviews/ABC-123.blindspots.json');
+        $markdown = (string) file_get_contents($this->root . '/.agent-recall/reviews/ABC-123.blindspots.md');
+
         self::assertFileExists($this->root . '/.agent-recall/reviews/ABC-123.blindspots.json');
         self::assertFileExists($this->root . '/.agent-recall/reviews/ABC-123.blindspots.md');
         self::assertFileExists($this->root . '/.agent-recall/reviews/ABC-123.blindspots.prompt.md');
+        self::assertStringContainsString('"status": "warn"', $json);
+        self::assertStringContainsString('Status: warn', $markdown);
+        self::assertStringContainsString('missing_review_checkpoint', $markdown);
         self::assertStringContainsString('L2 blind-spot analysis prompt for ABC-123', (string) file_get_contents($this->root . '/.agent-recall/reviews/ABC-123.blindspots.prompt.md'));
     }
 
@@ -69,9 +84,10 @@ final class ReviewTest extends TestCase
         self::assertStringContainsString('src/Foo.php', $prompt);
         self::assertStringNotContainsString('### ../secret', $prompt);
 
-        unlink($this->root . '/.agent-recall/current/meta.json');
-        $promptWithoutMeta = (new ReviewPromptBuilder($this->root))->buildCodeReviewPrompt('ABC-123', '.agent-recall/current');
-        self::assertStringContainsString('L2 code review prompt for ABC-123', $promptWithoutMeta);
+        file_put_contents($this->root . '/.agent-recall/current/meta.json', '{invalid');
+        $promptWithMalformedMeta = (new ReviewPromptBuilder($this->root))->buildCodeReviewPrompt('ABC-123', '.agent-recall/current');
+        self::assertStringContainsString('L2 code review prompt for ABC-123', $promptWithMalformedMeta);
+        self::assertStringNotContainsString('### ../secret', $promptWithMalformedMeta);
     }
 
     public function testPromptIncludesBoardAndRelatedSessionArtifacts(): void
@@ -104,6 +120,18 @@ final class ReviewTest extends TestCase
         self::assertSame(0, $code['exit']);
         self::assertStringContainsString('.agent-recall/reviews/ABC-123.code.prompt.md', $code['output']);
         self::assertFileExists($this->root . '/.agent-recall/reviews/ABC-123.code.prompt.md');
+
+        $invalid = $this->runReviewCli(['agent-recall-compiler review', 'code', '../foo']);
+        self::assertSame(1, $invalid['exit']);
+
+        $unknown = $this->runReviewCli(['agent-recall-compiler review', 'wat']);
+        self::assertSame(1, $unknown['exit']);
+
+        $blindspots = $this->runReviewCli(['agent-recall-compiler review', 'blindspots', 'ABC-123']);
+        self::assertSame(1, $blindspots['exit']);
+        self::assertFileExists($this->root . '/.agent-recall/reviews/ABC-123.blindspots.json');
+        self::assertFileExists($this->root . '/.agent-recall/reviews/ABC-123.blindspots.md');
+        self::assertFileExists($this->root . '/.agent-recall/reviews/ABC-123.blindspots.prompt.md');
     }
 
     public function testSessionNotesCanSatisfyValidationAndReviewMarkers(): void
@@ -115,9 +143,35 @@ final class ReviewTest extends TestCase
 
         $report = (new BlindSpotReviewer($this->root))->review('ABC-123', '.agent-recall/current');
 
+        self::assertSame('ok', $report->status());
         self::assertNotContains('missing_validation_evidence', array_map(static fn ($finding): string => $finding->id, $report->findings));
         self::assertNotContains('missing_review_checkpoint', array_map(static fn ($finding): string => $finding->id, $report->findings));
     }
+
+    public function testSessionMatchingIsBoundaryAware(): void
+    {
+        $this->write('.agent-recall/current/meta.json', '{"task_id":"ABC-123","task_files":[]}');
+        $this->write('.agent-recall/current/validation-plan.md', 'Required validation');
+        $this->write('.agent-recall/current/recall-log.draft.json', '{"guidance_outcomes":[{"outcome":"unknown"}]}');
+        $this->write('session_plan/ABC-1234.md', 'ABC-1234 PHPUnit passed and review blindspots checked.');
+
+        $report = (new BlindSpotReviewer($this->root))->review('ABC-123', '.agent-recall/current');
+        $findingIds = array_map(static fn ($finding): string => $finding->id, $report->findings);
+
+        self::assertContains('missing_validation_evidence', $findingIds);
+        self::assertContains('missing_review_checkpoint', $findingIds);
+    }
+
+    public function testPromptFenceExpandsForMarkdownBackticks(): void
+    {
+        $this->write('.agent-recall/current/meta.json', '{"task_id":"ABC-123","task_files":[]}');
+        $this->write('.agent-recall/current/validation-plan.md', "```php\necho 'x';\n```");
+
+        $prompt = (new ReviewPromptBuilder($this->root))->buildCodeReviewPrompt('ABC-123', '.agent-recall/current');
+
+        self::assertStringContainsString('````text', $prompt);
+    }
+
 
     /**
      * @param list<string> $argv
@@ -127,8 +181,13 @@ final class ReviewTest extends TestCase
     private function runReviewCli(array $argv): array
     {
         ob_start();
-        $exit = (new ReviewCli($this->root))->run($argv);
-        $output = (string) ob_get_clean();
+        try {
+            $exit = (new ReviewCli($this->root))->run($argv);
+            $output = (string) ob_get_clean();
+        } catch (\Throwable $throwable) {
+            ob_end_clean();
+            throw $throwable;
+        }
 
         return ['exit' => $exit, 'output' => $output];
     }

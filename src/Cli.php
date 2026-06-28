@@ -68,10 +68,34 @@ final class Cli
         return 1;
     }
 
+    /**
+     * @param list<string> $tokens
+     */
+    private function rootOption(array $tokens): ?string
+    {
+        $count = count($tokens);
+        for ($i = 0; $i < $count; $i++) {
+            if ($tokens[$i] !== '--root') {
+                continue;
+            }
+
+            if ($i + 1 >= $count || str_starts_with($tokens[$i + 1], '--')) {
+                throw new \InvalidArgumentException('Option --root requires a value.');
+            }
+
+            return $tokens[$i + 1];
+        }
+
+        return null;
+    }
+
     /** @param list<string> $tokens */
     private function reviewCommand(array $tokens): int
     {
-        $workspacePath = getcwd();
+        $rootOption = $this->rootOption($tokens);
+        $workspacePath = $rootOption !== null
+            ? (new RecallRootResolver())->resolve($rootOption)->root
+            : getcwd();
         if ($workspacePath === false) {
             throw new \RuntimeException('Unable to determine current working directory.');
         }

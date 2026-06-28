@@ -19,12 +19,11 @@ final class OptionParser
             $token = $tokens[$i];
             if (str_starts_with($token, '--')) {
                 $name = substr($token, 2);
-                $value = '';
-                if ($i + 1 < $count && !str_starts_with($tokens[$i + 1], '--')) {
-                    $value = $tokens[$i + 1];
-                    $i++;
+                if ($i + 1 >= $count || str_starts_with($tokens[$i + 1], '--')) {
+                    throw new \InvalidArgumentException(sprintf('Option --%s requires a value.', $name));
                 }
-                $options[$name][] = $value;
+                $options[$name][] = $tokens[$i + 1];
+                $i++;
             } else {
                 $arguments[] = $token;
             }
