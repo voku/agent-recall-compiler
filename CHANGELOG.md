@@ -4,6 +4,12 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.6.1] - 2026-07-14
+
+### Fixed
+
+- Recall compilation no longer turns a historical `irrelevant` outcome into a warning for a different task. The outcome remains in the immutable history and in projected usage statistics; only prior `harmful` guidance is surfaced as a current-task warning.
+
 ## [0.6.0] - 2026-06-29
 
 ### Added

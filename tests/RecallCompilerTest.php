@@ -394,6 +394,41 @@ final class RecallCompilerTest extends TestCase
         self::assertStringContainsString('selected=2, helpful=1, irrelevant=1, harmful=0, violation_detected=1', $systemMd);
     }
 
+    public function testIrrelevantOutcomeRemainsUsageDataWithoutCreatingTaskWarning(): void
+    {
+        $constraint = new ConstraintManifest(
+            'constraint.project.noDirectGroupRename',
+            'phpstan',
+            'project.noDirectGroupRename',
+            ['modules/'],
+            ['make phpstan STATIC_ANALYSE_FILES="modules/m365/Example.php"'],
+            'proposal.2026-07-01.001',
+            'active',
+        );
+        $result = (new RecallDecisionEngine())->decide(
+            new TaskBrief('PROJECT-123', 'Change an M365 module', ['modules/m365/Example.php']),
+            [],
+            [],
+            [[
+                'guidance_id' => 'constraint.project.noDirectGroupRename',
+                'outcome' => 'irrelevant',
+                'task_id' => 'm365-entra-app-request',
+            ]],
+            [$constraint],
+        );
+
+        self::assertSame([], $result->warnings);
+        self::assertSame(1, $result->outcomeStats['constraint.project.noDirectGroupRename']['irrelevant_count']);
+
+        $systemMd = (new RecallPromptBuilder())->buildSystemMd(
+            new TaskBrief('PROJECT-123', '', ['modules/m365/Example.php']),
+            '',
+            $result,
+        );
+        self::assertStringNotContainsString('Outcome-Driven Warnings', $systemMd);
+        self::assertStringContainsString('selected=1, helpful=0, irrelevant=1, harmful=0, violation_detected=0', $systemMd);
+    }
+
     public function testPromptBuilderIncludesHardConstraintExecutionContract(): void
     {
         $task = new TaskBrief('ITPNG-123', 'Modify inline rendering', ['modules/admin/SystemSession/SystemSessionView.php']);

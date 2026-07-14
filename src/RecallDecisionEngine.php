@@ -111,7 +111,9 @@ final class RecallDecisionEngine
             $selectedConstraints[] = $constraint;
         }
 
-        // 3. Process outcomes for selected guidance
+        // 3. Process harmful outcomes for selected guidance. Other outcome
+        //    values remain task-local usage signals and are projected below,
+        //    but must not be presented as current-task warnings.
         $selectedGuidanceIds = array_map(static fn(RecallGuidance $g) => $g->id, $selectedGuidance);
         $selectedConstraintIds = array_map(static fn(ConstraintManifest $constraint) => $constraint->id, $selectedConstraints);
         $selectedConstraintSourceProposals = array_map(static fn(ConstraintManifest $constraint) => $constraint->sourceProposal, $selectedConstraints);
@@ -128,13 +130,6 @@ final class RecallDecisionEngine
                             $outcome['comment'] ?? 'None provided',
                         );
                     }
-                    if ($outcome['outcome'] === OutcomeValue::IRRELEVANT->value) {
-                        $warnings[] = sprintf(
-                            "Guidance '%s' was previously marked as IRRELEVANT in task '%s'.",
-                            $outcome['guidance_id'],
-                            $outcome['task_id'] ?? 'unknown',
-                        );
-                    }
                 }
                 continue;
             }
@@ -145,8 +140,6 @@ final class RecallDecisionEngine
             $intersect = array_intersect($selectedGuidanceIds, array_merge($guidanceUsed, $appliedProposals));
             if ($intersect !== []) {
                 $harmful = $outcome['harmful'] ?? [];
-                $irrelevant = $outcome['irrelevant'] ?? [];
-                
                 foreach ($intersect as $gid) {
                     if (in_array($gid, $harmful, true)) {
                         $warnings[] = sprintf(
@@ -154,13 +147,6 @@ final class RecallDecisionEngine
                             $gid,
                             $outcome['task_id'] ?? 'unknown',
                             $outcome['comment'] ?? 'None provided'
-                        );
-                    }
-                    if (in_array($gid, $irrelevant, true)) {
-                        $warnings[] = sprintf(
-                            "Guidance '%s' was previously marked as IRRELEVANT in task '%s'.",
-                            $gid,
-                            $outcome['task_id'] ?? 'unknown'
                         );
                     }
                 }

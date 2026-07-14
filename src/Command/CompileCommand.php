@@ -93,16 +93,21 @@ final class CompileCommand
         $validationPlan = $this->promptBuilder->buildValidationPlan($task, $result);
         $logDraft = $this->promptBuilder->buildRecallLogDraft($task, $result, $compilationId);
 
+        // recall-log.draft.json and feedback-assessment.draft.json are
+        // *meant* to be hand-edited after compile (guidance_outcomes /
+        // review verdicts), so they are deliberately excluded from
+        // output_hashes: that set is tamper-evidence for files that should
+        // never change post-compile, and hashing an edit-by-design file
+        // there would make every correctly-completed task permanently fail
+        // agent-loop verify's staleness check.
         $outputHashes = [
             'system.md' => hash('sha256', $systemMd),
             'validation-plan.md' => hash('sha256', $validationPlan),
-            'recall-log.draft.json' => hash('sha256', $logDraft),
         ];
 
         $feedbackAssessment = null;
         if ($feedback !== null && !$feedback->isEmpty()) {
             $feedbackAssessment = (new FeedbackAssessmentRenderer())->render($task, $feedback, $compilationId);
-            $outputHashes['feedback-assessment.draft.json'] = hash('sha256', $feedbackAssessment);
         }
 
         $metaJson = $this->promptBuilder->buildMetaJson($task, $result, $compilationId, $outputHashes);
