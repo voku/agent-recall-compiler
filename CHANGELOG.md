@@ -9,6 +9,7 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 ### Fixed
 
 - Recall compilation no longer turns a historical `irrelevant` outcome into a warning for a different task. The outcome remains in the immutable history and in projected usage statistics; only prior `harmful` guidance is surfaced as a current-task warning.
+- `recall-log.draft.json` and `feedback-assessment.draft.json` are no longer recorded in a compiled `meta.json`'s `output_hashes`. Both files are designed to be hand-edited after compile (`guidance_outcomes`, review verdicts), so including them in that tamper-evidence hash set made every correctly-completed task permanently fail a downstream verifier's staleness check.
 
 ## [0.6.0] - 2026-06-29
 
