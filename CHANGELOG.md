@@ -4,6 +4,12 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.6.2] - 2026-07-16
+
+### Fixed
+
+- `review blindspots`/`review code` now write their report/prompt files under a `reviews/` subfolder of the same `--output-dir` they read compiled recall inputs from, instead of a hardcoded, workspace-root-relative `.agent-recall/reviews/` that ignored `--output-dir` entirely. A project that points `--output-dir` (or a downstream tool's recall-root config) somewhere other than `.agent-recall/current` now gets one consistent output tree for compile+review instead of review output always landing at the same fixed path regardless of configuration. The default output dir (`.agent-recall/current` when `--output-dir` is omitted) now produces reports under `.agent-recall/current/reviews/` rather than `.agent-recall/reviews/`.
+
 ## [0.6.1] - 2026-07-14
 
 ### Fixed

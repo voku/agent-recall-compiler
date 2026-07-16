@@ -54,7 +54,7 @@ final class ReviewCli
         $report = (new BlindSpotReviewer($this->workspacePath))->review($taskId, $outputDir);
         (new ReviewReportWriter($this->workspacePath))->write($report, $outputDir);
 
-        $base = '.agent-recall/reviews/' . $taskId . '.blindspots';
+        $base = rtrim($outputDir, '/') . '/reviews/' . $taskId . '.blindspots';
         echo 'Review blindspots for ' . $taskId . ': ' . $report->status() . "\n";
         echo 'Markdown report: ' . $base . ".md\n";
         echo 'JSON report: ' . $base . ".json\n";
@@ -66,7 +66,8 @@ final class ReviewCli
 
     private function runCode(string $taskId, string $outputDir): int
     {
-        $directory = rtrim($this->workspacePath, '/') . '/.agent-recall/reviews';
+        $relativeDirectory = rtrim($outputDir, '/') . '/reviews';
+        $directory = str_starts_with($relativeDirectory, '/') ? $relativeDirectory : rtrim($this->workspacePath, '/') . '/' . $relativeDirectory;
         if (!is_dir($directory) && !mkdir($directory, 0o775, true) && !is_dir($directory)) {
             throw new RuntimeException('Unable to create review directory: ' . $directory);
         }
@@ -77,7 +78,7 @@ final class ReviewCli
             throw new RuntimeException('Unable to write code review prompt: ' . $path);
         }
 
-        echo 'Review code prompt for ' . $taskId . ': .agent-recall/reviews/' . $taskId . ".code.prompt.md\n";
+        echo 'Review code prompt for ' . $taskId . ': ' . $relativeDirectory . '/' . $taskId . ".code.prompt.md\n";
 
         return 0;
     }

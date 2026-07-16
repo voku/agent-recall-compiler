@@ -15,7 +15,7 @@ final class ReviewReportWriter
         if (!BlindSpotReviewer::isValidTaskId($report->taskId)) {
             throw new RuntimeException('Invalid task id.');
         }
-        $directory = rtrim($this->workspacePath, '/') . '/.agent-recall/reviews';
+        $directory = $this->resolveReviewsDirectory($outputDir);
         if (!is_dir($directory) && !mkdir($directory, 0o775, true) && !is_dir($directory)) {
             throw new RuntimeException('Unable to create review directory: ' . $directory);
         }
@@ -34,6 +34,25 @@ final class ReviewReportWriter
         if (file_put_contents($base . '.prompt.md', $prompt) === false) {
             throw new RuntimeException('Unable to write review prompt.');
         }
+    }
+
+    /**
+     * Writes the review report as a `reviews/` subfolder of the same
+     * `$outputDir` the review read its compiled recall inputs from, so a
+     * project that configures a custom recall root gets one consistent
+     * output tree for compile+review instead of a workspace-root-relative
+     * `.agent-recall/reviews/` that ignores that configuration entirely.
+     */
+    private function resolveReviewsDirectory(string $outputDir): string
+    {
+        $outputDir = rtrim($outputDir, '/');
+        if ($outputDir === '' || str_contains($outputDir, '..')) {
+            throw new RuntimeException('Invalid review output directory.');
+        }
+
+        $base = str_starts_with($outputDir, '/') ? $outputDir : rtrim($this->workspacePath, '/') . '/' . $outputDir;
+
+        return $base . '/reviews';
     }
 
     private function toMarkdown(ReviewReport $report): string
