@@ -71,6 +71,23 @@ final class RecallRepository
      */
     public function loadRetiredProposalIds(string $root): array
     {
+        $ids = [];
+        foreach ($this->loadRetiredProposals($root) as $retirement) {
+            $ids[] = $retirement->id;
+        }
+
+        return $ids;
+    }
+
+    /**
+     * Full retired-proposal records (target + retirement reason), so the decision engine can
+     * check whether newly selected guidance contradicts a rule that was deliberately retired,
+     * not just whether the ID is "known" for outcome-log purposes.
+     *
+     * @return list<RecallRetirement>
+     */
+    public function loadRetiredProposals(string $root): array
+    {
         $dirPath = $root . '/proposals/retired';
         if (!is_dir($dirPath)) {
             return [];
@@ -81,7 +98,7 @@ final class RecallRepository
             return [];
         }
 
-        $ids = [];
+        $retirements = [];
         foreach ($files as $file) {
             $content = file_get_contents($file);
             if ($content === false) {
@@ -92,13 +109,30 @@ final class RecallRepository
             } catch (\JsonException) {
                 continue;
             }
-            $id = is_array($data) ? ($data['id'] ?? null) : null;
-            if (is_string($id) && $id !== '') {
-                $ids[] = $id;
+            if (!is_array($data)) {
+                continue;
             }
+
+            $id = $data['id'] ?? null;
+            if (!is_string($id) || $id === '') {
+                continue;
+            }
+
+            $reason = $data['reason'] ?? '';
+            $scope = $data['scope'] ?? [];
+            $action = $data['action'] ?? 'unknown';
+            $target = $data['target'] ?? null;
+
+            $retirements[] = new RecallRetirement(
+                $id,
+                is_string($reason) ? $reason : '',
+                is_array($scope) ? array_values(array_filter($scope, 'is_string')) : [],
+                is_string($action) ? $action : 'unknown',
+                is_string($target) ? $target : null
+            );
         }
 
-        return $ids;
+        return $retirements;
     }
 
     /**

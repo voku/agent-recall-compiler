@@ -66,7 +66,7 @@ final class CompileCommand
         $rejectedGuidance = $this->repository->loadRejectedGuidance($root);
         $constraints = $this->repository->loadConstraintManifests($root);
         $outcomes = $this->repository->loadOutcomes($root);
-        $retiredProposalIds = $this->repository->loadRetiredProposalIds($root);
+        $retiredProposals = $this->repository->loadRetiredProposals($root);
 
         $feedbackPath = $parsed->stringOption('feedback');
         $feedback = ($feedbackPath !== null && trim($feedbackPath) !== '')
@@ -74,7 +74,7 @@ final class CompileCommand
             : null;
 
         try {
-            $result = $this->decisionEngine->decide($task, $activeGuidance, $rejectedGuidance, $outcomes, $constraints, $retiredProposalIds);
+            $result = $this->decisionEngine->decide($task, $activeGuidance, $rejectedGuidance, $outcomes, $constraints, $retiredProposals);
         } catch (RecallCompilationBlockedException $e) {
             $blockedMeta = $this->promptBuilder->buildMetaJson(
                 $task,

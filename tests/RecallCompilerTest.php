@@ -13,6 +13,7 @@ use voku\AgentRecallCompiler\RecallPromptBuilder;
 use voku\AgentRecallCompiler\OutcomeLogger;
 use voku\AgentRecallCompiler\RecallGuidance;
 use voku\AgentRecallCompiler\RecallRejection;
+use voku\AgentRecallCompiler\RecallRetirement;
 use voku\AgentRecallCompiler\RecallResult;
 use voku\AgentRecallCompiler\ConstraintManifest;
 
@@ -323,10 +324,30 @@ final class RecallCompilerTest extends TestCase
 
         $engine = new RecallDecisionEngine();
         $task = new TaskBrief('ITPNG-123', 'Implement auth logic', ['src/Auth/OAuth.php']);
+        $retiredProposals = [
+            new RecallRetirement('proposal.2026-06-13.002', 'Fully captured in the target skill.', [], 'ADD', null),
+        ];
 
-        $result = $engine->decide($task, [], [], $outcomes, [], ['proposal.2026-06-13.002']);
+        $result = $engine->decide($task, [], [], $outcomes, [], $retiredProposals);
 
         self::assertSame([], $result->selectedGuidance);
+    }
+
+    public function testDecidesBlocksOnGuidanceContradictingRetiredProposalTarget(): void
+    {
+        $activeGuidance = [
+            new RecallGuidance('g-new', 'ADD', 'skill', 'itp-php-data-access', ['src/Auth'], null, 'Wording', 'Reason', 'Boundary', ['make test'], 'approved'),
+        ];
+        $retiredProposals = [
+            new RecallRetirement('proposal.2026-06-13.002', 'Constraint stopped being true after the migration.', ['src/Auth'], 'REPLACE', 'itp-php-data-access'),
+        ];
+
+        $engine = new RecallDecisionEngine();
+        $task = new TaskBrief('ITPNG-123', 'Implement auth logic', ['src/Auth/OAuth.php']);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage("Conflict: Selected guidance 'g-new' targets 'itp-php-data-access', which contradicts retired proposal 'proposal.2026-06-13.002' (Retirement reason: Constraint stopped being true after the migration.).");
+        $engine->decide($task, $activeGuidance, [], [], [], $retiredProposals);
     }
 
     public function testPromptBuilderFormatsOutputs(): void
@@ -1000,6 +1021,31 @@ final class RecallCompilerTest extends TestCase
     public function testLoadRetiredProposalIdsReturnsEmptyListWithoutRetiredDirectory(): void
     {
         self::assertSame([], (new RecallRepository())->loadRetiredProposalIds($this->root));
+    }
+
+    public function testLoadRetiredProposalsReturnsTargetAndReason(): void
+    {
+        mkdir($this->root . '/proposals/retired', 0777, true);
+        file_put_contents(
+            $this->root . '/proposals/retired/proposal.2026-06-13.002.json',
+            json_encode([
+                'id' => 'proposal.2026-06-13.002',
+                'status' => 'retired',
+                'action' => 'REPLACE',
+                'target' => 'itp-php-data-access',
+                'scope' => ['src/Auth'],
+                'reason' => 'Constraint stopped being true after the migration.',
+            ], JSON_THROW_ON_ERROR)
+        );
+
+        $retirements = (new RecallRepository())->loadRetiredProposals($this->root);
+
+        self::assertCount(1, $retirements);
+        self::assertSame('proposal.2026-06-13.002', $retirements[0]->id);
+        self::assertSame('itp-php-data-access', $retirements[0]->target);
+        self::assertSame('Constraint stopped being true after the migration.', $retirements[0]->reason);
+        self::assertSame(['src/Auth'], $retirements[0]->scope);
+        self::assertSame('REPLACE', $retirements[0]->action);
     }
 
     private function emptyGuidanceFixtureRoot(): string

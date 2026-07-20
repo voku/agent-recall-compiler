@@ -4,6 +4,12 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [Unreleased]
+
+### Added
+
+- Contradiction detection now also covers retired proposals, not just rejected ones. `RecallRepository::loadRetiredProposals()` returns full `RecallRetirement` records (target, reason, scope, action) instead of bare IDs, and `RecallDecisionEngine::decide()` blocks compilation when newly selected guidance targets a rule that was retired for cause in the same task scope, surfacing the original retirement reason. `loadRetiredProposalIds()` is kept for callers that only need the ID list.
+
 ## [0.6.3] - 2026-07-20
 
 ### Fixed

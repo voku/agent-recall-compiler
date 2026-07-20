@@ -15,10 +15,13 @@ final class RecallDecisionEngine
      * @param list<RecallRejection> $rejectedGuidance
      * @param list<array<string, mixed>> $outcomes
      * @param list<ConstraintManifest> $constraints
-     * @param list<string> $retiredProposalIds IDs of proposals retired (voku/agent-learning
+     * @param list<RecallRetirement> $retiredProposals Proposals retired (voku/agent-learning
      *        ProposalStatus::RETIRED) after their durable change was fully captured in its target.
      *        Never selectable as guidance, but historical outcome events still legitimately
-     *        reference them, so they must stay "known" or every later compile would BLOCK.
+     *        reference their IDs, so they must stay "known" or every later compile would BLOCK.
+     *        Their target + reason are also checked against newly selected guidance, the same
+     *        way a rejected proposal is, so a rule that was retired for cause doesn't silently
+     *        get re-promoted under a fresh ID.
      * @return RecallResult
      */
     public function decide(
@@ -27,7 +30,7 @@ final class RecallDecisionEngine
         array $rejectedGuidance,
         array $outcomes,
         array $constraints = [],
-        array $retiredProposalIds = [],
+        array $retiredProposals = [],
     ): RecallResult {
         $selectedGuidance = [];
         $selectedRejections = [];
@@ -57,6 +60,15 @@ final class RecallDecisionEngine
         foreach ($rejectedGuidance as $rg) {
             if ($this->matchesAnyScope($rg->scope, $task->files)) {
                 $selectedRejections[] = $rg;
+            }
+        }
+
+        // 2a. Select matching retirements, so a rule retired for cause can still be checked
+        // against newly selected guidance in the same task scope.
+        $selectedRetirements = [];
+        foreach ($retiredProposals as $retirement) {
+            if ($this->matchesAnyScope($retirement->scope, $task->files)) {
+                $selectedRetirements[] = $retirement;
             }
         }
 
@@ -165,8 +177,8 @@ final class RecallDecisionEngine
         foreach ($rejectedGuidance as $rg) {
             $allKnownIds[] = $rg->id;
         }
-        foreach ($retiredProposalIds as $retiredId) {
-            $allKnownIds[] = $retiredId;
+        foreach ($retiredProposals as $retirement) {
+            $allKnownIds[] = $retirement->id;
         }
         foreach ($outcomes as $outcome) {
             if (isset($outcome['guidance_id']) && is_string($outcome['guidance_id'])) {
@@ -242,6 +254,25 @@ final class RecallDecisionEngine
                             $g->target,
                             $rj->id,
                             $rj->reason
+                        ));
+                    }
+                }
+            }
+        }
+
+        // 8. Contradiction warning: selected guidance targets a rule that was retired for cause.
+        // Same reasoning as rejected proposals: an unrelated broad target like MEMORY.md must not
+        // trip this, so only in-scope retirements ($selectedRetirements) are checked.
+        foreach ($selectedGuidance as $g) {
+            if ($g->target !== null && trim($g->target) !== '') {
+                foreach ($selectedRetirements as $ret) {
+                    if ($ret->target !== null && trim($ret->target) !== '' && $g->target === $ret->target) {
+                        throw new RecallCompilationBlockedException(sprintf(
+                            "Conflict: Selected guidance '%s' targets '%s', which contradicts retired proposal '%s' (Retirement reason: %s).",
+                            $g->id,
+                            $g->target,
+                            $ret->id,
+                            $ret->reason
                         ));
                     }
                 }
