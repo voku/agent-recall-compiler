@@ -158,7 +158,7 @@ Where `task-brief.json` is:
 - **`meta.json`**: Technical metadata recording exactly which rules and constraints were loaded.
 - **`recall-log.draft.json`**: A draft outcome log template populated with one `guidance_outcomes` row per selected rule or constraint.
 
-Compilation fails before writing a misleading briefing when selected guidance cannot be trusted as a coherent instruction set. Blocking cases include unsupported schema versions, inactive selected rules, conflicting active rules, target overlap with rejected proposals, unknown constraint engines, superseded selected constraints, constraint commands that contradict their engine, constraints without validation commands, and outcome records that reference unknown rules.
+Compilation fails before writing a misleading briefing when selected guidance cannot be trusted as a coherent instruction set. Blocking cases include unsupported schema versions, inactive selected rules, conflicting active rules, target overlap with a scope-relevant rejected proposal, unknown constraint engines, superseded selected constraints, constraint commands that contradict their engine, constraints without validation commands, and outcome records that reference unknown rules.
 
 An empty-guidance compile is valid. When no active guidance, active constraints, or rejected guidance match the task scope, `selected_guidance`, `evaluated_guidance`, `selected_constraints`, `selected_rejections`, and the outcome draft guidance arrays remain empty. Close-out may record the session result, but it must not invent synthetic guidance such as `"none"` or create per-guidance `not_used`, `helpful`, `irrelevant`, `harmful`, or `applied` evidence.
 

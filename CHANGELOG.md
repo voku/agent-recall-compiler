@@ -4,6 +4,12 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.6.3] - 2026-07-20
+
+### Fixed
+
+- Only treat a rejected proposal as contradictory when its scope also matches the current task; unrelated rejected proposals may share broad targets such as `MEMORY.md`.
+
 ## [0.6.2] - 2026-07-16
 
 ### Fixed

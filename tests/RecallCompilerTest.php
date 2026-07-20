@@ -139,6 +139,26 @@ final class RecallCompilerTest extends TestCase
         $engine->decide($task, $activeGuidance, $rejectedGuidance, []);
     }
 
+    public function testDecidesIgnoresRejectedGuidanceOutsideTaskScope(): void
+    {
+        $activeGuidance = [
+            new RecallGuidance('g-1', 'ADD', 'file', 'MEMORY.md', ['src/Auth'], null, 'Use the auth convention.', 'Reason 1', 'Boundary 1', [], 'approved'),
+        ];
+        $rejectedGuidance = [
+            new RecallRejection('r-1', 'Generic advice is not durable.', ['src/Revision'], 'ADD', 'MEMORY.md'),
+        ];
+
+        $result = (new RecallDecisionEngine())->decide(
+            new TaskBrief('ITPNG-123', 'Implement auth logic', ['src/Auth/OAuth.php']),
+            $activeGuidance,
+            $rejectedGuidance,
+            [],
+        );
+
+        self::assertSame(['g-1'], array_map(static fn(RecallGuidance $guidance): string => $guidance->id, $result->selectedGuidance));
+        self::assertSame([], $result->selectedRejections);
+    }
+
     public function testDecidesThrowsOnStaleSkill(): void
     {
         $activeGuidance = [

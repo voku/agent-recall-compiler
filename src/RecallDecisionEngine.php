@@ -229,10 +229,12 @@ final class RecallDecisionEngine
             }
         }
 
-        // 7. Contradiction warning: selected guidance targets a known rejected proposal target
+        // 7. Contradiction warning: selected guidance targets a relevant rejected proposal target.
+        // Rejections outside the task scope are historical data only; sharing a
+        // broad target such as MEMORY.md does not make them contradictory.
         foreach ($selectedGuidance as $g) {
             if ($g->target !== null && trim($g->target) !== '') {
-                foreach ($rejectedGuidance as $rj) {
+                foreach ($selectedRejections as $rj) {
                     if ($rj->target !== null && trim($rj->target) !== '' && $g->target === $rj->target) {
                         throw new RecallCompilationBlockedException(sprintf(
                             "Conflict: Selected guidance '%s' targets '%s', which contradicts rejected proposal '%s' (Rejection reason: %s).",
