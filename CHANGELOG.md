@@ -4,7 +4,7 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
-## [Unreleased]
+## [0.6.4] - 2026-07-20
 
 ### Added
 
