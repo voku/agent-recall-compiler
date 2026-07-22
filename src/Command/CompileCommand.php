@@ -8,8 +8,15 @@ use voku\AgentRecallCompiler\FeedbackAssessmentRenderer;
 use voku\AgentRecallCompiler\FeedbackParser;
 use voku\AgentRecallCompiler\InlineTaskBriefResolver;
 use voku\AgentRecallCompiler\JsonTaskBriefResolver;
+use voku\AgentRecallCompiler\CanonicalJson;
+use voku\AgentRecallCompiler\Compilation\RecallCompilationService;
+use voku\AgentRecallCompiler\Provider\LearningRecallProvider;
+use voku\AgentRecallCompiler\Provider\KanbanContextRecallProvider;
+use voku\AgentRecallCompiler\Provider\MapRecallProvider;
+use voku\AgentRecallCompiler\Provider\MemoryRecallProvider;
+use voku\AgentRecallCompiler\Provider\ScopedDocumentRecallProvider;
+use voku\AgentRecallCompiler\Provider\TaskContextRecallProvider;
 use voku\AgentRecallCompiler\RecallCompilationBlockedException;
-use voku\AgentRecallCompiler\RecallDecisionEngine;
 use voku\AgentRecallCompiler\RecallPromptBuilder;
 use voku\AgentRecallCompiler\RecallRepository;
 use voku\AgentRecallCompiler\RecallResult;
@@ -18,16 +25,12 @@ use voku\AgentRecallCompiler\RecallRootResolver;
 final class CompileCommand
 {
     private readonly RecallRootResolver $rootResolver;
-    private readonly RecallRepository $repository;
-    private readonly RecallDecisionEngine $decisionEngine;
     private readonly RecallPromptBuilder $promptBuilder;
     private readonly OptionParser $optionParser;
 
     public function __construct()
     {
         $this->rootResolver = new RecallRootResolver();
-        $this->repository = new RecallRepository();
-        $this->decisionEngine = new RecallDecisionEngine();
         $this->promptBuilder = new RecallPromptBuilder();
         $this->optionParser = new OptionParser();
     }
@@ -37,7 +40,6 @@ final class CompileCommand
     {
         $parsed = $this->optionParser->parse($tokens);
         $rootConfig = $this->rootResolver->resolve($parsed->stringOption('root'));
-        $root = $rootConfig->root;
 
         $briefPath = $parsed->stringOption('task-brief');
         if ($briefPath !== null) {
@@ -61,20 +63,31 @@ final class CompileCommand
 
         $compilationId = $parsed->stringOption('compilation-id') ?? $this->generateCompilationId($task->id);
 
-        $memory = $this->repository->loadMemory($root);
-        $activeGuidance = $this->repository->loadActiveGuidance($root);
-        $rejectedGuidance = $this->repository->loadRejectedGuidance($root);
-        $constraints = $this->repository->loadConstraintManifests($root);
-        $outcomes = $this->repository->loadOutcomes($root);
-        $retiredProposals = $this->repository->loadRetiredProposals($root);
-
         $feedbackPath = $parsed->stringOption('feedback');
         $feedback = ($feedbackPath !== null && trim($feedbackPath) !== '')
             ? (new FeedbackParser())->parseFile($feedbackPath)
             : null;
 
         try {
-            $result = $this->decisionEngine->decide($task, $activeGuidance, $rejectedGuidance, $outcomes, $constraints, $retiredProposals);
+            $repository = new RecallRepository();
+            $providers = [
+                new TaskContextRecallProvider(),
+                new MemoryRecallProvider($repository),
+                new LearningRecallProvider($repository),
+            ];
+            $mapIndex = $parsed->stringOption('map-index');
+            if ($mapIndex !== null) {
+                $providers[] = new MapRecallProvider($mapIndex, $parsed->stringOption('map-root'));
+            }
+            $kanbanContext = $parsed->stringOption('kanban-context');
+            if ($kanbanContext !== null) {
+                $providers[] = new KanbanContextRecallProvider($kanbanContext);
+            }
+            foreach ($parsed->stringOptions('document-manifest') as $manifestPath) {
+                $providers[] = new ScopedDocumentRecallProvider($manifestPath);
+            }
+            $compilation = (new RecallCompilationService($providers))->compile($task, $rootConfig);
+            $result = $compilation->result;
         } catch (RecallCompilationBlockedException $e) {
             $blockedMeta = $this->promptBuilder->buildMetaJson(
                 $task,
@@ -89,9 +102,28 @@ final class CompileCommand
             throw $e;
         }
 
-        $systemMd = $this->promptBuilder->buildSystemMd($task, $memory, $result, $feedback);
+        $bundle = $compilation->bundle;
+        $bundleDigest = CanonicalJson::digest($bundle);
+        $facts = [
+            'schema_version' => '1.0',
+            'bundle_sha256' => $bundleDigest,
+            'facts' => $compilation->facts,
+        ];
+        $selectionReport = [
+            'schema_version' => '1.0',
+            'bundle_sha256' => $bundleDigest,
+            'evaluated_guidance' => $bundle['evaluated_guidance'],
+            'selected_guidance' => $bundle['selected_guidance'],
+            'selected_constraints' => $bundle['selected_constraints'],
+            'selected_rejections' => $bundle['selected_rejections'],
+            'warnings' => $bundle['warnings'],
+        ];
+        $systemMd = $this->promptBuilder->buildSystemMd($task, $this->memoryFromFacts($compilation->facts), $result, $feedback, $compilation->facts, $bundleDigest);
         $validationPlan = $this->promptBuilder->buildValidationPlan($task, $result);
         $logDraft = $this->promptBuilder->buildRecallLogDraft($task, $result, $compilationId);
+        $bundleJson = CanonicalJson::pretty($bundle);
+        $factsJson = CanonicalJson::pretty($facts);
+        $selectionJson = CanonicalJson::pretty($selectionReport);
 
         // recall-log.draft.json and feedback-assessment.draft.json are
         // *meant* to be hand-edited after compile (guidance_outcomes /
@@ -103,6 +135,9 @@ final class CompileCommand
         $outputHashes = [
             'system.md' => hash('sha256', $systemMd),
             'validation-plan.md' => hash('sha256', $validationPlan),
+            'recall.bundle.json' => hash('sha256', $bundleJson),
+            'facts.json' => hash('sha256', $factsJson),
+            'selection-report.json' => hash('sha256', $selectionJson),
         ];
 
         $feedbackAssessment = null;
@@ -110,12 +145,28 @@ final class CompileCommand
             $feedbackAssessment = (new FeedbackAssessmentRenderer())->render($task, $feedback, $compilationId);
         }
 
-        $metaJson = $this->promptBuilder->buildMetaJson($task, $result, $compilationId, $outputHashes);
+        $metaJson = $this->promptBuilder->buildMetaJson(
+            $task,
+            $result,
+            $compilationId,
+            $outputHashes,
+            bundleDigest: $bundleDigest,
+            snapshotDigest: $compilation->snapshot->digest(),
+        );
 
         $this->writeFile($outputDir . '/system.md', $systemMd);
         $this->writeFile($outputDir . '/meta.json', $metaJson);
         $this->writeFile($outputDir . '/validation-plan.md', $validationPlan);
+        $this->writeFile($outputDir . '/recall.bundle.json', $bundleJson);
+        $this->writeFile($outputDir . '/facts.json', $factsJson);
+        $this->writeFile($outputDir . '/selection-report.json', $selectionJson);
         $this->writeFile($outputDir . '/recall-log.draft.json', $logDraft);
+        $this->writeFile($outputDir . '/compilation-receipt.json', CanonicalJson::pretty([
+            'schema_version' => '1.0',
+            'compilation_id' => $compilationId,
+            'bundle_sha256' => $bundleDigest,
+            'created_at' => (new \DateTimeImmutable('now'))->format(\DateTimeInterface::ATOM),
+        ]));
         if ($feedbackAssessment !== null) {
             $this->writeFile($outputDir . '/feedback-assessment.draft.json', $feedbackAssessment);
         }
@@ -123,6 +174,8 @@ final class CompileCommand
         fwrite(\STDOUT, sprintf("Briefing compiled successfully under: %s/\n", rtrim($outputDir, '/')));
         fwrite(\STDOUT, sprintf("- compilation ID: %s\n", $compilationId));
         fwrite(\STDOUT, sprintf("- system.md (selected guidance: %d, selected constraints: %d)\n", count($result->selectedGuidance), count($result->selectedConstraints)));
+        fwrite(\STDOUT, "- recall.bundle.json (canonical, replayable)\n");
+        fwrite(\STDOUT, "- facts.json and selection-report.json\n");
         fwrite(\STDOUT, "- validation-plan.md\n");
         fwrite(\STDOUT, "- recall-log.draft.json\n");
         if ($feedbackAssessment !== null) {
@@ -147,5 +200,21 @@ final class CompileCommand
         }
 
         return sprintf('compilation.%s.%s.%s', trim($safeTaskId, '-'), gmdate('Y-m-d-His'), bin2hex(random_bytes(4)));
+    }
+
+    /** @param list<array<string, mixed>> $facts */
+    private function memoryFromFacts(array $facts): string
+    {
+        foreach ($facts as $fact) {
+            if (($fact['type'] ?? null) !== 'memory') {
+                continue;
+            }
+            $content = $fact['payload']['content'] ?? null;
+            if (is_string($content)) {
+                return $content;
+            }
+        }
+
+        return '';
     }
 }

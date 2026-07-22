@@ -19,7 +19,7 @@ final readonly class InlineTaskBriefResolver
         $normalizedFiles = $this->nonEmptyStrings($files);
         $normalizedScopes = $this->nonEmptyStrings($scopes);
 
-        return new TaskBrief(trim($id), $description, $normalizedFiles, $normalizedScopes);
+        return new TaskBrief(trim($id), $description, $normalizedFiles, $normalizedScopes, sourcePath: 'inline');
     }
 
     /**

@@ -16,6 +16,8 @@ use voku\AgentRecallCompiler\RecallRejection;
 use voku\AgentRecallCompiler\RecallRetirement;
 use voku\AgentRecallCompiler\RecallResult;
 use voku\AgentRecallCompiler\ConstraintManifest;
+use voku\AgentRecallCompiler\Compilation\FactResolver;
+use voku\AgentRecallCompiler\Provider\RecallFact;
 
 final class RecallCompilerTest extends TestCase
 {
@@ -51,6 +53,206 @@ final class RecallCompilerTest extends TestCase
         self::assertSame('ITPNG-123', $brief->id);
         self::assertSame('Test task brief description', $brief->description);
         self::assertSame(['src/Auth.php', 'tests/AuthTest.php'], $brief->files);
+    }
+
+    public function testParsesApprovedSessionWorkBriefAsTaskContext(): void
+    {
+        $briefPath = $this->root . '/work-brief.json';
+        file_put_contents($briefPath, json_encode([
+            'schema_version' => '1.0',
+            'task_id' => 'PROJECT-123',
+            'goal' => 'Keep the changed view inside its reviewed scope.',
+            'scope' => ['modules/ExampleView.php', 'tests/ExampleViewTest.php'],
+            'non_goals' => ['Do not alter neighbouring modules.'],
+            'validation' => ['vendor/bin/phpunit tests/ExampleViewTest.php'],
+            'status' => 'approved',
+            'revision' => 2,
+        ], JSON_THROW_ON_ERROR));
+
+        $brief = (new TaskBriefParser())->parseFile($briefPath);
+
+        self::assertSame('PROJECT-123', $brief->id);
+        self::assertSame('Keep the changed view inside its reviewed scope.', $brief->description);
+        self::assertSame(['modules/ExampleView.php', 'tests/ExampleViewTest.php'], $brief->files);
+        self::assertSame(['Do not alter neighbouring modules.'], $brief->nonGoals);
+        self::assertSame(['vendor/bin/phpunit tests/ExampleViewTest.php'], $brief->validation);
+        self::assertSame('approved', $brief->status);
+        self::assertSame(2, $brief->revision);
+    }
+
+    public function testCompileWritesReplayableBundleFromApprovedWorkBrief(): void
+    {
+        file_put_contents($this->root . '/constraints/active/constraint.project.view.json', json_encode([
+            'schema_version' => '1.0',
+            'id' => 'constraint.project.view',
+            'engine' => 'phpstan',
+            'rule_identifier' => 'project.view',
+            'scope' => ['modules/'],
+            'validation_commands' => ['make phpstan STATIC_ANALYSE_FILES="modules/OtherView.php"'],
+            'source_proposal' => 'proposal.2026-06-13.001',
+            'status' => 'active',
+        ], JSON_THROW_ON_ERROR));
+        $briefPath = $this->root . '/work-brief.json';
+        file_put_contents($briefPath, json_encode([
+            'schema_version' => '1.0',
+            'task_id' => 'PROJECT-123',
+            'goal' => 'Update the example view.',
+            'scope' => ['modules/ExampleView.php'],
+            'non_goals' => ['Do not alter other views.'],
+            'validation' => ['vendor/bin/phpunit tests/ExampleViewTest.php'],
+            'status' => 'approved',
+            'revision' => 1,
+        ], JSON_THROW_ON_ERROR));
+
+        $first = $this->root . '/bundle-first';
+        $second = $this->root . '/bundle-second';
+        $argv = [
+            'agent-recall-compiler', 'compile', '--root', $this->root,
+            '--task', 'PROJECT-123', '--task-brief', $briefPath,
+            '--compilation-id', 'compilation.PROJECT-123.fixed',
+        ];
+        self::assertSame(0, (new \voku\AgentRecallCompiler\Cli())->run([...$argv, '--output-dir', $first]));
+        self::assertSame(0, (new \voku\AgentRecallCompiler\Cli())->run([...$argv, '--output-dir', $second]));
+
+        foreach (['recall.bundle.json', 'facts.json', 'selection-report.json', 'system.md', 'meta.json', 'validation-plan.md'] as $file) {
+            self::assertSame(
+                file_get_contents($first . '/' . $file),
+                file_get_contents($second . '/' . $file),
+                $file . ' must replay byte-for-byte for the same snapshot',
+            );
+        }
+
+        $bundle = json_decode((string) file_get_contents($first . '/recall.bundle.json'), true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame('approved', $bundle['task']['status']);
+        self::assertSame(['modules/ExampleView.php'], $bundle['task']['files']);
+        self::assertSame(
+            ['agent-learning', 'memory', 'task-context'],
+            array_map(static fn (array $provider): string => $provider['manifest']['id'], $bundle['snapshot']['providers']),
+        );
+
+        $plan = (string) file_get_contents($first . '/validation-plan.md');
+        self::assertStringContainsString('vendor/bin/phpunit tests/ExampleViewTest.php', $plan);
+        self::assertStringNotContainsString("```bash\nmake phpstan STATIC_ANALYSE_FILES=\"modules/OtherView.php\"", $plan);
+        self::assertStringContainsString('Omitted Task-External Manifest Commands', $plan);
+        self::assertStringNotContainsString('Generated at', (string) file_get_contents($first . '/system.md'));
+        self::assertFileExists($first . '/compilation-receipt.json');
+    }
+
+    public function testCompileIncludesScopedGitTrackedProjectDocuments(): void
+    {
+        mkdir($this->root . '/docs', 0777, true);
+        file_put_contents($this->root . '/docs/skill.md', "# Example skill\n\nKeep the view isolated from neighbouring modules.\n");
+        file_put_contents($this->root . '/documents.json', json_encode([
+            'schema_version' => '1.0',
+            'documents' => [[
+                'id' => 'project.example-view',
+                'type' => 'skill',
+                'source' => 'docs/skill.md',
+                'scope' => ['modules/'],
+                'max_chars' => 200,
+            ]],
+        ], JSON_THROW_ON_ERROR));
+        $briefPath = $this->root . '/work-brief.json';
+        file_put_contents($briefPath, json_encode([
+            'schema_version' => '1.0',
+            'task_id' => 'PROJECT-123',
+            'goal' => 'Update the example view.',
+            'scope' => ['modules/ExampleView.php'],
+            'status' => 'approved',
+            'revision' => 1,
+        ], JSON_THROW_ON_ERROR));
+        $output = $this->root . '/document-out';
+
+        self::assertSame(0, (new \voku\AgentRecallCompiler\Cli())->run([
+            'agent-recall-compiler', 'compile', '--root', $this->root,
+            '--task', 'PROJECT-123', '--task-brief', $briefPath,
+            '--document-manifest', $this->root . '/documents.json',
+            '--output-dir', $output, '--compilation-id', 'compilation.PROJECT-123.documents',
+        ]));
+
+        $facts = json_decode((string) file_get_contents($output . '/facts.json'), true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame('document.project.example-view', $facts['facts'][0]['id']);
+        self::assertSame('project_skill', $facts['facts'][0]['authority']);
+        self::assertStringContainsString('Scoped Project Documents', (string) file_get_contents($output . '/system.md'));
+        self::assertStringContainsString('Keep the view isolated', (string) file_get_contents($output . '/system.md'));
+    }
+
+    public function testFactResolverUsesExplicitAuthorityAndBlocksAmbiguousEqualPrecedence(): void
+    {
+        $resolved = (new FactResolver())->resolve([
+            new RecallFact('skill.example', 'skill', 'project_skill', 'skills/example.md', [], ['text' => 'use X'], 'policy.example'),
+            new RecallFact('adr.example', 'adr', 'project_adr', 'docs/adr-1.md', [], ['text' => 'use Y'], 'policy.example'),
+        ]);
+        self::assertSame('adr.example', $resolved->facts[0]['id']);
+        self::assertSame(['skill.example'], $resolved->decisions[0]['superseded_ids']);
+
+        $this->expectException(\voku\AgentRecallCompiler\RecallCompilationBlockedException::class);
+        $this->expectExceptionMessage('Unresolved fact conflict for "policy.ambiguous"');
+        (new FactResolver())->resolve([
+            new RecallFact('skill.left', 'skill', 'project_skill', 'skills/left.md', [], ['text' => 'use X'], 'policy.ambiguous'),
+            new RecallFact('skill.right', 'skill', 'project_skill', 'skills/right.md', [], ['text' => 'use Y'], 'policy.ambiguous'),
+        ]);
+    }
+
+    public function testCompileUsesPortableKanbanProjectionAndMapRootOverride(): void
+    {
+        mkdir($this->root . '/workspace/modules', 0777, true);
+        file_put_contents($this->root . '/workspace/modules/ExampleView.php', "<?php\nfinal class ExampleView {}\n");
+        $hash = sha1_file($this->root . '/workspace/modules/ExampleView.php');
+        file_put_contents($this->root . '/map.json', json_encode([
+            'schema_version' => '1.0',
+            'root' => '/var/www/html',
+            'files' => [[
+                'path' => 'modules/ExampleView.php',
+                'sha1' => $hash,
+                'namespace' => '',
+                'symbols' => [[
+                    'fqn' => 'ExampleView',
+                    'kind' => 'class',
+                    'line_start' => 2,
+                    'line_end' => 2,
+                ]],
+            ]],
+        ], JSON_THROW_ON_ERROR));
+        file_put_contents($this->root . '/kanban-context.json', json_encode([
+            'schema_version' => '1.0',
+            'task_id' => 'PROJECT-123',
+            'source' => ['path' => 'todo/cards/PROJECT-123.md', 'revision' => 'sha256:card-revision'],
+            'card' => [
+                'title' => 'Keep the example view narrow',
+                'lane' => 'READY',
+                'status' => 'Selected',
+                'priority' => 1,
+                'next_action' => 'Compile the sealed context.',
+            ],
+        ], JSON_THROW_ON_ERROR));
+        $briefPath = $this->root . '/work-brief.json';
+        file_put_contents($briefPath, json_encode([
+            'schema_version' => '1.0',
+            'task_id' => 'PROJECT-123',
+            'goal' => 'Update the example view.',
+            'scope' => ['modules/ExampleView.php'],
+            'status' => 'approved',
+            'revision' => 1,
+        ], JSON_THROW_ON_ERROR));
+        $output = $this->root . '/portable-context-out';
+
+        self::assertSame(0, (new \voku\AgentRecallCompiler\Cli())->run([
+            'agent-recall-compiler', 'compile', '--root', $this->root,
+            '--task', 'PROJECT-123', '--task-brief', $briefPath,
+            '--kanban-context', $this->root . '/kanban-context.json',
+            '--map-index', $this->root . '/map.json', '--map-root', $this->root . '/workspace',
+            '--output-dir', $output, '--compilation-id', 'compilation.PROJECT-123.portable-context',
+        ]));
+
+        $facts = json_decode((string) file_get_contents($output . '/facts.json'), true, 512, JSON_THROW_ON_ERROR);
+        $byId = [];
+        foreach ($facts['facts'] as $fact) {
+            $byId[$fact['id']] = $fact;
+        }
+        self::assertSame('READY', $byId['kanban.PROJECT-123']['payload']['card']['lane']);
+        self::assertSame('ExampleView', $byId['map.file.modules/ExampleView.php']['payload']['symbols'][0]['fqn']);
+        self::assertStringContainsString('Task Coordination Facts', (string) file_get_contents($output . '/system.md'));
     }
 
     public function testDecidesGuidanceMatchingScope(): void

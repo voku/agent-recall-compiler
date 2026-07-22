@@ -9,11 +9,16 @@ use DateTimeInterface;
 
 final class RecallPromptBuilder
 {
-    public function buildSystemMd(TaskBrief $task, string $memory, RecallResult $result, ?FeedbackAssessment $feedback = null): string
+    /**
+     * @param list<array<string, mixed>> $facts
+     */
+    public function buildSystemMd(TaskBrief $task, string $memory, RecallResult $result, ?FeedbackAssessment $feedback = null, array $facts = [], ?string $bundleDigest = null): string
     {
         $md = [];
         $md[] = "# L2 Meta-Prompt Briefing for Task: " . $task->id;
-        $md[] = "> Generated at " . (new DateTimeImmutable('now'))->format(DateTimeInterface::ATOM);
+        if ($bundleDigest !== null) {
+            $md[] = "> Recall bundle SHA-256: " . $bundleDigest;
+        }
         $md[] = "";
 
         if ($task->description !== '') {
@@ -22,10 +27,80 @@ final class RecallPromptBuilder
             $md[] = "";
         }
 
+        if ($task->nonGoals !== []) {
+            $md[] = "## Explicit Non-Goals";
+            foreach ($task->nonGoals as $nonGoal) {
+                $md[] = "- " . $nonGoal;
+            }
+            $md[] = "";
+        }
+
         if (trim($memory) !== '') {
             $md[] = "## Repository Global Memory (`MEMORY.md`)";
             $md[] = trim($memory);
             $md[] = "";
+        }
+
+        $navigationFacts = array_values(array_filter(
+            $facts,
+            static fn (array $fact): bool => ($fact['type'] ?? null) === 'navigation',
+        ));
+        if ($navigationFacts !== []) {
+            $md[] = "## Navigation Facts";
+            foreach ($navigationFacts as $fact) {
+                $sourceRef = is_string($fact['source_ref'] ?? null) ? $fact['source_ref'] : 'unknown';
+                $md[] = "- " . $sourceRef;
+            }
+            $md[] = "";
+        }
+
+        $projectDocuments = array_values(array_filter(
+            $facts,
+            static fn (array $fact): bool => in_array($fact['type'] ?? null, ['adr', 'skill'], true),
+        ));
+        if ($projectDocuments !== []) {
+            $md[] = "## Scoped Project Documents";
+            foreach ($projectDocuments as $fact) {
+                $type = $fact['type'] === 'adr' ? 'ADR' : 'Skill';
+                $payload = is_array($fact['payload'] ?? null) ? $fact['payload'] : [];
+                $documentId = is_string($payload['document_id'] ?? null) ? $payload['document_id'] : ($fact['id'] ?? 'unknown');
+                $sourceRef = is_string($fact['source_ref'] ?? null) ? $fact['source_ref'] : 'unknown';
+                $content = is_string($payload['content'] ?? null) ? $payload['content'] : '';
+                $md[] = "### " . $type . ': ' . $documentId;
+                $md[] = '- **Source**: ' . $sourceRef;
+                if (($payload['truncated'] ?? false) === true) {
+                    $md[] = '- **Excerpt**: deterministically truncated by the Git-tracked manifest.';
+                }
+                if ($content !== '') {
+                    $md[] = '````text';
+                    $md[] = $content;
+                    $md[] = '````';
+                }
+                $md[] = '';
+            }
+        }
+
+        $kanbanFacts = array_values(array_filter(
+            $facts,
+            static fn (array $fact): bool => ($fact['type'] ?? null) === 'kanban',
+        ));
+        if ($kanbanFacts !== []) {
+            $md[] = '## Task Coordination Facts';
+            foreach ($kanbanFacts as $fact) {
+                $payload = is_array($fact['payload'] ?? null) ? $fact['payload'] : [];
+                $card = is_array($payload['card'] ?? null) ? $payload['card'] : [];
+                $sourceRef = is_string($fact['source_ref'] ?? null) ? $fact['source_ref'] : 'unknown';
+                $md[] = '- **Board source**: ' . $sourceRef;
+                foreach (['title' => 'Title', 'lane' => 'Lane', 'status' => 'Status', 'priority' => 'Priority', 'next_action' => 'Next action'] as $key => $label) {
+                    $value = $card[$key] ?? null;
+                    if (is_string($value) && trim($value) !== '') {
+                        $md[] = '- **' . $label . '**: ' . trim($value);
+                    } elseif (is_int($value)) {
+                        $md[] = '- **' . $label . '**: ' . $value;
+                    }
+                }
+                $md[] = '';
+            }
         }
 
         if ($result->selectedGuidance !== []) {
@@ -131,14 +206,15 @@ final class RecallPromptBuilder
     /**
      * @param array<string, string> $outputHashes
      */
-    public function buildMetaJson(TaskBrief $task, RecallResult $result, ?string $compilationId = null, array $outputHashes = [], bool $blocked = false, ?string $blockReason = null): string
+    public function buildMetaJson(TaskBrief $task, RecallResult $result, ?string $compilationId = null, array $outputHashes = [], bool $blocked = false, ?string $blockReason = null, ?string $bundleDigest = null, ?string $snapshotDigest = null): string
     {
         $data = [
             'schema_version' => '1.0',
             'compilation_id' => $compilationId,
             'task_id' => $task->id,
             'task_files' => $task->files,
-            'compiled_at' => (new DateTimeImmutable('now'))->format(DateTimeInterface::ATOM),
+            'bundle_sha256' => $bundleDigest,
+            'snapshot_sha256' => $snapshotDigest,
             'blocked' => $blocked,
             'block_reason' => $blockReason,
             'selected_guidance' => array_map(static fn(RecallGuidance $g) => $g->id, $result->selectedGuidance),
@@ -168,11 +244,25 @@ final class RecallPromptBuilder
         $md[] = "";
 
         $hasValidation = false;
-        foreach ($this->constraintsByEngine($result->selectedConstraints) as $engine => $constraints) {
+        if ($task->validation !== []) {
             $hasValidation = true;
+            $md[] = "### Approved Work-Brief";
+            $md[] = "";
+            foreach ($task->validation as $command) {
+                $md[] = "```bash";
+                $md[] = $command;
+                $md[] = "```";
+                $md[] = "";
+            }
+        }
+
+        $omittedConstraintCommands = [];
+        foreach ($this->constraintsByEngine($result->selectedConstraints) as $engine => $constraints) {
+            $commands = $this->applicableConstraintCommands($constraints, $task, $omittedConstraintCommands);
+            $hasValidation = $hasValidation || $commands !== [];
             $md[] = "### " . $this->formatEngine($engine);
             $md[] = "";
-            foreach ($this->uniqueConstraintCommands($constraints) as $command) {
+            foreach ($commands as $command) {
                 $md[] = "```bash";
                 $md[] = $command;
                 $md[] = "```";
@@ -182,6 +272,17 @@ final class RecallPromptBuilder
             $md[] = "";
             foreach ($constraints as $constraint) {
                 $md[] = "- `" . $constraint->ruleIdentifier . "`";
+            }
+            $md[] = "";
+        }
+
+        if ($omittedConstraintCommands !== []) {
+            $md[] = "## Omitted Task-External Manifest Commands";
+            $md[] = "";
+            $md[] = "The following legacy constraint commands name a different PHP file. The approved work brief remains authoritative for this task; migrate these manifests to structured task-scope validation requirements.";
+            $md[] = "";
+            foreach (array_values(array_unique($omittedConstraintCommands)) as $command) {
+                $md[] = "- `" . $command . "`";
             }
             $md[] = "";
         }
@@ -212,6 +313,42 @@ final class RecallPromptBuilder
         }
 
         return implode("\n", $md);
+    }
+
+    /**
+     * @param list<ConstraintManifest> $constraints
+     * @param list<string> $omitted
+     * @return list<string>
+     */
+    private function applicableConstraintCommands(array $constraints, TaskBrief $task, array &$omitted): array
+    {
+        $commands = [];
+        foreach ($this->uniqueConstraintCommands($constraints) as $command) {
+            if ($this->constraintCommandAppliesToTask($command, $task)) {
+                $commands[] = $command;
+                continue;
+            }
+            $omitted[] = $command;
+        }
+
+        return $commands;
+    }
+
+    private function constraintCommandAppliesToTask(string $command, TaskBrief $task): bool
+    {
+        if ($task->files === []) {
+            return true;
+        }
+        foreach ($task->files as $file) {
+            if (str_contains($command, $file)) {
+                return true;
+            }
+        }
+
+        // A generic engine command contains no concrete PHP source target and
+        // is still meaningful. A command naming another concrete PHP file is
+        // historical example validation, not task validation.
+        return preg_match('~[A-Za-z0-9_./-]+\.php\b~', $command) !== 1;
     }
 
     public function buildRecallLogDraft(TaskBrief $task, RecallResult $result, ?string $compilationId = null): string

@@ -38,25 +38,52 @@ final class TaskBriefParser
             throw new RuntimeException('missing or empty task ID in brief');
         }
 
-        $description = $data['description'] ?? '';
+        // agent-session's approved work-brief is a first-class task-context
+        // input: its goal and scope are more precise than hand-entered --file
+        // values, while the legacy task-brief shape keeps working unchanged.
+        $description = $data['description'] ?? $data['goal'] ?? '';
         if (!is_string($description)) {
             throw new RuntimeException('task description must be a string');
         }
 
-        $files = $data['files'] ?? [];
+        $files = $data['files'] ?? $data['scope'] ?? [];
         if (!is_array($files)) {
             throw new RuntimeException('task files must be an array');
         }
 
-        $scopes = $data['scopes'] ?? [];
+        $scopes = $data['scopes'] ?? $data['scope'] ?? [];
         if (!is_array($scopes)) {
             throw new RuntimeException('task scopes must be an array');
         }
 
         $fileList = $this->stringList($files);
         $scopeList = $this->stringList($scopes);
+        $nonGoals = $data['non_goals'] ?? [];
+        $validation = $data['validation'] ?? [];
+        if (!is_array($nonGoals) || !is_array($validation)) {
+            throw new RuntimeException('task non_goals and validation must be arrays');
+        }
 
-        return new TaskBrief($id, $description, $fileList, $scopeList);
+        $status = $data['status'] ?? null;
+        if ($status !== null && !is_string($status)) {
+            throw new RuntimeException('task status must be a string');
+        }
+        $revision = $data['revision'] ?? null;
+        if ($revision !== null && (!is_int($revision) || $revision < 1)) {
+            throw new RuntimeException('task revision must be a positive integer');
+        }
+
+        return new TaskBrief(
+            $id,
+            $description,
+            $fileList,
+            $scopeList,
+            $this->stringList($nonGoals),
+            $this->stringList($validation),
+            $status === null ? null : trim($status),
+            $revision,
+            $path,
+        );
     }
 
     /**

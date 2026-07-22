@@ -4,6 +4,41 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.6.5] - 2026-07-22
+
+### Added
+
+- Added internal `RecallProvider` contracts and a canonical, replayable
+  `recall.bundle.json` snapshot. Providers now contribute source digests and
+  structured facts for task context, repository memory, approved learning and
+  hard constraints, optional map indices, typed Kanban projections, and
+  explicitly registered project Skills/ADRs.
+- Added `facts.json`, `selection-report.json`, and
+  `compilation-receipt.json`. The first two are deterministic, hash-covered
+  consumer artifacts; the receipt is operational timestamp metadata and is
+  deliberately outside the replay identity.
+- Added `--map-root`, `--kanban-context`, and repeatable
+  `--document-manifest` compile options. Project documents are selected only
+  by explicit scope/prefix rules and fixed excerpt limits.
+
+### Changed
+
+- Approved `agent-session` work briefs (`task_id`, `goal`, `scope`,
+  `non_goals`, validation, status, revision) are first-class task inputs.
+  Rendered L2 prompts are deterministic views of the canonical bundle; the
+  compiler never executes them or calls a model.
+- Generic fact conflicts resolve only through explicit priority and documented
+  authority precedence. Equal-precedence facts with different payloads block
+  compilation instead of silently choosing one.
+- Validation plans retain the approved work-brief commands and explicitly
+  separate legacy constraint commands that name task-external PHP files.
+
+### Fixed
+
+- A Docker-built `agent-map` index can now be verified against an explicitly
+  supplied host root. Missing or stale task files are emitted as explicit
+  navigation-status facts rather than being silently rebuilt or trusted.
+
 ## [0.6.4] - 2026-07-20
 
 ### Added

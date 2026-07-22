@@ -5,7 +5,10 @@ Deterministic L2 Meta-Prompt Compiler and Briefing Manager for Coding Agents.
 [![Build Status](https://github.com/voku/agent-recall-compiler/actions/workflows/ci.yml/badge.svg)](https://github.com/voku/agent-recall-compiler/actions)
 [![License](https://img.shields.io/github/license/voku/agent-recall-compiler.svg)](LICENSE)
 
-This package forms the **recall layer** of the governed agent learning loop. It turns approved learnings (managed by `voku/agent-learning`) into precise, context-aware meta-prompts for subsequent coding sessions. 
+This package forms the **recall layer** of the governed coding-agent loop. It
+orchestrates task-relevant facts from approved work briefs, memory, learning,
+constraints, maps, board projections, and explicitly registered project
+documents into precise, context-aware meta-prompts for subsequent sessions.
 
 Rather than overloading an LLM's system prompt with every rule ever created, the Recall Compiler selects only the rules relevant to the files the agent is about to modify. It also warns the agent of past rejections and failures to prevent repeating mistakes.
 
@@ -20,8 +23,8 @@ Rather than overloading an LLM's system prompt with every rule ever created, the
                               │ (Matches scope prefixes)
                               ▼
 ┌──────────────┐    ┌──────────────────┐    ┌──────────────┐
-│  MEMORY.md   │───►│  Recall Compiler │◄───│  History &   │
-│ (Global mem) │    │  (Select Engine)  │    │   Outcomes   │
+│  Providers   │───►│  Recall Compiler │◄───│ Canonical    │
+│ (read-only)  │    │  (orchestrator)   │    │ source digest│
 └──────────────┘    └────────┬─────────┘    └──────────────┘
                              │
             ┌────────────────┼────────────────┬──────────────┐
@@ -36,7 +39,10 @@ Rather than overloading an LLM's system prompt with every rule ever created, the
 
 ## Key Features
 
+- **Provider-Orchestrated Recall**: Adapters answer one question — which facts are relevant for this sealed task? — while the compiler owns deterministic composition, replay, and rendering.
 - **Deterministic Scope Matching**: Evaluates the paths targeted by a task against the scopes of approved rules. Selects global rules (`MEMORY.md` and `/` or `*` scopes) along with sub-path specific active skills or constraints.
+- **Replayable Fact Bundle**: Writes canonical `recall.bundle.json`, `facts.json`, and `selection-report.json`, with provider source digests and explicit generic-fact conflict decisions.
+- **Bounded Project Documents**: Optional Git-tracked manifests add scoped Skills and ADRs with fixed excerpt limits; the compiler never scans every document or asks a model to choose one.
 - **Constraint Manifests**: Loads active hard constraints from `constraints/active/*.json` or a configured `active_constraints_dir` and selects them by path-scope overlap instead of semantic similarity.
 - **Conflict Detection**: Blocks compilation when selected active rules target the same codebase element or duplicate directive wording would give the coding agent contradictory instructions.
 - **Contradiction Guard**: Blocks compilation when selected guidance matches the target patterns of previously rejected proposals.
@@ -153,6 +159,9 @@ Where `task-brief.json` is:
 ```
 
 #### Outputs Generated:
+- **`recall.bundle.json`**: Canonical, replayable task snapshot with selected learning, resolved provider facts, and source digests.
+- **`facts.json`**: Compact structured facts for a consumer such as `agent-loop workflow context`.
+- **`selection-report.json`**: Deterministic explanation of learning and constraint selection.
 - **`system.md`**: Combined system prompt meta-prompt briefing containing selected active rules and warnings.
 - **`validation-plan.md`**: Authoritative required validation commands, selected hard-constraint rule identifiers, and provenance.
 - **`meta.json`**: Technical metadata recording exactly which rules and constraints were loaded.
@@ -257,6 +266,9 @@ The public CLI, Composer API classes, JSON field names, and generated file locat
 3. **Guidance selection**: `RecallDecisionEngine` still returns the historical `RecallResult`, and `SelectionResult` / `GuidanceSelection` provide an additive typed adapter for the consolidated pipeline.
 4. **Rendering**: renderer facades consume `SelectionResult` or the legacy `RecallResult` and preserve the current `system.md`, `validation-plan.md`, `meta.json`, and `recall-log.draft.json` shapes.
 5. **Close-out**: `OutcomeCloseOutService` centralizes the typed close-out entry point while preserving `OutcomeLogger` for existing callers.
+
+The detailed target design, fact precedence, artifact semantics, and migration
+path live in [docs/recall-provider-architecture.md](docs/recall-provider-architecture.md).
 
 ### Event Vocabulary
 
