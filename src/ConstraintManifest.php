@@ -9,6 +9,7 @@ final readonly class ConstraintManifest
     /**
      * @param list<string> $scope
      * @param list<string> $validationCommands
+     * @param list<string> $tags
      */
     public function __construct(
         public string $id,
@@ -18,6 +19,7 @@ final readonly class ConstraintManifest
         public array $validationCommands,
         public string $sourceProposal,
         public string $status,
+        public array $tags = [],
     ) {
     }
 }

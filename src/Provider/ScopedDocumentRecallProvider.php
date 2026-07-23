@@ -59,7 +59,8 @@ final class ScopedDocumentRecallProvider implements RecallProvider
                 throw new RuntimeException('document ' . $id . ' has unsupported type: ' . $type);
             }
             $scope = $this->stringList($document['scope'] ?? []);
-            if (!$this->matchesTask($scope, $task)) {
+            $tags = $this->stringList($document['tags'] ?? []);
+            if (!$this->matchesTask($scope, $tags, $task)) {
                 continue;
             }
 
@@ -105,6 +106,7 @@ final class ScopedDocumentRecallProvider implements RecallProvider
                     'content' => $excerpt,
                     'content_sha256' => hash('sha256', $normalized),
                     'truncated' => $excerpt !== $normalized,
+                    'tags' => $tags,
                 ],
                 $conflictKey,
                 $priority,
@@ -173,8 +175,16 @@ final class ScopedDocumentRecallProvider implements RecallProvider
         return array_values(array_unique($values));
     }
 
-    /** @param list<string> $scope */
-    private function matchesTask(array $scope, TaskBrief $task): bool
+    /**
+     * A document matches when its path scope overlaps the task's files, when it declares no
+     * scope at all (project-wide), or when it shares at least one relevance tag with the task.
+     * Tags let a project register documents by domain/system/capability instead of directory
+     * prefix, so this provider works the same way regardless of how a project lays out its code.
+     *
+     * @param list<string> $scope
+     * @param list<string> $tags
+     */
+    private function matchesTask(array $scope, array $tags, TaskBrief $task): bool
     {
         if ($scope === [] || in_array('*', $scope, true) || in_array('/', $scope, true)) {
             return true;
@@ -188,7 +198,7 @@ final class ScopedDocumentRecallProvider implements RecallProvider
             }
         }
 
-        return false;
+        return $tags !== [] && $task->tags !== [] && array_intersect($tags, $task->tags) !== [];
     }
 
     private function truncate(string $content, int $maxChars): string

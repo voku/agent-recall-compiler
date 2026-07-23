@@ -53,6 +53,21 @@ final class RecallCompilerTest extends TestCase
         self::assertSame('ITPNG-123', $brief->id);
         self::assertSame('Test task brief description', $brief->description);
         self::assertSame(['src/Auth.php', 'tests/AuthTest.php'], $brief->files);
+        self::assertSame([], $brief->tags);
+    }
+
+    public function testParsesTaskBriefRelevanceTags(): void
+    {
+        $briefPath = $this->root . '/task-brief.json';
+        file_put_contents($briefPath, json_encode([
+            'id' => 'ITPNG-123',
+            'files' => ['modules/employee/Sync.php'],
+            'tags' => ['identity', 'ldap', 'identity'],
+        ]));
+
+        $brief = (new TaskBriefParser())->parseFile($briefPath);
+
+        self::assertSame(['identity', 'ldap'], $brief->tags);
     }
 
     public function testParsesApprovedSessionWorkBriefAsTaskContext(): void
@@ -177,6 +192,48 @@ final class RecallCompilerTest extends TestCase
         self::assertStringContainsString('Keep the view isolated', (string) file_get_contents($output . '/system.md'));
     }
 
+    public function testCompileIncludesGitTrackedProjectDocumentByRelevanceTagAcrossDirectories(): void
+    {
+        // A second project might organize identity/LDAP code under a completely different
+        // directory than IT-Portal's modules/employee/. Tags let this document manifest
+        // select the right skill regardless of that layout.
+        mkdir($this->root . '/docs', 0777, true);
+        file_put_contents($this->root . '/docs/identity-skill.md', "# Identity skill\n\nAlways confirm LDAP group membership before writing back.\n");
+        file_put_contents($this->root . '/documents.json', json_encode([
+            'schema_version' => '1.0',
+            'documents' => [[
+                'id' => 'project.identity-handling',
+                'type' => 'skill',
+                'source' => 'docs/identity-skill.md',
+                'scope' => ['src/Identity/'],
+                'tags' => ['identity', 'ldap'],
+                'max_chars' => 200,
+            ]],
+        ], JSON_THROW_ON_ERROR));
+        $briefPath = $this->root . '/work-brief.json';
+        file_put_contents($briefPath, json_encode([
+            'schema_version' => '1.0',
+            'task_id' => 'PROJECT-123',
+            'goal' => 'Sync employees from the directory.',
+            'scope' => ['modules/employee/Sync.php'],
+            'tags' => ['identity', 'ldap'],
+            'status' => 'approved',
+            'revision' => 1,
+        ], JSON_THROW_ON_ERROR));
+        $output = $this->root . '/document-tag-out';
+
+        self::assertSame(0, (new \voku\AgentRecallCompiler\Cli())->run([
+            'agent-recall-compiler', 'compile', '--root', $this->root,
+            '--task', 'PROJECT-123', '--task-brief', $briefPath,
+            '--document-manifest', $this->root . '/documents.json',
+            '--output-dir', $output, '--compilation-id', 'compilation.PROJECT-123.document-tags',
+        ]));
+
+        $facts = json_decode((string) file_get_contents($output . '/facts.json'), true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame('document.project.identity-handling', $facts['facts'][0]['id']);
+        self::assertStringContainsString('LDAP group membership', (string) file_get_contents($output . '/system.md'));
+    }
+
     public function testFactResolverUsesExplicitAuthorityAndBlocksAmbiguousEqualPrecedence(): void
     {
         $resolved = (new FactResolver())->resolve([
@@ -293,6 +350,33 @@ final class RecallCompilerTest extends TestCase
         // Outcome-driven warning should trigger for g-1
         self::assertCount(1, $result->warnings);
         self::assertStringContainsString("Guidance 'g-1' was previously marked as HARMFUL in task 'ITPNG-100'. Reason: Caused side effects", $result->warnings[0]);
+    }
+
+    public function testDecidesGuidanceMatchingRelevanceTagWithoutPathOverlap(): void
+    {
+        // The exact cross-directory case from the architecture review: an LDAP learning
+        // registered under src/Identity/ must still apply to a task touching
+        // modules/employee/, because they share a declared relevance tag even though
+        // neither path is a prefix of the other.
+        $activeGuidance = [
+            new RecallGuidance('g-ldap', 'ADD', 'skill', 'ldap-sync', ['src/Identity/'], null, 'Wording', 'Reason', null, [], 'approved', ['identity', 'ldap']),
+            new RecallGuidance('g-unrelated', 'ADD', 'skill', 'billing', ['src/Billing/'], null, 'Wording', 'Reason', null, [], 'approved', ['billing']),
+        ];
+
+        $engine = new RecallDecisionEngine();
+        $task = new TaskBrief('PROJECT-123', 'Sync employees from the directory', ['modules/employee/Sync.php'], tags: ['identity', 'ldap']);
+
+        $result = $engine->decide($task, $activeGuidance, [], []);
+
+        self::assertCount(1, $result->selectedGuidance);
+        self::assertSame('g-ldap', $result->selectedGuidance[0]->id);
+
+        $evaluated = [];
+        foreach ($result->evaluatedGuidance as $item) {
+            $evaluated[$item->guidanceId] = $item;
+        }
+        self::assertSame(\voku\AgentRecallCompiler\SelectionReason::TAG_OVERLAP, $evaluated['g-ldap']->selectionReason);
+        self::assertSame([], $evaluated['g-ldap']->taskFiles);
     }
 
     public function testDecidesThrowsOnTargetConflict(): void

@@ -73,6 +73,11 @@ final class TaskBriefParser
             throw new RuntimeException('task revision must be a positive integer');
         }
 
+        $tags = $data['tags'] ?? [];
+        if (!is_array($tags)) {
+            throw new RuntimeException('task tags must be an array');
+        }
+
         return new TaskBrief(
             $id,
             $description,
@@ -83,6 +88,7 @@ final class TaskBriefParser
             $status === null ? null : trim($status),
             $revision,
             $path,
+            $this->stringList($tags),
         );
     }
 

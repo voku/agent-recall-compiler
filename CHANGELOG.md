@@ -4,6 +4,23 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.6.6] - 2026-07-23
+
+### Added
+
+- Added an optional `tags` relevance axis, orthogonal to path `scope`. Task
+  briefs, guidance/constraint/rejection/retirement records, and scoped
+  document manifest entries may declare `tags`; a fact is selected when its
+  path scope overlaps the task's files **or** it shares at least one tag with
+  the task. This lets a project register cross-cutting knowledge (e.g. an
+  LDAP learning) by domain/system/capability instead of directory prefix, so
+  selection works the same way regardless of how a project's codebase is
+  laid out. Purely additive: briefs and manifests without `tags` behave
+  exactly as before.
+- Added `SelectionReason::TAG_OVERLAP` to distinguish a tag-only match from a
+  path `scope_overlap` or `global` match in `selection-report.json`.
+- Added inline `--tag LABEL` (repeatable) to `compile` for ad hoc task input.
+
 ## [0.6.5] - 2026-07-22
 
 ### Added

@@ -8,6 +8,7 @@ final readonly class RecallRejection
 {
     /**
      * @param list<string> $scope
+     * @param list<string> $tags
      */
     public function __construct(
         public string $id,
@@ -15,6 +16,7 @@ final readonly class RecallRejection
         public array $scope,
         public string $action,
         public ?string $target,
+        public array $tags = [],
     ) {
     }
 }

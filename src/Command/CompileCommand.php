@@ -53,6 +53,7 @@ final class CompileCommand
                 $taskId,
                 $parsed->stringOption('description') ?? '',
                 $parsed->stringOptions('file'),
+                tags: $parsed->stringOptions('tag'),
             );
         }
 

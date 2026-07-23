@@ -76,6 +76,30 @@ model decide what to include.
 - `compilation-receipt.json`: operational timestamp only; excluded from the
   replay identity.
 
+## Relevance tags, independent of directory layout
+
+Path `scope` is a prefix match against the task's files. That is precise, but
+it silently fails whenever relevant knowledge does not live under a prefix of
+the changed files — an LDAP learning registered under `src/Identity/` has no
+path relationship to a task that only touches `modules/employee/Sync.php`,
+even though the two are obviously related. Two projects also rarely share a
+directory layout, so a path-only rule from one project's manifest is not
+portable to the next.
+
+`tags` is a second, independent axis for exactly this case. A task brief and
+a fact (guidance, constraint, rejection, retirement, or a document manifest
+entry) may each declare a flat list of project-defined labels — domain,
+system, capability, or any other taxonomy a project chooses; the compiler
+does not interpret their meaning. A fact is selected when its path scope
+overlaps the task's files **or** it shares at least one tag with the task;
+`selection-report.json` records which one happened (`scope_overlap`,
+`tag_overlap`, or `global`). A fact or task with no tags behaves exactly as
+before — `tags` is fully additive and never required.
+
+This is still deterministic set matching, not semantic search: the compiler
+never guesses that "identity" and "LDAP" are related, it only checks whether
+the exact strings a maintainer wrote on both sides intersect.
+
 ## Project document manifest
 
 Projects opt in deliberately; the compiler never scans every Markdown file.
@@ -100,6 +124,14 @@ the manifest and `max_chars` is a hard token-growth guard.
       "scope": ["lib/framework/session/"],
       "priority": 1,
       "conflict_key": "session-boundary"
+    },
+    {
+      "id": "project.identity-handling",
+      "type": "skill",
+      "source": "docs/skills/identity-handling.md",
+      "scope": ["src/Identity/"],
+      "tags": ["identity", "ldap"],
+      "max_chars": 1500
     }
   ]
 }
@@ -108,7 +140,9 @@ the manifest and `max_chars` is a hard token-growth guard.
 Compile it explicitly with `--document-manifest path/to/recall-documents.json`.
 An ADR wins over a skill with the same conflict key at equal explicit priority;
 two skills of equal precedence with different content block until a maintainer
-makes the decision in source control.
+makes the decision in source control. `project.identity-handling` above is
+selected for any task that touches `src/Identity/` **or** that declares
+`identity` or `ldap` as a task tag, regardless of which files it touches.
 
 ## Migration and deliberately deferred boundary
 

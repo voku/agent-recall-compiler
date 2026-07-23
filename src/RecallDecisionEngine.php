@@ -38,16 +38,19 @@ final class RecallDecisionEngine
         $warnings = [];
         $evaluatedGuidance = [];
 
-        // 1. Select active guidance matching task files
+        // 1. Select active guidance matching task files or declared relevance tags. Tags let a
+        // fact (e.g. an LDAP learning) be selected for a task whose files live under an
+        // unrelated-looking directory, without the compiler guessing at path semantics.
         foreach ($activeGuidance as $g) {
             $matchingFiles = $this->matchingTaskFiles($g->scope, $task->files);
-            $matches = $matchingFiles !== [];
+            $tagMatched = $this->hasTagOverlap($g->tags, $task->tags);
+            $matches = $matchingFiles !== [] || $tagMatched;
             $evaluatedGuidance[] = new EvaluatedGuidance(
                 $g->id,
                 $this->guidanceType($g->targetType, $g->id),
                 $matches,
                 $matches,
-                $matches ? $this->selectionReason($g->scope) : null,
+                $matches ? $this->selectionReason($g->scope, $matchingFiles !== []) : null,
                 $matches ? null : ExclusionReason::NO_SCOPE_OVERLAP,
                 $matchingFiles,
             );
@@ -58,7 +61,7 @@ final class RecallDecisionEngine
 
         // 2. Select matching rejections to warn about past mistakes
         foreach ($rejectedGuidance as $rg) {
-            if ($this->matchesAnyScope($rg->scope, $task->files)) {
+            if ($this->matchesAnyScope($rg->scope, $task->files) || $this->hasTagOverlap($rg->tags, $task->tags)) {
                 $selectedRejections[] = $rg;
             }
         }
@@ -67,15 +70,16 @@ final class RecallDecisionEngine
         // against newly selected guidance in the same task scope.
         $selectedRetirements = [];
         foreach ($retiredProposals as $retirement) {
-            if ($this->matchesAnyScope($retirement->scope, $task->files)) {
+            if ($this->matchesAnyScope($retirement->scope, $task->files) || $this->hasTagOverlap($retirement->tags, $task->tags)) {
                 $selectedRetirements[] = $retirement;
             }
         }
 
-        // 2b. Select constraints by scope, not semantic similarity.
+        // 2b. Select constraints by scope or relevance tag, not semantic similarity.
         foreach ($constraints as $constraint) {
             $matchingFiles = $this->matchingTaskFiles($constraint->scope, $task->files);
-            if ($matchingFiles === []) {
+            $constraintTagMatched = $this->hasTagOverlap($constraint->tags, $task->tags);
+            if ($matchingFiles === [] && !$constraintTagMatched) {
                 $evaluatedGuidance[] = new EvaluatedGuidance(
                     $constraint->id,
                     GuidanceType::CONSTRAINT,
@@ -420,9 +424,22 @@ final class RecallDecisionEngine
     /**
      * @param list<string> $scope
      */
-    private function selectionReason(array $scope): SelectionReason
+    private function selectionReason(array $scope, bool $pathMatched): SelectionReason
     {
-        return $this->isGlobalScope($scope) || $scope === [] ? SelectionReason::GLOBAL : SelectionReason::SCOPE_OVERLAP;
+        if ($this->isGlobalScope($scope) || $scope === []) {
+            return SelectionReason::GLOBAL;
+        }
+
+        return $pathMatched ? SelectionReason::SCOPE_OVERLAP : SelectionReason::TAG_OVERLAP;
+    }
+
+    /**
+     * @param list<string> $itemTags
+     * @param list<string> $taskTags
+     */
+    private function hasTagOverlap(array $itemTags, array $taskTags): bool
+    {
+        return $itemTags !== [] && $taskTags !== [] && array_intersect($itemTags, $taskTags) !== [];
     }
 
     /**

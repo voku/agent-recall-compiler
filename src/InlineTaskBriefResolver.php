@@ -9,8 +9,9 @@ final readonly class InlineTaskBriefResolver
     /**
      * @param list<string> $files
      * @param list<string> $scopes
+     * @param list<string> $tags
      */
-    public function resolve(string $id, string $description = '', array $files = [], array $scopes = []): TaskBrief
+    public function resolve(string $id, string $description = '', array $files = [], array $scopes = [], array $tags = []): TaskBrief
     {
         if (trim($id) === '') {
             throw new \InvalidArgumentException('inline task input requires a non-empty task id');
@@ -18,8 +19,9 @@ final readonly class InlineTaskBriefResolver
 
         $normalizedFiles = $this->nonEmptyStrings($files);
         $normalizedScopes = $this->nonEmptyStrings($scopes);
+        $normalizedTags = $this->nonEmptyStrings($tags);
 
-        return new TaskBrief(trim($id), $description, $normalizedFiles, $normalizedScopes, sourcePath: 'inline');
+        return new TaskBrief(trim($id), $description, $normalizedFiles, $normalizedScopes, sourcePath: 'inline', tags: $normalizedTags);
     }
 
     /**

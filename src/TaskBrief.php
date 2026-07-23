@@ -11,6 +11,9 @@ final readonly class TaskBrief
      * @param list<string> $scopes
      * @param list<string> $nonGoals
      * @param list<string> $validation
+     * @param list<string> $tags Project-defined relevance labels (domain, system, capability,
+     *        or any other taxonomy a project chooses). Matched against fact/guidance tags
+     *        independently of path scope, so relevance is not tied to a directory layout.
      */
     public function __construct(
         public string $id,
@@ -22,6 +25,7 @@ final readonly class TaskBrief
         public ?string $status = null,
         public ?int $revision = null,
         public ?string $sourcePath = null,
+        public array $tags = [],
     ) {
     }
 }

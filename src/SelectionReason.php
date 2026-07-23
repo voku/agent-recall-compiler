@@ -9,6 +9,7 @@ enum SelectionReason: string
     case GLOBAL = 'global';
     case EXPLICIT = 'explicit';
     case SCOPE_OVERLAP = 'scope_overlap';
+    case TAG_OVERLAP = 'tag_overlap';
     case CONSTRAINT_SCOPE = 'constraint_scope';
     case REQUIRED_VALIDATION = 'required_validation';
     case REJECTED_GUIDANCE_WARNING = 'rejected_guidance_warning';

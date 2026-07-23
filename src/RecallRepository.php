@@ -122,13 +122,15 @@ final class RecallRepository
             $scope = $data['scope'] ?? [];
             $action = $data['action'] ?? 'unknown';
             $target = $data['target'] ?? null;
+            $tags = $data['tags'] ?? [];
 
             $retirements[] = new RecallRetirement(
                 $id,
                 is_string($reason) ? $reason : '',
                 is_array($scope) ? array_values(array_filter($scope, 'is_string')) : [],
                 is_string($action) ? $action : 'unknown',
-                is_string($target) ? $target : null
+                is_string($target) ? $target : null,
+                is_array($tags) ? array_values(array_filter($tags, 'is_string')) : [],
             );
         }
 
@@ -174,6 +176,7 @@ final class RecallRepository
             $scope = [];
             $action = 'unknown';
             $target = null;
+            $tags = [];
 
             if (is_file($proposalFile)) {
                 $propContent = file_get_contents($proposalFile);
@@ -184,6 +187,7 @@ final class RecallRepository
                             $scope = $propData['scope'] ?? [];
                             $action = $propData['action'] ?? 'unknown';
                             $target = $propData['target'] ?? null;
+                            $tags = $propData['tags'] ?? [];
                         }
                     } catch (\JsonException) {
                         // ignore
@@ -196,7 +200,8 @@ final class RecallRepository
                 $reason,
                 is_array($scope) ? array_values(array_filter($scope, 'is_string')) : [],
                 $action,
-                $target
+                $target,
+                is_array($tags) ? array_values(array_filter($tags, 'is_string')) : [],
             );
         }
 
@@ -351,6 +356,7 @@ final class RecallRepository
         $reason = $data['reason'] ?? '';
         $boundary = $data['boundary'] ?? null;
         $validation = $data['validation'] ?? [];
+        $tags = $data['tags'] ?? [];
 
         return new RecallGuidance(
             $id,
@@ -363,7 +369,8 @@ final class RecallRepository
             $reason,
             $boundary,
             is_array($validation) ? array_values(array_filter($validation, 'is_string')) : [],
-            $status
+            $status,
+            is_array($tags) ? array_values(array_filter($tags, 'is_string')) : [],
         );
     }
 
@@ -396,6 +403,7 @@ final class RecallRepository
         $scope = $this->requiredStringList($data, 'scope', $file);
         $commands = $this->requiredStringList($data, 'validation_commands', $file);
         $ruleIdentifier = $this->requiredString($data, 'rule_identifier', $file);
+        $tags = $data['tags'] ?? [];
 
         $this->assertCommandMatchesEngine($engine, $commands, $file);
 
@@ -407,6 +415,7 @@ final class RecallRepository
             $commands,
             $this->requiredString($data, 'source_proposal', $file),
             $this->requiredString($data, 'status', $file),
+            is_array($tags) ? array_values(array_filter($tags, 'is_string')) : [],
         );
     }
 

@@ -9,6 +9,7 @@ final readonly class RecallGuidance
     /**
      * @param list<string> $scope
      * @param list<string> $validation
+     * @param list<string> $tags
      */
     public function __construct(
         public string $id,
@@ -22,6 +23,7 @@ final readonly class RecallGuidance
         public ?string $boundary,
         public array $validation,
         public string $status,
+        public array $tags = [],
     ) {
     }
 }
