@@ -4,6 +4,14 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.6.7] - 2026-07-28
+
+### Fixed
+
+- Accept active `phpcs` constraint manifests, validate either `phpcs` or
+  `php_codesniffer` commands, and label the generated validation-plan section
+  as `PHPCS`.
+
 ## [0.6.6] - 2026-07-23
 
 ### Added

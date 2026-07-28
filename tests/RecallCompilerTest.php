@@ -530,6 +530,39 @@ final class RecallCompilerTest extends TestCase
         self::assertSame(['proposal.2026-06-13.001'], $draft['applied_proposals']);
     }
 
+    public function testLoadsPhpcsConstraintManifestAndBuildsPhpcsValidationPlan(): void
+    {
+        file_put_contents($this->root . '/constraints/active/constraint.project.no-redirect-in-unit-cest.json', json_encode([
+            'schema_version' => '1.0',
+            'id' => 'constraint.project.no-redirect-in-unit-cest',
+            'engine' => 'phpcs',
+            'rule_identifier' => 'Project.Classes.NoRedirectInUnitCest.RedirectCallInUnitCest',
+            'scope' => ['modules/'],
+            'validation_commands' => ['make php_codesniffer STATIC_ANALYSE_FILES="modules/Example_UnitCest.php"'],
+            'source_proposal' => 'proposal.2026-07-24.007',
+            'status' => 'active',
+        ], JSON_THROW_ON_ERROR));
+
+        $constraints = (new RecallRepository())->loadConstraintManifests($this->root);
+        $result = (new RecallDecisionEngine())->decide(
+            new TaskBrief('ITPNG-123', 'Touch a unit test', ['modules/Example_UnitCest.php']),
+            [],
+            [],
+            [],
+            $constraints,
+        );
+
+        self::assertCount(1, $result->selectedConstraints);
+        self::assertSame('constraint.project.no-redirect-in-unit-cest', $result->selectedConstraints[0]->id);
+
+        $validationPlan = (new RecallPromptBuilder())->buildValidationPlan(
+            new TaskBrief('ITPNG-123', '', ['modules/Example_UnitCest.php']),
+            $result,
+        );
+        self::assertStringContainsString('### PHPCS', $validationPlan);
+        self::assertStringContainsString('make php_codesniffer', $validationPlan);
+    }
+
     public function testLoadsConstraintManifestsFromConfiguredActiveDirectory(): void
     {
         mkdir($this->root . '/active-hard-constraints', 0777, true);

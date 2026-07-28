@@ -443,6 +443,7 @@ final class RecallPromptBuilder
     {
         return match ($engine) {
             'phpstan' => 'PHPStan',
+            'phpcs' => 'PHPCS',
             'php_cs_fixer' => 'PHP-CS-Fixer',
             'ci' => 'CI',
             default => ucfirst($engine),

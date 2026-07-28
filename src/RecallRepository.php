@@ -396,7 +396,7 @@ final class RecallRepository
         }
 
         $engine = $this->requiredString($data, 'engine', $file);
-        if (!in_array($engine, ['phpstan', 'php_cs_fixer', 'test', 'ci'], true)) {
+        if (!in_array($engine, ['phpstan', 'phpcs', 'php_cs_fixer', 'test', 'ci'], true)) {
             throw new RuntimeException('constraint references an unknown engine: ' . $engine);
         }
 
@@ -459,20 +459,23 @@ final class RecallRepository
      */
     private function assertCommandMatchesEngine(string $engine, array $commands, string $file): void
     {
-        $needle = match ($engine) {
-            'phpstan' => 'phpstan',
-            'php_cs_fixer' => 'php-cs-fixer',
-            'test' => '',
-            'ci' => '',
-            default => '',
+        $needles = match ($engine) {
+            'phpstan' => ['phpstan'],
+            'phpcs' => ['phpcs', 'codesniffer'],
+            'php_cs_fixer' => ['php-cs-fixer'],
+            'test' => [],
+            'ci' => [],
+            default => [],
         };
-        if ($needle === '') {
+        if ($needles === []) {
             return;
         }
 
         foreach ($commands as $command) {
-            if (str_contains($command, $needle)) {
-                return;
+            foreach ($needles as $needle) {
+                if (str_contains($command, $needle)) {
+                    return;
+                }
             }
         }
 
