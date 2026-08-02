@@ -24,6 +24,7 @@ final readonly class RecallGuidance
         public array $validation,
         public string $status,
         public array $tags = [],
+        public ?string $patternKey = null,
     ) {
     }
 }

@@ -17,6 +17,7 @@ final readonly class RecallRejection
         public string $action,
         public ?string $target,
         public array $tags = [],
+        public ?string $patternKey = null,
     ) {
     }
 }

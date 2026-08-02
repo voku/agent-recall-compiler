@@ -177,6 +177,7 @@ final class RecallRepository
             $action = 'unknown';
             $target = null;
             $tags = [];
+            $patternKey = null;
 
             if (is_file($proposalFile)) {
                 $propContent = file_get_contents($proposalFile);
@@ -188,6 +189,7 @@ final class RecallRepository
                             $action = $propData['action'] ?? 'unknown';
                             $target = $propData['target'] ?? null;
                             $tags = $propData['tags'] ?? [];
+                            $patternKey = $propData['pattern_key'] ?? null;
                         }
                     } catch (\JsonException) {
                         // ignore
@@ -202,6 +204,7 @@ final class RecallRepository
                 $action,
                 $target,
                 is_array($tags) ? array_values(array_filter($tags, 'is_string')) : [],
+                is_string($patternKey) && trim($patternKey) !== '' ? $patternKey : null,
             );
         }
 
@@ -357,6 +360,7 @@ final class RecallRepository
         $boundary = $data['boundary'] ?? null;
         $validation = $data['validation'] ?? [];
         $tags = $data['tags'] ?? [];
+        $patternKey = $data['pattern_key'] ?? null;
 
         return new RecallGuidance(
             $id,
@@ -371,6 +375,7 @@ final class RecallRepository
             is_array($validation) ? array_values(array_filter($validation, 'is_string')) : [],
             $status,
             is_array($tags) ? array_values(array_filter($tags, 'is_string')) : [],
+            is_string($patternKey) && trim($patternKey) !== '' ? $patternKey : null,
         );
     }
 

@@ -4,6 +4,15 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [Unreleased]
+
+### Fixed
+
+- Rejected duplicate proposals with the same non-empty `pattern_key` as selected
+  active guidance no longer block recall compilation merely because they share a
+  target. They remain selected as historical warnings; only a rejected *different*
+  pattern targeting the same guidance surface is a contradiction.
+
 ## [0.6.8] - 2026-08-02
 
 ### Added

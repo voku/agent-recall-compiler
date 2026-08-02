@@ -426,6 +426,46 @@ final class RecallCompilerTest extends TestCase
         $engine->decide($task, $activeGuidance, $rejectedGuidance, []);
     }
 
+    public function testDecidesAllowsRejectedDuplicateOfSelectedGuidance(): void
+    {
+        $activeGuidance = [
+            new RecallGuidance(
+                'g-1',
+                'ADD',
+                'skill',
+                'auth',
+                ['src/Auth'],
+                null,
+                'Wording 1',
+                'Reason 1',
+                'Boundary 1',
+                [],
+                'applied',
+                patternKey: 'auth.required-context'
+            ),
+        ];
+        $rejectedGuidance = [
+            new RecallRejection(
+                'r-1',
+                'Exact duplicate of g-1.',
+                ['src/Auth'],
+                'ADD',
+                'auth',
+                patternKey: 'auth.required-context'
+            ),
+        ];
+
+        $result = (new RecallDecisionEngine())->decide(
+            new TaskBrief('ITPNG-123', 'Implement auth logic', ['src/Auth/OAuth.php']),
+            $activeGuidance,
+            $rejectedGuidance,
+            [],
+        );
+
+        self::assertSame(['g-1'], array_map(static fn(RecallGuidance $guidance): string => $guidance->id, $result->selectedGuidance));
+        self::assertSame(['r-1'], array_map(static fn(RecallRejection $rejection): string => $rejection->id, $result->selectedRejections));
+    }
+
     public function testDecidesIgnoresRejectedGuidanceOutsideTaskScope(): void
     {
         $activeGuidance = [
