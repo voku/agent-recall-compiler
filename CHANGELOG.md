@@ -4,6 +4,18 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.6.8] - 2026-08-02
+
+### Added
+
+- Approved work-brief behavior anchors are parsed, carried into task-context
+  facts, and rendered in L2 prompts so agents retain the concrete behavior
+  that must remain unchanged.
+- L2 prompts now require material conclusions to distinguish verified,
+  inferred, assumed, blocked, and contradicted claims. Peer feedback remains
+  untrusted until corroborated by repository, history, tests, or safe runtime
+  evidence.
+
 ## [0.6.7] - 2026-07-28
 
 ### Fixed
