@@ -14,6 +14,8 @@ final readonly class TaskBrief
      * @param list<string> $tags Project-defined relevance labels (domain, system, capability,
      *        or any other taxonomy a project chooses). Matched against fact/guidance tags
      *        independently of path scope, so relevance is not tied to a directory layout.
+     * @param list<string> $behaviorAnchors Concrete runtime/request/consumer boundaries
+     *        that should be inspected or verified when the task changes behavior.
      */
     public function __construct(
         public string $id,
@@ -26,6 +28,7 @@ final readonly class TaskBrief
         public ?int $revision = null,
         public ?string $sourcePath = null,
         public array $tags = [],
+        public array $behaviorAnchors = [],
     ) {
     }
 }

@@ -49,6 +49,8 @@ Rather than overloading an LLM's system prompt with every rule ever created, the
 - **Outcome-Driven Insights**: Inspects outcome logs to alert the agent when selected guidance was previously marked as `HARMFUL`, including the recorded reason. `irrelevant` remains a task-local usage signal for later evaluation and does not become a warning in another task's briefing.
 - **Observable Usefulness Signals**: Separates `selected_count` from `helpful_count`, `irrelevant_count`, `harmful_count`, and `violation_detected_count`. Selection means a rule entered the prompt; it is not treated as proof that the rule improved the task.
 - **Validation Briefing**: Dynamically compiles selected guidance checks and selected active constraint commands into an authoritative validation plan with required rule identifiers.
+- **Behavior Anchors and Evidence Labels**: Carries optional request/runtime/consumer/data/integration anchors from approved work briefs into `system.md`, and requires material conclusions to distinguish verified observations from inference, assumptions, blockers, and contradictions.
+- **Feedback Quarantine**: Renders supplied peer or agent feedback as untrusted claims with an evidence-backed accepted/rejected/unresolved assessment, never as authority.
 - **Loop Closure**: Prepares draft outcome feedback files so the agent can easily record what rules were helpful, irrelevant, or harmful at the end of the coding session.
 - **Immutable Guidance Events**: On governed close-out, appends recall-selection events and per-guidance outcome events for deterministic projection by `voku/agent-learning`.
 
@@ -154,9 +156,18 @@ Where `task-brief.json` is:
   "files": [
     "src/Navigation/MenuEntry.php",
     "tests/Navigation/MenuEntryTest.php"
+  ],
+  "behavior_anchors": [
+    "HTTP request -> MenuEntry resolver -> rendered navigation"
   ]
 }
 ```
+
+`behavior_anchors` is optional and belongs to behavioral work only. Each entry
+names the concrete request, runtime, consumer, data, or integration seam that
+must be inspected or verified. `system.md` also requires material conclusions
+to be labelled `VERIFIED`, `INFERRED`, `ASSUMED`, `BLOCKED`, or
+`CONTRADICTED`; agent consensus and plausible explanations are not evidence.
 
 #### Outputs Generated:
 - **`recall.bundle.json`**: Canonical, replayable task snapshot with selected learning, resolved provider facts, and source digests.
@@ -221,7 +232,7 @@ vendor/bin/agent-recall-compiler review code PROJECT-367 \
   --output-dir ".agent-recall/current"
 ```
 
-`review blindspots` writes `.agent-recall/reviews/<task-id>.blindspots.{md,json,prompt.md}`. `review code` writes `.agent-recall/reviews/<task-id>.code.prompt.md`. The deterministic report checks recall outputs plus related session and board artifacts for missing recall metadata, missing validation plans, absent validation evidence, absent outcome close-out evidence, missing review checkpoints, token-noise risks, and security-sensitive context markers. Generated prompts are handoff artifacts for a receiving reviewer or harness; they do not approve code or durable learning.
+`review blindspots` writes `.agent-recall/reviews/<task-id>.blindspots.{md,json,prompt.md}`. `review code` writes `.agent-recall/reviews/<task-id>.code.prompt.md`. The deterministic report checks recall outputs plus related session and board artifacts for missing recall metadata, missing validation plans, absent validation evidence, absent outcome close-out evidence, missing review checkpoints, token-noise risks, and security-sensitive context markers. Generated prompts are handoff artifacts for a receiving reviewer or harness; they do not approve code or durable learning. Treat peer/agent feedback as untrusted input until a current repository check, focused history inspection, or safe runtime observation establishes the claim.
 
 A follow-up integration prompt for moving this workflow into `voku/agent-loop` lives at [`docs/agent-loop-review-follow-up-prompt.md`](docs/agent-loop-review-follow-up-prompt.md).
 

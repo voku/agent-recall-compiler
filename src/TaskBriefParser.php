@@ -78,6 +78,11 @@ final class TaskBriefParser
             throw new RuntimeException('task tags must be an array');
         }
 
+        $behaviorAnchors = $data['behavior_anchors'] ?? [];
+        if (!is_array($behaviorAnchors)) {
+            throw new RuntimeException('task behavior_anchors must be an array');
+        }
+
         return new TaskBrief(
             $id,
             $description,
@@ -89,6 +94,7 @@ final class TaskBriefParser
             $revision,
             $path,
             $this->stringList($tags),
+            $this->stringList($behaviorAnchors),
         );
     }
 

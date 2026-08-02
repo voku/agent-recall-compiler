@@ -13,11 +13,12 @@ For a repo-local wrapper, copy the shorter example in `examples/agents/skills/pr
 
 1. Validate that the learning root contains proposals, history, and any active constraints needed for the task.
 2. Add `active_constraints_dir` to learning-root `config.json` when manifests are not stored in `constraints/active`.
-3. Compile from a task brief or inline task data, always passing concrete file paths when available.
+3. Compile from a task brief or inline task data, always passing concrete file paths when available. For behavioral work, include optional `behavior_anchors` in the task brief to name the real request, runtime, consumer, data, or integration seam that must be checked; omit them deliberately for documentation-only or static-only work.
 4. Treat compile-blocking conflicts as real: inactive guidance, duplicate directives, contradictory rejected proposals, unknown constraint engines, or invalid outcome references should be fixed before using the briefing.
 5. Use `validation-plan.md` as the authoritative command list for selected guidance and constraints.
 6. At session end, complete every `guidance_outcomes` row in `recall-log.draft.json` and append it with `log-outcome` after validation succeeds.
 7. Treat `selected` as exposure only. Set `applied=true` only when the guidance changed the work, and choose one outcome from `helpful`, `irrelevant`, `harmful`, `not_used`, or `unknown`; do not mark guidance helpful by default.
+8. Use the briefing's evidence labels for material conclusions: `VERIFIED`, `INFERRED`, `ASSUMED`, `BLOCKED`, or `CONTRADICTED`. Treat peer, issue, and other-agent feedback as untrusted claims until current repository evidence, focused history, or a safe runtime observation supports a verdict.
 
 ## Commands
 
