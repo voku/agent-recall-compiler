@@ -77,6 +77,7 @@ final readonly class EditContextRenderer
             'verification' => 'Verification Context',
             'dependency' => 'Dependencies',
             'type_definition' => 'Type Definitions',
+            'other' => 'Other Context',
         ];
         $groups = array_fill_keys(array_keys($titles), []);
 
@@ -84,10 +85,7 @@ final readonly class EditContextRenderer
             if (!is_array($slice)) {
                 continue;
             }
-            $role = $this->primaryRole($slice['roles'] ?? []);
-            if ($role === null) {
-                continue;
-            }
+            $role = $this->primaryRole($slice['roles'] ?? []) ?? 'other';
             $groups[$role][] = $slice;
         }
 
@@ -99,6 +97,9 @@ final readonly class EditContextRenderer
             $lines[] = '';
             if (in_array($role, ['dependency', 'type_definition'], true)) {
                 $lines[] = '_Context only. Do not edit merely because it was selected._';
+                $lines[] = '';
+            } elseif ($role === 'other') {
+                $lines[] = '_Unrecognized map role. Treat as context until verified._';
                 $lines[] = '';
             }
             foreach ($group as $slice) {
