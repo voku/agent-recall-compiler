@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace voku\AgentRecallCompiler\Tests;
 
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 use voku\AgentRecallCompiler\RecallPromptBuilder;
 use voku\AgentRecallCompiler\RecallResult;
 use voku\AgentRecallCompiler\TaskBrief;
@@ -50,6 +51,36 @@ final class TaskBriefContextTest extends TestCase
 
         self::assertSame(['POST request -> SyncAction -> directory gateway'], $brief->behaviorAnchors);
         self::assertSame(['App\\SyncAction::run'], $brief->targets);
+    }
+
+    public function testParserRejectsExplicitNullTargets(): void
+    {
+        $path = $this->root . '/work-brief.json';
+        file_put_contents($path, json_encode([
+            'schema_version' => '1.0',
+            'task_id' => 'ABC-123',
+            'targets' => null,
+        ], JSON_THROW_ON_ERROR));
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('task targets must be an array');
+
+        (new TaskBriefParser())->parseFile($path);
+    }
+
+    public function testParserRejectsNonStringTargets(): void
+    {
+        $path = $this->root . '/work-brief.json';
+        file_put_contents($path, json_encode([
+            'schema_version' => '1.0',
+            'task_id' => 'ABC-123',
+            'targets' => [123],
+        ], JSON_THROW_ON_ERROR));
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('task targets must contain only non-empty strings');
+
+        (new TaskBriefParser())->parseFile($path);
     }
 
     public function testSystemPromptMakesBehaviorAnchorsAndEvidenceLabelsVisible(): void
