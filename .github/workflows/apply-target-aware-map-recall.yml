@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - feat/target-aware-map-recall
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
@@ -44,5 +47,3 @@ jobs:
           git add -A
           git commit -m 'feat: compile target-aware edit context'
           git push origin HEAD:feat/target-aware-map-recall
-
-# Trigger after the workflow file exists on the branch.
