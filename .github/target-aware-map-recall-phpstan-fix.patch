@@ -1,0 +1,61 @@
+--- a/src/Compilation/TaskScopeResolver.php
++++ b/src/Compilation/TaskScopeResolver.php
+@@ -80,7 +80,7 @@
+         );
+     }
+ 
+-    /** @param list<mixed> $roles */
++    /** @param array<mixed> $roles */
+     private function hasDerivedRole(array $roles): bool
+     {
+         foreach ($roles as $role) {
+--- a/src/Rendering/EditContextRenderer.php
++++ b/src/Rendering/EditContextRenderer.php
+@@ -70,14 +70,15 @@
+     private function appendSlices(array &$lines, array $payload): void
+     {
+         $slices = is_array($payload['slices'] ?? null) ? $payload['slices'] : [];
+-        $groups = [
+-            'primary' => ['title' => 'Primary', 'slices' => []],
+-            'contract' => ['title' => 'Contracts', 'slices' => []],
+-            'change_candidate' => ['title' => 'Change Candidates', 'slices' => []],
+-            'verification' => ['title' => 'Verification Context', 'slices' => []],
+-            'dependency' => ['title' => 'Dependencies', 'slices' => []],
+-            'type_definition' => ['title' => 'Type Definitions', 'slices' => []],
++        $titles = [
++            'primary' => 'Primary',
++            'contract' => 'Contracts',
++            'change_candidate' => 'Change Candidates',
++            'verification' => 'Verification Context',
++            'dependency' => 'Dependencies',
++            'type_definition' => 'Type Definitions',
+         ];
++        $groups = array_fill_keys(array_keys($titles), []);
+ 
+         foreach ($slices as $slice) {
+             if (!is_array($slice)) {
+@@ -87,20 +88,20 @@
+             if ($role === null) {
+                 continue;
+             }
+-            $groups[$role]['slices'][] = $slice;
++            $groups[$role][] = $slice;
+         }
+ 
+         foreach ($groups as $role => $group) {
+-            if ($group['slices'] === []) {
++            if ($group === []) {
+                 continue;
+             }
+-            $lines[] = '#### ' . $group['title'];
++            $lines[] = '#### ' . $titles[$role];
+             $lines[] = '';
+             if (in_array($role, ['dependency', 'type_definition'], true)) {
+                 $lines[] = '_Context only. Do not edit merely because it was selected._';
+                 $lines[] = '';
+             }
+-            foreach ($group['slices'] as $slice) {
++            foreach ($group as $slice) {
+                 $this->appendSlice($lines, $slice);
+             }
+         }
