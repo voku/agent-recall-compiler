@@ -6,9 +6,14 @@ namespace voku\AgentRecallCompiler;
 
 use DateTimeImmutable;
 use DateTimeInterface;
+use voku\AgentRecallCompiler\Rendering\EditContextRenderer;
 
 final class RecallPromptBuilder
 {
+    public function __construct(private readonly EditContextRenderer $editContextRenderer = new EditContextRenderer())
+    {
+    }
+
     /**
      * @param list<array<string, mixed>> $facts
      */
@@ -65,6 +70,12 @@ final class RecallPromptBuilder
                 $sourceRef = is_string($fact['source_ref'] ?? null) ? $fact['source_ref'] : 'unknown';
                 $md[] = "- " . $sourceRef;
             }
+            $md[] = "";
+        }
+
+        $editContext = $this->editContextRenderer->render($facts);
+        if ($editContext !== '') {
+            $md[] = rtrim($editContext);
             $md[] = "";
         }
 
@@ -227,6 +238,7 @@ final class RecallPromptBuilder
             'compilation_id' => $compilationId,
             'task_id' => $task->id,
             'task_files' => $task->files,
+            'task_targets' => $task->targets,
             'bundle_sha256' => $bundleDigest,
             'snapshot_sha256' => $snapshotDigest,
             'blocked' => $blocked,
@@ -409,6 +421,7 @@ final class RecallPromptBuilder
             'compilation_id' => $compilationId,
             'task_id' => $task->id,
             'task_files' => $task->files,
+            'task_targets' => $task->targets,
             'session' => 'sess_placeholder',
             'created_at' => (new DateTimeImmutable('now'))->format(DateTimeInterface::ATOM),
             'guidance_used' => $selectedIds,

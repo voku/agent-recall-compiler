@@ -21,7 +21,7 @@ This migration keeps the existing package, but separates these concerns:
 | task priority, lane, handoff | typed `agent-kanban` card | `agent-loop` projection plus `kanban-context` provider |
 | project-wide memory | tracked `MEMORY.md` | `memory` provider |
 | promoted guidance, constraints, outcomes | `agent-learning` root | `agent-learning` provider |
-| symbols and locations | generated `agent-map` index | `agent-map` provider |
+| symbols, relations, and bounded edit context | generated `agent-map` index | `agent-map` provider |
 | Skills and ADRs | Git-tracked project documents | explicit `project-documents` manifest provider |
 
 The board projection is intentionally JSON rather than a Markdown parser in
@@ -49,14 +49,21 @@ input changed.
 
 1. Normalize inline input or a work brief into `TaskBrief`. Governed workflow
    approval passes the approved session work brief, never a guessed file list.
-2. Invoke each registered provider read-only, in provider-id order.
-3. Resolve generic fact conflicts: explicit `priority`, then documented
+2. Resolve the optional `agent-map` provider first. Exact `Class::method` targets
+   produce deterministic `EditContextPlan` facts. Primary, contract, direct-caller,
+   and verification files form an explicit `effective_scope`; dependency and type
+   slices remain context-only.
+3. Invoke the remaining providers read-only, in provider-id order. Scoped project
+   documents receive the effective task so map-discovered callers can select the
+   correct ADRs and Skills without hiding how the scope was derived. The original
+   task-context fact remains unchanged.
+4. Resolve generic fact conflicts: explicit `priority`, then documented
    authority precedence. Equal-precedence facts with differing payloads block
    compilation; they are not chosen lexicographically. Equal payloads are
    deduplicated deterministically.
-4. Run the existing, typed learning/constraint selection engine. Its conflicts
+5. Run the existing, typed learning/constraint selection engine against the effective task. Its conflicts
    remain fail-closed.
-5. Serialize `recall.bundle.json` through canonical JSON, then render the L2
+6. Serialize `recall.bundle.json` through canonical JSON, then render the L2
    `system.md` and validation plan from that bundle. Rendering is not execution.
 
 Provider relevance belongs at the provider boundary. For example, the project
@@ -66,8 +73,9 @@ model decide what to include.
 
 ## Artifacts
 
-- `recall.bundle.json`: canonical selection, resolved facts, source snapshot,
-  and conflict decisions; the replay/audit anchor.
+- `recall.bundle.json`: canonical selection, original task, explicit versus
+  map-derived effective scope, resolved facts, source snapshot, and conflict
+  decisions; the replay/audit anchor.
 - `facts.json`: compact consumer view of resolved non-learning facts.
 - `selection-report.json`: learning and constraint selection explanation.
 - `system.md` and `validation-plan.md`: deterministic renderings for a human or
@@ -165,9 +173,11 @@ selected for any task that touches `src/Identity/` **or** that declares
 1. Add one Git-tracked document manifest with only the two skills that are
    demonstrably useful for the first task family; measure the resulting bundle
    size before adding another entry.
-2. Build `.agent-map/php-symbols.json` in the normal Docker root, then compile
-   through `workflow approve`; `--map-root` now verifies it against the host
-   checkout instead of treating the container path as fresh by assumption.
+2. Build `.agent-map/php-symbols.json` or `.toon` in the normal Docker root, then
+   compile through `workflow approve`; `--map-root` verifies it against the host
+   checkout. Add exact task `targets` only when a method-level edit is intended;
+   the resulting source slices are rendered into `system.md` and retained in
+   `facts.json` / `recall.bundle.json` with map evidence.
 3. Keep the current legacy board out of recall until it has a typed
    `todo/kanban.config.json` and cards accepted by `agent-kanban`; this is a
    small, explicit migration rather than a second Markdown parser.

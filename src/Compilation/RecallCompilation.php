@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace voku\AgentRecallCompiler\Compilation;
 
 use voku\AgentRecallCompiler\RecallResult;
+use voku\AgentRecallCompiler\TaskBrief;
 
 final readonly class RecallCompilation
 {
@@ -12,6 +13,7 @@ final readonly class RecallCompilation
      * @param array<string, mixed> $bundle
      * @param list<array<string, mixed>> $facts
      * @param list<array{conflict_key: string, selected_id: string, superseded_ids: list<string>, reason: string}> $factDecisions
+     * @param array<string, mixed> $effectiveScope
      */
     public function __construct(
         public RecallResult $result,
@@ -19,6 +21,8 @@ final readonly class RecallCompilation
         public array $bundle,
         public array $facts,
         public array $factDecisions,
+        public TaskBrief $effectiveTask,
+        public array $effectiveScope,
     ) {
     }
 

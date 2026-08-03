@@ -16,6 +16,7 @@ final readonly class TaskBrief
      *        independently of path scope, so relevance is not tied to a directory layout.
      * @param list<string> $behaviorAnchors Concrete runtime/request/consumer boundaries
      *        that should be inspected or verified when the task changes behavior.
+     * @param list<string> $targets Exact agent-map method targets in Class::method form.
      */
     public function __construct(
         public string $id,
@@ -29,6 +30,7 @@ final readonly class TaskBrief
         public ?string $sourcePath = null,
         public array $tags = [],
         public array $behaviorAnchors = [],
+        public array $targets = [],
     ) {
     }
 }

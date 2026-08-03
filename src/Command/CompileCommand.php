@@ -21,6 +21,7 @@ use voku\AgentRecallCompiler\RecallPromptBuilder;
 use voku\AgentRecallCompiler\RecallRepository;
 use voku\AgentRecallCompiler\RecallResult;
 use voku\AgentRecallCompiler\RecallRootResolver;
+use voku\AgentRecallCompiler\TaskBrief;
 
 final class CompileCommand
 {
@@ -41,9 +42,11 @@ final class CompileCommand
         $parsed = $this->optionParser->parse($tokens);
         $rootConfig = $this->rootResolver->resolve($parsed->stringOption('root'));
 
+        $targets = $parsed->stringOptions('target');
         $briefPath = $parsed->stringOption('task-brief');
         if ($briefPath !== null) {
             $task = (new JsonTaskBriefResolver())->resolveFile($briefPath);
+            $task = $this->withAdditionalTargets($task, $targets);
         } else {
             $taskId = $parsed->stringOption('task');
             if ($taskId === null || trim($taskId) === '') {
@@ -54,6 +57,7 @@ final class CompileCommand
                 $parsed->stringOption('description') ?? '',
                 $parsed->stringOptions('file'),
                 tags: $parsed->stringOptions('tag'),
+                targets: $targets,
             );
         }
 
@@ -77,6 +81,9 @@ final class CompileCommand
                 new LearningRecallProvider($repository),
             ];
             $mapIndex = $parsed->stringOption('map-index');
+            if ($task->targets !== [] && $mapIndex === null) {
+                throw new \InvalidArgumentException('compile targets require --map-index');
+            }
             if ($mapIndex !== null) {
                 $providers[] = new MapRecallProvider($mapIndex, $parsed->stringOption('map-root'));
             }
@@ -118,9 +125,10 @@ final class CompileCommand
             'selected_constraints' => $bundle['selected_constraints'],
             'selected_rejections' => $bundle['selected_rejections'],
             'warnings' => $bundle['warnings'],
+            'effective_scope' => $compilation->effectiveScope,
         ];
         $systemMd = $this->promptBuilder->buildSystemMd($task, $this->memoryFromFacts($compilation->facts), $result, $feedback, $compilation->facts, $bundleDigest);
-        $validationPlan = $this->promptBuilder->buildValidationPlan($task, $result);
+        $validationPlan = $this->promptBuilder->buildValidationPlan($compilation->effectiveTask, $result);
         $logDraft = $this->promptBuilder->buildRecallLogDraft($task, $result, $compilationId);
         $bundleJson = CanonicalJson::pretty($bundle);
         $factsJson = CanonicalJson::pretty($facts);
@@ -184,6 +192,37 @@ final class CompileCommand
         }
 
         return 0;
+    }
+
+    /** @param list<string> $targets */
+    private function withAdditionalTargets(TaskBrief $task, array $targets): TaskBrief
+    {
+        $merged = $task->targets;
+        foreach ($targets as $target) {
+            $target = trim($target);
+            if ($target !== '' && !in_array($target, $merged, true)) {
+                $merged[] = $target;
+            }
+        }
+
+        if ($merged === $task->targets) {
+            return $task;
+        }
+
+        return new TaskBrief(
+            id: $task->id,
+            description: $task->description,
+            files: $task->files,
+            scopes: $task->scopes,
+            nonGoals: $task->nonGoals,
+            validation: $task->validation,
+            status: $task->status,
+            revision: $task->revision,
+            sourcePath: $task->sourcePath,
+            tags: $task->tags,
+            behaviorAnchors: $task->behaviorAnchors,
+            targets: $merged,
+        );
     }
 
     private function writeFile(string $path, string $content): void

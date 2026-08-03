@@ -83,6 +83,14 @@ final class TaskBriefParser
             throw new RuntimeException('task behavior_anchors must be an array');
         }
 
+        $targets = [];
+        if (array_key_exists('targets', $data)) {
+            if (!is_array($data['targets'])) {
+                throw new RuntimeException('task targets must be an array');
+            }
+            $targets = $this->targetList($data['targets']);
+        }
+
         return new TaskBrief(
             $id,
             $description,
@@ -95,6 +103,7 @@ final class TaskBriefParser
             $path,
             $this->stringList($tags),
             $this->stringList($behaviorAnchors),
+            $targets,
         );
     }
 
@@ -112,5 +121,22 @@ final class TaskBriefParser
         }
 
         return array_values(array_unique($list));
+    }
+
+    /**
+     * @param array<mixed> $values
+     * @return list<string>
+     */
+    private function targetList(array $values): array
+    {
+        $targets = [];
+        foreach ($values as $value) {
+            if (!is_string($value) || trim($value) === '') {
+                throw new RuntimeException('task targets must contain only non-empty strings');
+            }
+            $targets[] = trim($value);
+        }
+
+        return array_values(array_unique($targets));
     }
 }
