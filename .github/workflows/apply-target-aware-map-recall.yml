@@ -23,13 +23,15 @@ jobs:
           php-version: '8.3'
           coverage: none
           tools: composer:v2
-      - name: Reconstruct and apply patch
+      - name: Reconstruct and apply patches
         run: |
           cat .github/target-aware-map-recall.patch.gz.b64.* \
             | base64 --decode \
             | gunzip > /tmp/target-aware-map-recall.patch
           git apply --check /tmp/target-aware-map-recall.patch
           git apply --whitespace=fix /tmp/target-aware-map-recall.patch
+          git apply --check .github/target-aware-map-recall-fix.patch
+          git apply --whitespace=fix .github/target-aware-map-recall-fix.patch
       - name: Update dependencies
         run: composer update --no-interaction --prefer-dist
       - name: Validate implementation
@@ -39,6 +41,8 @@ jobs:
       - name: Publish implementation
         run: |
           rm -f .github/target-aware-map-recall.patch.gz.b64.*
+          rm -f .github/target-aware-map-recall-fix.patch
+          rm -f .github/target-aware-map-recall-fix.patch.b64
           rm -f .github/workflows/apply-target-aware-map-recall.yml
           rm -f .github/workflows/export-target-recall-working-copy.yml
           printf 'applied\n' > .github/target-aware-map-recall-applied
