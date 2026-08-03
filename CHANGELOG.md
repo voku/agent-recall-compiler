@@ -4,6 +4,15 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.7.1] - 2026-08-03
+
+### Added
+
+- Added repeatable `--edit-focus` literals for target-aware compilation. They
+  instruct `agent-map` to render bounded primary-source windows around local
+  matches, retaining the full target if none match.
+- Requires `voku/agent-map` 0.2.1 or newer for the focus-aware context policy.
+
 ## [0.7.0] - 2026-08-03
 
 ### Added
@@ -161,7 +170,7 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
   `outcomes.jsonl` event recorded while the proposal was still `applied` legitimately still
   references its ID, so every later `recall compile` for any task BLOCKED with `Conflict: outcome
   references unknown rule ID '<id>'` the moment that proposal was retired, even though nothing about
-  the requested task was wrong. Found by dogfooding against a real repository (IT-Portal) immediately
+  the requested task was wrong. Found by dogfooding against a downstream repository immediately
   after retiring a proposal there for the first time.
 - Added `RecallRepository::loadRetiredProposalIds()` (reads `proposals/retired/*.json`, IDs only) and
   a new `decide(..., array $retiredProposalIds = [])` parameter so retired IDs stay known to the

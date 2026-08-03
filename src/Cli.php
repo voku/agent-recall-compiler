@@ -57,6 +57,7 @@ final class Cli
         fwrite(STDOUT, "  --feedback PATH          Untrusted peer-agent feedback file to assess (JSON or text).\n");
         fwrite(STDOUT, "  --map-index PATH         Agent-map JSON or TOON index. Required when --target is used.\n");
         fwrite(STDOUT, "  --map-root PATH          Project root used to verify map entries when the index came from another runtime.\n");
+        fwrite(STDOUT, "  --edit-focus TEXT        Narrow target source context around this literal. Repeatable.\n");
         fwrite(STDOUT, "  --kanban-context PATH    Optional stable JSON projection owned by the board integration.\n");
         fwrite(STDOUT, "  --document-manifest PATH Git-tracked scoped skill/ADR manifest. Repeatable.\n");
         fwrite(STDOUT, "  --compilation-id ID      Stable ID for this compile session.\n");

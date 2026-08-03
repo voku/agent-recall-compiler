@@ -7,6 +7,7 @@ namespace voku\AgentRecallCompiler\Tests;
 use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
+use voku\AgentMap\Context\EditContextPolicy;
 use voku\AgentMap\Index\AgentMapIndex;
 use voku\AgentMap\Index\AnalysisFingerprint;
 use voku\AgentMap\Index\FileEntry;
@@ -82,6 +83,37 @@ final class MapRecallProviderTest extends TestCase
         self::assertContains('src/Entity/User.php', $byRole['type_definition']);
         self::assertStringContainsString('repository->persist', $this->sliceContent($editFact->payload['slices'], 'src/Service/UserService.php'));
         self::assertStringStartsWith('sha256:', $result->sourceDigest);
+    }
+
+    public function testProviderNarrowsThePrimarySliceAroundAnEditFocus(): void
+    {
+        $result = (new MapRecallProvider(
+            $this->mapPath,
+            $this->root,
+            new EditContextPolicy(
+                focusTerms: ['$this->repository->persist'],
+                focusContextLines: 0,
+                includeRelatedContext: false,
+            ),
+        ))->collect(
+            new TaskBrief('TASK-1', 'Replace the deprecated repository call.', [], targets: ['Demo\\Service\\UserService::save']),
+            new RecallRootConfig($this->root, $this->root . '/constraints/active'),
+        );
+
+        $editFact = null;
+        foreach ($result->facts as $fact) {
+            if ($fact->type === 'edit_context') {
+                $editFact = $fact;
+                break;
+            }
+        }
+
+        self::assertNotNull($editFact);
+        self::assertSame(
+            "        \$this->repository->persist(\$user);\n",
+            $this->sliceContent($editFact->payload['slices'], 'src/Service/UserService.php'),
+        );
+        self::assertCount(1, $editFact->payload['slices']);
     }
 
     public function testCompilationSelectsGuidanceForDerivedEditScopeButNotDependencies(): void

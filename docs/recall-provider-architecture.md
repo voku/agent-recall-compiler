@@ -168,7 +168,7 @@ selected for any task that touches `src/Identity/` **or** that declares
    `agent-learning` append/import command can take over that mutation; do not
    move it until duplicate protection and immutable-history checks are proven.
 
-## Small IT-Portal follow-ups
+## Small host-project follow-ups
 
 1. Add one Git-tracked document manifest with only the two skills that are
    demonstrably useful for the first task family; measure the resulting bundle

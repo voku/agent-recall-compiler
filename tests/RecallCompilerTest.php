@@ -195,7 +195,7 @@ final class RecallCompilerTest extends TestCase
     public function testCompileIncludesGitTrackedProjectDocumentByRelevanceTagAcrossDirectories(): void
     {
         // A second project might organize identity/LDAP code under a completely different
-        // directory than IT-Portal's modules/employee/. Tags let this document manifest
+        // directory than the first project's modules/employee/. Tags let this document manifest
         // select the right skill regardless of that layout.
         mkdir($this->root . '/docs', 0777, true);
         file_put_contents($this->root . '/docs/identity-skill.md', "# Identity skill\n\nAlways confirm LDAP group membership before writing back.\n");

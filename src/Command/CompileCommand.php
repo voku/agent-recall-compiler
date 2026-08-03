@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace voku\AgentRecallCompiler\Command;
 
+use voku\AgentMap\Context\EditContextPolicy;
 use voku\AgentRecallCompiler\FeedbackAssessmentRenderer;
 use voku\AgentRecallCompiler\FeedbackParser;
 use voku\AgentRecallCompiler\InlineTaskBriefResolver;
@@ -85,7 +86,14 @@ final class CompileCommand
                 throw new \InvalidArgumentException('compile targets require --map-index');
             }
             if ($mapIndex !== null) {
-                $providers[] = new MapRecallProvider($mapIndex, $parsed->stringOption('map-root'));
+                $providers[] = new MapRecallProvider(
+                    $mapIndex,
+                    $parsed->stringOption('map-root'),
+                    new EditContextPolicy(
+                        focusTerms: $parsed->stringOptions('edit-focus'),
+                        includeRelatedContext: $parsed->stringOptions('edit-focus') === [],
+                    ),
+                );
             }
             $kanbanContext = $parsed->stringOption('kanban-context');
             if ($kanbanContext !== null) {
