@@ -31,7 +31,7 @@ jobs:
           git apply --check /tmp/target-aware-map-recall.patch
           git apply --whitespace=fix /tmp/target-aware-map-recall.patch
       - name: Update dependencies
-        run: composer update voku/agent-map --with-all-dependencies --no-interaction --prefer-dist
+        run: composer update --no-interaction --prefer-dist
       - name: Validate implementation
         run: |
           composer ci
