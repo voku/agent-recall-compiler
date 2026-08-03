@@ -76,6 +76,27 @@ final class TargetAwareRecallTest extends TestCase
         self::assertStringNotContainsString('relation:secret-evidence', $rendered);
     }
 
+    public function testEditContextRendererSurfacesUnknownRolesAsOtherContext(): void
+    {
+        $fact = $this->editContextFact();
+        $fact['payload']['slices'][] = [
+            'path' => 'src/Future/GeneratedContext.php',
+            'line_start' => 1,
+            'line_end' => 4,
+            'roles' => ['future_role'],
+            'reasons' => ['role introduced by a newer map producer'],
+            'evidence_ids' => [],
+            'source_sha256' => 'sha256:future',
+            'content' => "final class GeneratedContext\n{\n}\n",
+        ];
+
+        $rendered = (new EditContextRenderer())->render([$fact]);
+
+        self::assertStringContainsString('#### Other Context', $rendered);
+        self::assertStringContainsString('Unrecognized map role. Treat as context until verified.', $rendered);
+        self::assertStringContainsString('`src/Future/GeneratedContext.php:1-4`', $rendered);
+    }
+
     public function testPromptBuilderEmbedsRenderedEditContext(): void
     {
         $prompt = (new RecallPromptBuilder())->buildSystemMd(
