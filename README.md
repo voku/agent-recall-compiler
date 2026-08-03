@@ -41,6 +41,7 @@ Rather than overloading an LLM's system prompt with every rule ever created, the
 
 - **Provider-Orchestrated Recall**: Adapters answer one question — which facts are relevant for this sealed task? — while the compiler owns deterministic composition, replay, and rendering.
 - **Deterministic Scope Matching**: Evaluates the paths targeted by a task against the scopes of approved rules. Selects global rules (`MEMORY.md` and `/` or `*` scopes) along with sub-path specific active skills or constraints.
+- **Target-Aware Edit Context**: Optional exact `Class::method` targets are resolved through `voku/agent-map`; contracts, direct callers, tests, dependencies, type definitions, source slices, blind spots, and omissions are rendered without asking a model to rediscover the repository.
 - **Replayable Fact Bundle**: Writes canonical `recall.bundle.json`, `facts.json`, and `selection-report.json`, with provider source digests and explicit generic-fact conflict decisions.
 - **Bounded Project Documents**: Optional Git-tracked manifests add scoped Skills and ADRs with fixed excerpt limits; the compiler never scans every document or asks a model to choose one.
 - **Constraint Manifests**: Loads active hard constraints from `constraints/active/*.json` or a configured `active_constraints_dir` and selects them by path-scope overlap instead of semantic similarity.
@@ -139,6 +140,27 @@ vendor/bin/agent-recall-compiler compile \
   --compilation-id "compilation.PROJECT-367.2026-06-18.001"
 ```
 
+For an exact method edit, let `agent-map` derive the bounded source-backed context:
+
+```bash
+vendor/bin/agent-recall-compiler compile \
+  --root infra/doc/agent-learning \
+  --task "PROJECT-367" \
+  --description "Reject inactive users before persistence" \
+  --target "App\Service\UserService::save" \
+  --map-index ".agent-map/php-symbols.json" \
+  --map-root "$PWD" \
+  --output-dir ".agent-recall/current"
+```
+
+`--target` is repeatable and requires `--map-index`. The index may be JSON or TOON.
+`--map-root` replaces only the runtime checkout root used for source freshness and
+materialization, which is useful when the index was built inside Docker.
+
+The map-derived **effective scope** contains primary, contract, direct-caller,
+and verification files. Dependencies and type definitions remain context-only
+and do not select path-scoped guidance merely because they were shown to the agent.
+
 #### Inline vs. File-based Briefing
 Alternatively, you can pass a path to a pre-defined JSON file containing the task metadata:
 
@@ -159,11 +181,14 @@ Where `task-brief.json` is:
   ],
   "behavior_anchors": [
     "HTTP request -> MenuEntry resolver -> rendered navigation"
+  ],
+  "targets": [
+    "App\\Navigation\\MenuEntry::resolve"
   ]
 }
 ```
 
-`behavior_anchors` is optional and belongs to behavioral work only. Each entry
+`targets` is optional and contains exact `Class::method` values resolved by `agent-map`. `behavior_anchors` is optional and belongs to behavioral work only. Each entry
 names the concrete request, runtime, consumer, data, or integration seam that
 must be inspected or verified. `system.md` also requires material conclusions
 to be labelled `VERIFIED`, `INFERRED`, `ASSUMED`, `BLOCKED`, or
@@ -172,7 +197,7 @@ to be labelled `VERIFIED`, `INFERRED`, `ASSUMED`, `BLOCKED`, or
 #### Outputs Generated:
 - **`recall.bundle.json`**: Canonical, replayable task snapshot with selected learning, resolved provider facts, and source digests.
 - **`facts.json`**: Compact structured facts for a consumer such as `agent-loop workflow context`.
-- **`selection-report.json`**: Deterministic explanation of learning and constraint selection.
+- **`selection-report.json`**: Deterministic explanation of learning and constraint selection, including explicit versus map-derived effective scope.
 - **`system.md`**: Combined system prompt meta-prompt briefing containing selected active rules and warnings.
 - **`validation-plan.md`**: Authoritative required validation commands, selected hard-constraint rule identifiers, and provenance.
 - **`meta.json`**: Technical metadata recording exactly which rules and constraints were loaded.

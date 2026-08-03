@@ -21,9 +21,10 @@ final class CommandTest extends TestCase
 
     public function testOptionParserParsesRepeatedValuedOptions(): void
     {
-        $parsed = (new OptionParser())->parse(['--task', 'ABC-123', '--file', 'src/Foo.php', '--file', 'tests/FooTest.php']);
+        $parsed = (new OptionParser())->parse(['--task', 'ABC-123', '--file', 'src/Foo.php', '--file', 'tests/FooTest.php', '--target', 'App\Foo::bar', '--target', 'App\Baz::qux']);
 
         self::assertSame('ABC-123', $parsed->stringOption('task'));
         self::assertSame(['src/Foo.php', 'tests/FooTest.php'], $parsed->stringOptions('file'));
+        self::assertSame(['App\\Foo::bar', 'App\\Baz::qux'], $parsed->stringOptions('target'));
     }
 }

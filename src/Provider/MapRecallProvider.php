@@ -5,120 +5,242 @@ declare(strict_types=1);
 namespace voku\AgentRecallCompiler\Provider;
 
 use RuntimeException;
-use voku\AgentRecallCompiler\CanonicalJson;
+use voku\AgentMap\Context\EditContextPlanner;
+use voku\AgentMap\Context\EditContextPolicy;
+use voku\AgentMap\Index\AgentMapIndex;
+use voku\AgentMap\Index\FileEntry;
+use voku\AgentMap\Index\IndexReader;
 use voku\AgentRecallCompiler\RecallRootConfig;
 use voku\AgentRecallCompiler\TaskBrief;
 
 /**
- * Read-only adapter for the stable JSON produced by agent-map. Only exact
- * task-file entries are emitted, and stale entries become explicit facts
- * instead of silently rebuilding the index.
+ * Read-only adapter for agent-map 0.2 indexes. agent-map owns decoding,
+ * freshness checks, target resolution, relation traversal, and source slicing;
+ * recall only turns those deterministic results into provider facts.
  */
-final class MapRecallProvider implements RecallProvider
+final readonly class MapRecallProvider implements RecallProvider
 {
-    public function __construct(private readonly string $indexPath, private readonly ?string $sourceRoot = null)
-    {
+    public function __construct(
+        private string $indexPath,
+        private ?string $sourceRoot = null,
+        private EditContextPolicy $policy = new EditContextPolicy(),
+        private IndexReader $reader = new IndexReader(),
+        private EditContextPlanner $planner = new EditContextPlanner(),
+    ) {
     }
 
     public function manifest(): RecallProviderManifest
     {
-        return new RecallProviderManifest('agent-map', '1.0', array_values(array_filter([$this->indexPath, $this->sourceRoot])), required: false);
+        return new RecallProviderManifest(
+            'agent-map',
+            '2.0',
+            array_values(array_filter([$this->indexPath, $this->sourceRoot])),
+            required: false,
+        );
     }
 
     public function collect(TaskBrief $task, RecallRootConfig $rootConfig): RecallProviderResult
     {
-        if (!is_file($this->indexPath)) {
-            throw new RuntimeException('agent-map index not found: ' . $this->indexPath);
+        $map = $this->reader->read($this->indexPath);
+        $runtimeMap = $this->withRuntimeRoot($map);
+        $facts = [$this->snapshotFact($map)];
+
+        $filesByPath = [];
+        foreach ($runtimeMap->files as $file) {
+            $filesByPath[$file->path] = $file;
         }
-        $json = file_get_contents($this->indexPath);
-        if ($json === false) {
-            throw new RuntimeException('cannot read agent-map index: ' . $this->indexPath);
-        }
-        try {
-            $data = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
-        } catch (\JsonException $exception) {
-            throw new RuntimeException('invalid agent-map index: ' . $exception->getMessage());
-        }
-        if (!is_array($data) || !is_array($data['files'] ?? null)) {
-            throw new RuntimeException('agent-map index has no files array: ' . $this->indexPath);
+        ksort($filesByPath, SORT_STRING);
+
+        $staleByPath = [];
+        foreach ($runtimeMap->staleEntries() as $stale) {
+            $staleByPath[$stale['path']] = $stale['reason'];
         }
 
-        $byPath = [];
-        foreach ($data['files'] as $file) {
-            if (is_array($file) && is_string($file['path'] ?? null)) {
-                $byPath[$file['path']] = $file;
-            }
-        }
-        ksort($byPath, SORT_STRING);
-        $mapRoot = $this->sourceRoot !== null
-            ? rtrim($this->sourceRoot, '/')
-            : (is_string($data['root'] ?? null) ? rtrim($data['root'], '/') : '');
-
-        $facts = [];
         foreach ($task->files as $path) {
-            $entry = $byPath[$path] ?? null;
-            if ($entry === null) {
-                $facts[] = new RecallFact('map.missing.' . $path, 'navigation_status', 'derived_navigation', $this->indexPath, [$path], ['status' => 'missing']);
+            $file = $filesByPath[$path] ?? null;
+            if ($file === null) {
+                $facts[] = new RecallFact(
+                    'map.missing.' . $path,
+                    'navigation_status',
+                    'derived_navigation',
+                    $this->indexPath,
+                    [$path],
+                    ['path' => $path, 'status' => 'missing'],
+                );
                 continue;
             }
-            if ($this->isStale($mapRoot, $entry)) {
-                $facts[] = new RecallFact('map.stale.' . $path, 'navigation_status', 'derived_navigation', $this->indexPath, [$path], ['status' => 'stale']);
+            if (isset($staleByPath[$path])) {
+                $facts[] = new RecallFact(
+                    'map.stale.' . $path,
+                    'navigation_status',
+                    'derived_navigation',
+                    $this->indexPath,
+                    [$path],
+                    ['path' => $path, 'status' => 'stale', 'reason' => $staleByPath[$path]],
+                );
                 continue;
             }
 
-            $payload = [
-                'path' => $path,
-                'namespace' => is_string($entry['namespace'] ?? null) ? $entry['namespace'] : '',
-                'symbols' => $this->symbols($entry['symbols'] ?? []),
-            ];
-            $facts[] = new RecallFact('map.file.' . $path, 'navigation', 'derived_navigation', $this->indexPath, [$path], $payload);
+            $facts[] = $this->fileFact($runtimeMap, $file);
         }
 
-        return new RecallProviderResult(
-            hash_file('sha256', $this->indexPath) ?: CanonicalJson::digest(['index' => $json]),
-            $facts,
+        foreach ($task->targets as $target) {
+            $plan = $this->planner->plan($runtimeMap, $target, $this->policy);
+            $payload = $plan->toArray();
+            $scope = [];
+            foreach ($plan->slices as $slice) {
+                $scope[$slice->path] = true;
+            }
+            $paths = array_keys($scope);
+            sort($paths, SORT_STRING);
+
+            $facts[] = new RecallFact(
+                id: 'map.edit-context.' . $this->factSuffix($target),
+                type: 'edit_context',
+                authority: 'derived_navigation',
+                sourceRef: $this->indexPath . '#' . $target,
+                scope: $paths,
+                payload: $payload,
+            );
+        }
+
+        $sourceDigest = hash_file('sha256', $this->indexPath);
+        if (!is_string($sourceDigest)) {
+            throw new RuntimeException('cannot hash agent-map index: ' . $this->indexPath);
+        }
+
+        return new RecallProviderResult('sha256:' . $sourceDigest, $facts);
+    }
+
+    private function withRuntimeRoot(AgentMapIndex $map): AgentMapIndex
+    {
+        $root = ($this->sourceRoot === null || trim($this->sourceRoot) === '')
+            ? $map->root
+            : rtrim($this->sourceRoot, '/\\');
+
+        $files = [];
+        foreach ($map->files as $file) {
+            $files[] = $this->upgradeLegacyHash($file, $root);
+        }
+
+        return new AgentMapIndex(
+            schemaVersion: $map->schemaVersion,
+            root: $root,
+            backend: $map->backend,
+            files: $files,
+            relations: $map->relations,
+            diagnostics: $map->diagnostics,
+            fingerprint: $map->fingerprint,
         );
     }
 
     /**
-     * @param mixed $symbols
-     * @return list<array{fqn: string, kind: string, line_start: int, line_end: int}>
+     * agent-map 0.2 can decode schema-1 entries, but its freshness check is
+     * intentionally SHA-256-only. Keep recall's existing file-only contract by
+     * upgrading a verified legacy SHA-1 entry in memory. New maps never enter
+     * this compatibility path.
      */
-    private function symbols(mixed $symbols): array
+    private function upgradeLegacyHash(FileEntry $file, string $root): FileEntry
     {
-        if (!is_array($symbols)) {
-            return [];
+        $prefix = 'legacy-sha1:';
+        if (!str_starts_with($file->sha256, $prefix)) {
+            return $file;
         }
-        $result = [];
-        foreach ($symbols as $symbol) {
-            if (!is_array($symbol) || !is_string($symbol['fqn'] ?? null)) {
-                continue;
-            }
-            $result[] = [
-                'fqn' => $symbol['fqn'],
-                'kind' => is_string($symbol['kind'] ?? null) ? $symbol['kind'] : 'unknown',
-                'line_start' => is_int($symbol['line_start'] ?? null) ? $symbol['line_start'] : 0,
-                'line_end' => is_int($symbol['line_end'] ?? null) ? $symbol['line_end'] : 0,
-            ];
-        }
-        usort($result, static fn (array $left, array $right): int => $left['fqn'] <=> $right['fqn']);
 
-        return $result;
+        $absolute = $root . '/' . $file->path;
+        $expectedSha1 = substr($file->sha256, strlen($prefix));
+        $actualSha1 = is_file($absolute) ? sha1_file($absolute) : false;
+        if (!is_string($actualSha1) || !hash_equals($expectedSha1, $actualSha1)) {
+            return $file;
+        }
+
+        $sha256 = hash_file('sha256', $absolute);
+        if (!is_string($sha256)) {
+            throw new RuntimeException('cannot hash mapped source file: ' . $absolute);
+        }
+
+        return new FileEntry(
+            path: $file->path,
+            sha256: 'sha256:' . $sha256,
+            namespace: $file->namespace,
+            symbols: $file->symbols,
+            semanticStatus: $file->semanticStatus,
+        );
     }
 
-    /** @param array<string, mixed> $entry */
-    private function isStale(string $mapRoot, array $entry): bool
+    private function snapshotFact(AgentMapIndex $map): RecallFact
     {
-        $path = $entry['path'] ?? null;
-        $indexedHash = $entry['sha1'] ?? null;
-        if ($mapRoot === '' || !is_string($path) || !is_string($indexedHash) || $indexedHash === '') {
-            return false;
-        }
-        $sourcePath = $mapRoot . '/' . $path;
-        if (!is_file($sourcePath)) {
-            return true;
+        return new RecallFact(
+            id: 'map.snapshot',
+            type: 'navigation_metadata',
+            authority: 'derived_navigation',
+            sourceRef: $this->indexPath,
+            scope: [],
+            payload: [
+                'schema_version' => $map->schemaVersion,
+                'backend' => $map->backend,
+                'map_digest' => $map->mapDigest(),
+                'fingerprint' => $map->fingerprint?->toArray(),
+            ],
+        );
+    }
+
+    private function fileFact(AgentMapIndex $map, FileEntry $file): RecallFact
+    {
+        $symbolIds = [];
+        foreach ($file->symbols as $symbol) {
+            $symbolIds[$symbol->id()] = true;
+            foreach ($symbol->methods as $method) {
+                $symbolIds[$symbol->methodId($method)] = true;
+            }
         }
 
-        return sha1_file($sourcePath) !== $indexedHash;
+        $relations = [];
+        foreach ($map->relations as $relation) {
+            $touchesFile = $relation->file === $file->path || isset($symbolIds[$relation->sourceId]);
+            if (!$touchesFile) {
+                foreach ($relation->targetIds as $targetId) {
+                    if (isset($symbolIds[$targetId])) {
+                        $touchesFile = true;
+                        break;
+                    }
+                }
+            }
+            if ($touchesFile) {
+                $relations[] = $relation->toArray();
+            }
+        }
+
+        $diagnostics = [];
+        foreach ($map->diagnostics as $diagnostic) {
+            if ($diagnostic->file === $file->path || ($diagnostic->symbolId !== null && isset($symbolIds[$diagnostic->symbolId]))) {
+                $diagnostics[] = $diagnostic->toArray();
+            }
+        }
+
+        $payload = $file->toArray();
+        $payload['map_digest'] = $map->mapDigest();
+        $payload['relations'] = $relations;
+        $payload['diagnostics'] = $diagnostics;
+
+        return new RecallFact(
+            id: 'map.file.' . $file->path,
+            type: 'navigation',
+            authority: 'derived_navigation',
+            sourceRef: $this->indexPath,
+            scope: [$file->path],
+            payload: $payload,
+        );
+    }
+
+    private function factSuffix(string $value): string
+    {
+        $slug = strtolower((string) preg_replace('/[^a-zA-Z0-9]+/', '.', trim($value)));
+        $slug = trim($slug, '.');
+        if ($slug === '') {
+            $slug = 'value';
+        }
+
+        return substr($slug, 0, 80) . '.' . substr(hash('sha256', $value), 0, 12);
     }
 }

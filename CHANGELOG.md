@@ -4,6 +4,27 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [Unreleased]
+
+### Added
+
+- Added repeatable exact `Class::method` task targets through task briefs and
+  inline `--target`, backed by `voku/agent-map` 0.2 JSON or TOON indexes.
+- Added deterministic rendering of primary methods, contracts, direct callers,
+  tests, dependencies, type definitions, blind spots, omissions, exact source
+  ranges, and source hashes into the compiled briefing.
+- Added explicit map-derived effective scope so path-scoped guidance and project
+  documents can match primary/contract/caller/test files while dependency-only
+  context does not silently become an intended edit.
+
+### Changed
+
+- `MapRecallProvider` now delegates decoding, SHA-256 freshness checks, target
+  resolution, relation traversal, and source materialization to `agent-map`
+  instead of parsing the old JSON/SHA-1 schema itself.
+- Validation-plan filtering uses the effective task scope; canonical bundles and
+  selection reports retain both the original task scope and its derivation.
+
 ## [0.6.9] - 2026-08-02
 
 ### Fixed

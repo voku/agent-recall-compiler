@@ -39,6 +39,7 @@ final class TaskBriefContextTest extends TestCase
             'non_goals' => [],
             'validation' => ['vendor/bin/phpunit'],
             'behavior_anchors' => ['POST request -> SyncAction -> directory gateway'],
+            'targets' => ['App\\SyncAction::run', 'App\\SyncAction::run'],
             'status' => 'approved',
             'revision' => 1,
             'created_at' => '2026-08-02T10:00:00+00:00',
@@ -48,6 +49,7 @@ final class TaskBriefContextTest extends TestCase
         $brief = (new TaskBriefParser())->parseFile($path);
 
         self::assertSame(['POST request -> SyncAction -> directory gateway'], $brief->behaviorAnchors);
+        self::assertSame(['App\\SyncAction::run'], $brief->targets);
     }
 
     public function testSystemPromptMakesBehaviorAnchorsAndEvidenceLabelsVisible(): void

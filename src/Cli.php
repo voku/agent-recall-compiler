@@ -52,9 +52,10 @@ final class Cli
         fwrite(STDOUT, "  --task ID                Inline task ID selector.\n");
         fwrite(STDOUT, "  --description DESC       Inline task description text.\n");
         fwrite(STDOUT, "  --file PATH              Inline changed file path. Repeatable.\n");
+        fwrite(STDOUT, "  --target CLASS::METHOD   Exact agent-map edit target. Repeatable.\n");
         fwrite(STDOUT, "  --tag LABEL              Inline relevance tag (domain/system/capability). Repeatable.\n");
         fwrite(STDOUT, "  --feedback PATH          Untrusted peer-agent feedback file to assess (JSON or text).\n");
-        fwrite(STDOUT, "  --map-index PATH         Optional agent-map JSON index for exact task-file navigation facts.\n");
+        fwrite(STDOUT, "  --map-index PATH         Optional agent-map JSON or TOON index for navigation and edit context.\n");
         fwrite(STDOUT, "  --map-root PATH          Project root used to verify map entries when the index came from another runtime.\n");
         fwrite(STDOUT, "  --kanban-context PATH    Optional stable JSON projection owned by the board integration.\n");
         fwrite(STDOUT, "  --document-manifest PATH Git-tracked scoped skill/ADR manifest. Repeatable.\n");
