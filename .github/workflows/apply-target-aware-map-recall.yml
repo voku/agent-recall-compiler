@@ -1,0 +1,46 @@
+name: Apply target-aware map recall
+
+on:
+  push:
+    branches:
+      - feat/target-aware-map-recall
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/target-aware-map-recall
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          tools: composer:v2
+      - name: Reconstruct and apply patch
+        run: |
+          cat .github/target-aware-map-recall.patch.gz.b64.* \
+            | base64 --decode \
+            | gunzip > /tmp/target-aware-map-recall.patch
+          git apply --check /tmp/target-aware-map-recall.patch
+          git apply --whitespace=fix /tmp/target-aware-map-recall.patch
+      - name: Update dependencies
+        run: composer update voku/agent-map --with-all-dependencies --no-interaction --prefer-dist
+      - name: Validate implementation
+        run: |
+          composer ci
+          find src tests -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Publish implementation
+        run: |
+          rm -f .github/target-aware-map-recall.patch.gz.b64.*
+          rm -f .github/workflows/apply-target-aware-map-recall.yml
+          rm -f .github/workflows/export-target-recall-working-copy.yml
+          printf 'applied\n' > .github/target-aware-map-recall-applied
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'feat: compile target-aware edit context'
+          git push origin HEAD:feat/target-aware-map-recall
