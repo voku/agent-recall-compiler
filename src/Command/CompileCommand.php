@@ -124,7 +124,7 @@ final class CompileCommand
             throw $e;
         }
 
-        $verification = $this->compileVerification($task, $result, $mapIndex, $mapRoot, $mapPolicy);
+        $verification = $this->compileVerification($task, $result, $compilation->facts, $mapIndex, $mapRoot, $mapPolicy);
         $verificationWriter = new VerificationArtifactWriter();
 
         $bundle = $compilation->bundle;
@@ -220,6 +220,9 @@ final class CompileCommand
         ]));
         if ($verification !== null) {
             $verificationWriter->write($outputDir, $verification);
+        } else {
+            $this->removeFileIfPresent($outputDir . '/verification-plan.json');
+            $this->removeFileIfPresent($outputDir . '/verification-key.json');
         }
         if ($feedbackAssessment !== null) {
             $this->writeFile($outputDir . '/feedback-assessment.draft.json', $feedbackAssessment);
@@ -243,9 +246,11 @@ final class CompileCommand
         return 0;
     }
 
+    /** @param list<array<string, mixed>> $facts */
     private function compileVerification(
         TaskBrief $task,
         RecallResult $result,
+        array $facts,
         ?string $mapIndex,
         ?string $mapRoot,
         EditContextPolicy $mapPolicy,
@@ -261,6 +266,7 @@ final class CompileCommand
             $mapRoot,
             $mapPolicy,
             $task->targets[0],
+            $this->mapDigestFromFacts($facts),
         );
 
         return (new VerificationPlanCompiler($context->map))->compile(
@@ -268,6 +274,23 @@ final class CompileCommand
             $context->editContext,
             $result,
         );
+    }
+
+    /** @param list<array<string, mixed>> $facts */
+    private function mapDigestFromFacts(array $facts): string
+    {
+        foreach ($facts as $fact) {
+            if (($fact['id'] ?? null) !== 'map.snapshot') {
+                continue;
+            }
+            $payload = is_array($fact['payload'] ?? null) ? $fact['payload'] : [];
+            $digest = $payload['map_digest'] ?? null;
+            if (is_string($digest) && $digest !== '') {
+                return $digest;
+            }
+        }
+
+        throw new LogicException('Target-aware verification requires the compiled map snapshot digest.');
     }
 
     private function withVerificationMetadata(
@@ -323,6 +346,16 @@ final class CompileCommand
     {
         if (file_put_contents($path, $content) === false) {
             throw new RuntimeException('Unable to write compile artifact: ' . $path);
+        }
+    }
+
+    private function removeFileIfPresent(string $path): void
+    {
+        if (!file_exists($path) && !is_link($path)) {
+            return;
+        }
+        if (!unlink($path)) {
+            throw new RuntimeException('Unable to remove stale verification artifact: ' . $path);
         }
     }
 
