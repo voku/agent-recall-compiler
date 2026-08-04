@@ -153,13 +153,15 @@ final class CompileCommand
             $bundleDigest,
         );
         $validationPlan = $this->promptBuilder->buildValidationPlan($compilation->effectiveTask, $result);
-        $verificationPlanJson = null;
-        $verificationKeyJson = null;
+        /** @var array{plan: string, key: string}|null $verificationArtifacts */
+        $verificationArtifacts = null;
         if ($verification !== null) {
             $systemMd = rtrim($systemMd) . "\n\n" . $verificationWriter->renderQuestionsMarkdown($verification);
             $validationPlan = rtrim($validationPlan) . "\n\n" . $verificationWriter->renderValidationMarkdown($verification);
-            $verificationPlanJson = $verificationWriter->renderPlan($verification);
-            $verificationKeyJson = $verificationWriter->renderKey($verification);
+            $verificationArtifacts = [
+                'plan' => $verificationWriter->renderPlan($verification),
+                'key' => $verificationWriter->renderKey($verification),
+            ];
         }
         $logDraft = $this->promptBuilder->buildRecallLogDraft($task, $result, $compilationId);
         $bundleJson = CanonicalJson::pretty($bundle);
@@ -176,9 +178,9 @@ final class CompileCommand
             'facts.json' => hash('sha256', $factsJson),
             'selection-report.json' => hash('sha256', $selectionJson),
         ];
-        if ($verificationPlanJson !== null && $verificationKeyJson !== null) {
-            $outputHashes['verification-plan.json'] = hash('sha256', $verificationPlanJson);
-            $outputHashes['verification-key.json'] = hash('sha256', $verificationKeyJson);
+        if ($verificationArtifacts !== null) {
+            $outputHashes['verification-plan.json'] = hash('sha256', $verificationArtifacts['plan']);
+            $outputHashes['verification-key.json'] = hash('sha256', $verificationArtifacts['key']);
         }
 
         $feedbackAssessment = null;
@@ -194,12 +196,12 @@ final class CompileCommand
             bundleDigest: $bundleDigest,
             snapshotDigest: $compilation->snapshot->digest(),
         );
-        if ($verification !== null && $verificationPlanJson !== null && $verificationKeyJson !== null) {
+        if ($verification !== null && $verificationArtifacts !== null) {
             $metaJson = $this->withVerificationMetadata(
                 $metaJson,
                 $verification,
-                $verificationPlanJson,
-                $verificationKeyJson,
+                $verificationArtifacts['plan'],
+                $verificationArtifacts['key'],
             );
         }
 
