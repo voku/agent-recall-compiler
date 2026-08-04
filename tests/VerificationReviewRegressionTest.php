@@ -23,7 +23,6 @@ use voku\AgentRecallCompiler\Cli;
 use voku\AgentRecallCompiler\RecallResult;
 use voku\AgentRecallCompiler\TaskBrief;
 use voku\AgentRecallCompiler\Verification\EvidenceChecklistGenerator;
-use voku\AgentRecallCompiler\Verification\VerificationArtifactWriter;
 use voku\AgentRecallCompiler\Verification\VerificationContextLoader;
 use voku\AgentRecallCompiler\Verification\VerificationPlanCompiler;
 
@@ -196,13 +195,16 @@ final class VerificationReviewRegressionTest extends TestCase
             $context,
             new RecallResult([], [], []),
         );
-        $key = (new VerificationArtifactWriter())->renderKey($compiled);
+        $acceptedAnswers = [];
+        foreach ($compiled->key->probes as $answer) {
+            array_push($acceptedAnswers, ...$answer->acceptedAnswers);
+        }
 
-        self::assertStringContainsString(
+        self::assertContains(
             'method:Demo\\Tests\\Service\\VerificationHelper::verifySave',
-            $key,
+            $acceptedAnswers,
         );
-        self::assertStringNotContainsString('method:Demo\\Controller\\Caller4::submit', $key);
+        self::assertNotContains('method:Demo\\Controller\\Caller4::submit', $acceptedAnswers);
         self::assertLessThanOrEqual(5, count($compiled->plan->knowledgeProbes));
     }
 
