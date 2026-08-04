@@ -25,8 +25,12 @@ final readonly class VerificationContextLoader
         ?string $sourceRoot,
         EditContextPolicy $policy,
         string $target,
+        string $expectedMapDigest,
     ): VerificationContext {
         $storedMap = $this->reader->read($indexPath);
+        if (!hash_equals($expectedMapDigest, $storedMap->mapDigest())) {
+            throw new RuntimeException('Agent map changed during recall compilation; rebuild the briefing from one snapshot.');
+        }
         $runtimeMap = $this->withRuntimeRoot($storedMap, $sourceRoot);
         $context = $this->planner->plan($runtimeMap, $target, $policy);
 
@@ -57,6 +61,9 @@ final readonly class VerificationContextLoader
 
     private function upgradeLegacyHash(FileEntry $file, string $root): FileEntry
     {
+        // SHA-1 only verifies an existing legacy marker before this in-memory
+        // compatibility path upgrades the entry to SHA-256. It is never used
+        // to authenticate newly generated map data.
         $prefix = 'legacy-sha1:';
         if (!str_starts_with($file->sha256, $prefix)) {
             return $file;
