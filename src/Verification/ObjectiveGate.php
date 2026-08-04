@@ -10,7 +10,7 @@ final readonly class ObjectiveGate
     public function __construct(
         public string $id,
         public string $kind,
-        public array $provenance = [],
+        public array $provenance,
         public bool $required = true,
     ) {
     }
