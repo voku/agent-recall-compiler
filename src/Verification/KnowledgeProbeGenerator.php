@@ -33,36 +33,42 @@ final readonly class KnowledgeProbeGenerator
 
         /** @var list<ProbeCandidate> $candidates */
         $candidates = [];
-        if ($this->isEligibleState($target->owner->reconciliationStatus)
-            && $this->isEligibleState($target->method->reconciliationStatus)
-        ) {
-            $location = sprintf('%s:%d-%d', $target->file->path, $target->method->lineStart, $target->method->lineEnd);
-            $candidates[] = new ProbeCandidate(
-                priority: 50,
-                kind: 'source_location',
-                target: $targetId,
-                question: sprintf('Where is the canonical target `%s` declared?', $targetId),
-                answerFormat: 'source_location',
-                acceptedAnswers: [$location],
-                evidenceIds: [$targetId],
-                reconciliationStates: $this->sortedUniqueNonEmpty([
-                    $target->owner->reconciliationStatus,
-                    $target->method->reconciliationStatus,
-                ]),
-                sourceHashes: [$target->file->sha256],
-                provenance: [
-                    'source_ref' => $location,
-                    'relation' => 'declaration',
-                ],
+        if (!$this->isEligibleResolvedMethod($target->owner->reconciliationStatus, $target->method->reconciliationStatus)) {
+            return new GeneratedKnowledgeProbes(
+                probes: [],
+                answers: [],
+                omittedCandidates: [],
+                seedSha256: $seedSha256,
+                generatorVersion: self::GENERATOR_VERSION,
             );
         }
+
+        $location = sprintf('%s:%d-%d', $target->file->path, $target->method->lineStart, $target->method->lineEnd);
+        $candidates[] = new ProbeCandidate(
+            priority: 50,
+            kind: 'source_location',
+            target: $targetId,
+            question: sprintf('Where is the canonical target `%s` declared?', $targetId),
+            answerFormat: 'source_location',
+            acceptedAnswers: [$location],
+            evidenceIds: [$targetId],
+            reconciliationStates: $this->sortedUniqueNonEmpty([
+                $target->owner->reconciliationStatus,
+                $target->method->reconciliationStatus,
+            ]),
+            sourceHashes: [$target->file->sha256],
+            provenance: [
+                'source_ref' => $location,
+                'relation' => 'declaration',
+            ],
+        );
 
         foreach ($map->outgoing($targetId, 'overrides') as $relation) {
             if (!$this->isEligibleRelation($relation)) {
                 continue;
             }
             foreach ($relation->targetIds as $contractId) {
-                if (!$this->isCanonicalMethodId($contractId)) {
+                if (!$this->isEligibleMethodId($map, $contractId)) {
                     continue;
                 }
                 $contract = $map->resolvedMethodById($contractId);
@@ -85,7 +91,7 @@ final readonly class KnowledgeProbeGenerator
         }
 
         foreach ($map->incoming($targetId, 'overrides') as $relation) {
-            if (!$this->isEligibleRelation($relation) || !$this->isCanonicalMethodId($relation->sourceId)) {
+            if (!$this->isEligibleRelation($relation) || !$this->isEligibleMethodId($map, $relation->sourceId)) {
                 continue;
             }
             $candidates[] = $this->relationCandidate(
@@ -100,7 +106,7 @@ final readonly class KnowledgeProbeGenerator
         }
 
         foreach ($map->incoming($targetId, 'calls') as $relation) {
-            if (!$this->isEligibleRelation($relation) || !$this->isCanonicalMethodId($relation->sourceId)) {
+            if (!$this->isEligibleRelation($relation) || !$this->isEligibleMethodId($map, $relation->sourceId)) {
                 continue;
             }
             $caller = $map->resolvedMethodById($relation->sourceId);
@@ -122,7 +128,7 @@ final readonly class KnowledgeProbeGenerator
                 continue;
             }
             foreach ($relation->targetIds as $calledId) {
-                if (!$this->isCanonicalMethodId($calledId)) {
+                if (!$this->isEligibleMethodId($map, $calledId)) {
                     continue;
                 }
                 $candidates[] = $this->relationCandidate(
@@ -260,6 +266,28 @@ final readonly class KnowledgeProbeGenerator
     private function isEligibleRelation(RelationEntry $relation): bool
     {
         return $this->isEligibleState($relation->resolution);
+    }
+
+    private function isEligibleMethodId(AgentMapIndex $map, string $symbolId): bool
+    {
+        if (!$this->isCanonicalMethodId($symbolId)) {
+            return false;
+        }
+
+        $method = $map->resolvedMethodById($symbolId);
+        if ($method === null) {
+            return false;
+        }
+
+        return $this->isEligibleResolvedMethod(
+            $method->owner->reconciliationStatus,
+            $method->method->reconciliationStatus,
+        );
+    }
+
+    private function isEligibleResolvedMethod(string $ownerState, string $methodState): bool
+    {
+        return $this->isEligibleState($ownerState) && $this->isEligibleState($methodState);
     }
 
     private function isCanonicalMethodId(string $symbolId): bool
