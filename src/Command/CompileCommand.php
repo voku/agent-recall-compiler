@@ -4,15 +4,18 @@ declare(strict_types=1);
 
 namespace voku\AgentRecallCompiler\Command;
 
+use InvalidArgumentException;
+use LogicException;
+use RuntimeException;
 use voku\AgentMap\Context\EditContextPolicy;
+use voku\AgentRecallCompiler\CanonicalJson;
+use voku\AgentRecallCompiler\Compilation\RecallCompilationService;
 use voku\AgentRecallCompiler\FeedbackAssessmentRenderer;
 use voku\AgentRecallCompiler\FeedbackParser;
 use voku\AgentRecallCompiler\InlineTaskBriefResolver;
 use voku\AgentRecallCompiler\JsonTaskBriefResolver;
-use voku\AgentRecallCompiler\CanonicalJson;
-use voku\AgentRecallCompiler\Compilation\RecallCompilationService;
-use voku\AgentRecallCompiler\Provider\LearningRecallProvider;
 use voku\AgentRecallCompiler\Provider\KanbanContextRecallProvider;
+use voku\AgentRecallCompiler\Provider\LearningRecallProvider;
 use voku\AgentRecallCompiler\Provider\MapRecallProvider;
 use voku\AgentRecallCompiler\Provider\MemoryRecallProvider;
 use voku\AgentRecallCompiler\Provider\ScopedDocumentRecallProvider;
@@ -23,6 +26,10 @@ use voku\AgentRecallCompiler\RecallRepository;
 use voku\AgentRecallCompiler\RecallResult;
 use voku\AgentRecallCompiler\RecallRootResolver;
 use voku\AgentRecallCompiler\TaskBrief;
+use voku\AgentRecallCompiler\Verification\CompiledVerificationPlan;
+use voku\AgentRecallCompiler\Verification\VerificationArtifactWriter;
+use voku\AgentRecallCompiler\Verification\VerificationContextLoader;
+use voku\AgentRecallCompiler\Verification\VerificationPlanCompiler;
 
 final class CompileCommand
 {
@@ -51,7 +58,7 @@ final class CompileCommand
         } else {
             $taskId = $parsed->stringOption('task');
             if ($taskId === null || trim($taskId) === '') {
-                throw new \InvalidArgumentException('compile requires --task-brief or inline option --task');
+                throw new InvalidArgumentException('compile requires --task-brief or inline option --task');
             }
             $task = (new InlineTaskBriefResolver())->resolve(
                 $taskId,
@@ -64,7 +71,7 @@ final class CompileCommand
 
         $outputDir = $parsed->stringOption('output-dir') ?? '.';
         if (!is_dir($outputDir) && !mkdir($outputDir, 0777, true) && !is_dir($outputDir)) {
-            throw new \RuntimeException(sprintf('Directory "%s" was not created', $outputDir));
+            throw new RuntimeException(sprintf('Directory "%s" was not created', $outputDir));
         }
 
         $compilationId = $parsed->stringOption('compilation-id') ?? $this->generateCompilationId($task->id);
@@ -74,6 +81,13 @@ final class CompileCommand
             ? (new FeedbackParser())->parseFile($feedbackPath)
             : null;
 
+        $mapIndex = $parsed->stringOption('map-index');
+        $mapRoot = $parsed->stringOption('map-root');
+        $mapPolicy = new EditContextPolicy(
+            focusTerms: $parsed->stringOptions('edit-focus'),
+            includeRelatedContext: $parsed->stringOptions('edit-focus') === [],
+        );
+
         try {
             $repository = new RecallRepository();
             $providers = [
@@ -81,19 +95,11 @@ final class CompileCommand
                 new MemoryRecallProvider($repository),
                 new LearningRecallProvider($repository),
             ];
-            $mapIndex = $parsed->stringOption('map-index');
             if ($task->targets !== [] && $mapIndex === null) {
-                throw new \InvalidArgumentException('compile targets require --map-index');
+                throw new InvalidArgumentException('compile targets require --map-index');
             }
             if ($mapIndex !== null) {
-                $providers[] = new MapRecallProvider(
-                    $mapIndex,
-                    $parsed->stringOption('map-root'),
-                    new EditContextPolicy(
-                        focusTerms: $parsed->stringOptions('edit-focus'),
-                        includeRelatedContext: $parsed->stringOptions('edit-focus') === [],
-                    ),
-                );
+                $providers[] = new MapRecallProvider($mapIndex, $mapRoot, $mapPolicy);
             }
             $kanbanContext = $parsed->stringOption('kanban-context');
             if ($kanbanContext !== null) {
@@ -118,6 +124,9 @@ final class CompileCommand
             throw $e;
         }
 
+        $verification = $this->compileVerification($task, $result, $mapIndex, $mapRoot, $mapPolicy);
+        $verificationWriter = new VerificationArtifactWriter();
+
         $bundle = $compilation->bundle;
         $bundleDigest = CanonicalJson::digest($bundle);
         $facts = [
@@ -135,20 +144,31 @@ final class CompileCommand
             'warnings' => $bundle['warnings'],
             'effective_scope' => $compilation->effectiveScope,
         ];
-        $systemMd = $this->promptBuilder->buildSystemMd($task, $this->memoryFromFacts($compilation->facts), $result, $feedback, $compilation->facts, $bundleDigest);
+        $systemMd = $this->promptBuilder->buildSystemMd(
+            $task,
+            $this->memoryFromFacts($compilation->facts),
+            $result,
+            $feedback,
+            $compilation->facts,
+            $bundleDigest,
+        );
         $validationPlan = $this->promptBuilder->buildValidationPlan($compilation->effectiveTask, $result);
+        $verificationPlanJson = null;
+        $verificationKeyJson = null;
+        if ($verification !== null) {
+            $systemMd = rtrim($systemMd) . "\n\n" . $verificationWriter->renderQuestionsMarkdown($verification);
+            $validationPlan = rtrim($validationPlan) . "\n\n" . $verificationWriter->renderValidationMarkdown($verification);
+            $verificationPlanJson = $verificationWriter->renderPlan($verification);
+            $verificationKeyJson = $verificationWriter->renderKey($verification);
+        }
         $logDraft = $this->promptBuilder->buildRecallLogDraft($task, $result, $compilationId);
         $bundleJson = CanonicalJson::pretty($bundle);
         $factsJson = CanonicalJson::pretty($facts);
         $selectionJson = CanonicalJson::pretty($selectionReport);
 
-        // recall-log.draft.json and feedback-assessment.draft.json are
-        // *meant* to be hand-edited after compile (guidance_outcomes /
-        // review verdicts), so they are deliberately excluded from
-        // output_hashes: that set is tamper-evidence for files that should
-        // never change post-compile, and hashing an edit-by-design file
-        // there would make every correctly-completed task permanently fail
-        // agent-loop verify's staleness check.
+        // Draft files are edited after compilation and therefore deliberately
+        // excluded. Immutable verification artifacts are included, including
+        // the verifier-owned key, so stale keys cannot silently survive a map change.
         $outputHashes = [
             'system.md' => hash('sha256', $systemMd),
             'validation-plan.md' => hash('sha256', $validationPlan),
@@ -156,6 +176,10 @@ final class CompileCommand
             'facts.json' => hash('sha256', $factsJson),
             'selection-report.json' => hash('sha256', $selectionJson),
         ];
+        if ($verificationPlanJson !== null && $verificationKeyJson !== null) {
+            $outputHashes['verification-plan.json'] = hash('sha256', $verificationPlanJson);
+            $outputHashes['verification-key.json'] = hash('sha256', $verificationKeyJson);
+        }
 
         $feedbackAssessment = null;
         if ($feedback !== null && !$feedback->isEmpty()) {
@@ -170,6 +194,14 @@ final class CompileCommand
             bundleDigest: $bundleDigest,
             snapshotDigest: $compilation->snapshot->digest(),
         );
+        if ($verification !== null && $verificationPlanJson !== null && $verificationKeyJson !== null) {
+            $metaJson = $this->withVerificationMetadata(
+                $metaJson,
+                $verification,
+                $verificationPlanJson,
+                $verificationKeyJson,
+            );
+        }
 
         $this->writeFile($outputDir . '/system.md', $systemMd);
         $this->writeFile($outputDir . '/meta.json', $metaJson);
@@ -184,6 +216,9 @@ final class CompileCommand
             'bundle_sha256' => $bundleDigest,
             'created_at' => (new \DateTimeImmutable('now'))->format(\DateTimeInterface::ATOM),
         ]));
+        if ($verification !== null) {
+            $verificationWriter->write($outputDir, $verification);
+        }
         if ($feedbackAssessment !== null) {
             $this->writeFile($outputDir . '/feedback-assessment.draft.json', $feedbackAssessment);
         }
@@ -194,12 +229,61 @@ final class CompileCommand
         fwrite(\STDOUT, "- recall.bundle.json (canonical, replayable)\n");
         fwrite(\STDOUT, "- facts.json and selection-report.json\n");
         fwrite(\STDOUT, "- validation-plan.md\n");
+        if ($verification !== null) {
+            fwrite(\STDOUT, "- verification-plan.json (public questions, checklist, and gates)\n");
+            fwrite(\STDOUT, "- verification-key.json (verifier-owned expected answers)\n");
+        }
         fwrite(\STDOUT, "- recall-log.draft.json\n");
         if ($feedbackAssessment !== null) {
             fwrite(\STDOUT, "- feedback-assessment.draft.json (untrusted peer feedback to verify)\n");
         }
 
         return 0;
+    }
+
+    private function compileVerification(
+        TaskBrief $task,
+        RecallResult $result,
+        ?string $mapIndex,
+        ?string $mapRoot,
+        EditContextPolicy $mapPolicy,
+    ): ?CompiledVerificationPlan {
+        // The v1 schema has one canonical target. Existing repeatable target
+        // compilation remains compatible; it simply retains the pre-v1 artifact set.
+        if ($mapIndex === null || count($task->targets) !== 1) {
+            return null;
+        }
+
+        $context = (new VerificationContextLoader())->load(
+            $mapIndex,
+            $mapRoot,
+            $mapPolicy,
+            $task->targets[0],
+        );
+
+        return (new VerificationPlanCompiler($context->map))->compile(
+            $task,
+            $context->editContext,
+            $result,
+        );
+    }
+
+    private function withVerificationMetadata(
+        string $metaJson,
+        CompiledVerificationPlan $verification,
+        string $planJson,
+        string $keyJson,
+    ): string {
+        $meta = json_decode($metaJson, true, 512, JSON_THROW_ON_ERROR);
+        if (!is_array($meta)) {
+            throw new LogicException('Compiled metadata must decode to an object.');
+        }
+        /** @var array<string, mixed> $meta */
+        $meta['verification_plan_sha256'] = 'sha256:' . hash('sha256', $planJson);
+        $meta['verification_key_sha256'] = 'sha256:' . hash('sha256', $keyJson);
+        $meta['verification_generator'] = $verification->plan->generator;
+
+        return CanonicalJson::pretty($meta);
     }
 
     /** @param list<string> $targets */
@@ -236,7 +320,7 @@ final class CompileCommand
     private function writeFile(string $path, string $content): void
     {
         if (file_put_contents($path, $content) === false) {
-            throw new \RuntimeException('Unable to write compile artifact: ' . $path);
+            throw new RuntimeException('Unable to write compile artifact: ' . $path);
         }
     }
 
