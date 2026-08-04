@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - feat/deterministic-verification-plans
+  pull_request:
+    branches:
+      - main
 
 jobs:
   agent-loop:
