@@ -139,9 +139,14 @@ final readonly class KnowledgeProbeGenerator
 
         $candidates = $this->deduplicate($candidates);
         usort($candidates, static function (ProbeCandidate $left, ProbeCandidate $right): int {
+            $leftSourceRef = $left->provenance['source_ref'] ?? '';
+            $rightSourceRef = $right->provenance['source_ref'] ?? '';
+            $leftSourceRef = is_string($leftSourceRef) ? $leftSourceRef : '';
+            $rightSourceRef = is_string($rightSourceRef) ? $rightSourceRef : '';
+
             return $left->priority <=> $right->priority
                 ?: $left->kind <=> $right->kind
-                ?: (string) ($left->provenance['source_ref'] ?? '') <=> (string) ($right->provenance['source_ref'] ?? '')
+                ?: $leftSourceRef <=> $rightSourceRef
                 ?: $left->identity() <=> $right->identity();
         });
 
