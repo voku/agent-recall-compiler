@@ -1,0 +1,77 @@
+name: Dogfood verification-plan implementation
+
+on:
+  push:
+    branches:
+      - feat/deterministic-verification-plans
+
+jobs:
+  agent-loop:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: json, mbstring
+          coverage: none
+
+      - name: Install project dependencies
+        run: composer install --prefer-dist --no-progress
+
+      - name: Install current agent-loop
+        run: |
+          composer global config minimum-stability dev
+          composer global require voku/agent-loop:dev-main --prefer-dist --no-progress --no-interaction
+          echo "${COMPOSER_HOME:-$HOME/.config/composer}/vendor/bin" >> "$GITHUB_PATH"
+
+      - name: Plan and compile governed context
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PATH="${COMPOSER_HOME:-$HOME/.config/composer}/vendor/bin:$PATH"
+          git config user.name "agent-loop dogfood"
+          git config user.email "agent-loop-dogfood@example.invalid"
+
+          agent-loop init scaffold
+          agent-loop workflow plan ARC-5 \
+            --by "OpenAI GPT-5.6 Thinking" \
+            --file src/Command/CompileCommand.php \
+            --file src/Compilation/RecallCompilationService.php \
+            --file src/RecallPromptBuilder.php \
+            --file tests/TargetAwareRecallTest.php \
+            --goal "Compile deterministic verification plans and verifier-owned answer keys for target-aware recall." \
+            --scope src/Verification/ \
+            --scope src/Command/CompileCommand.php \
+            --scope src/Compilation/RecallCompilationService.php \
+            --scope src/RecallPromptBuilder.php \
+            --scope tests/ \
+            --non-goal "Do not execute validation commands or objective gates." \
+            --non-goal "Do not invoke an LLM judge, calculate rewards, or ingest verification episodes." \
+            --behavior-anchor "approved task brief -> target-aware map facts -> public verification plan and private verification key" \
+            --validation "composer test" \
+            --validation "composer phpstan"
+
+          agent-loop workflow approve ARC-5 --by "Lars Moelleken"
+          agent-loop workflow context ARC-5 --max-lines 240 --max-bytes 30000 > .agent-loop/ARC-5.context.txt
+
+          agent-loop edit 'voku\AgentRecallCompiler\Command\CompileCommand::run' \
+            --task ARC-5-EDIT \
+            --dry-run \
+            --runner stdout \
+            --output-dir .agent-loop/edit/ARC-5-EDIT \
+            -- "Implement issue #5: deterministic knowledge probes, evidence checklist items, declared objective gates, strict separation of verification-plan.json from verification-key.json, canonical hashing, and regression tests."
+
+          find .agent-loop session_plan -maxdepth 5 -type f -print | sort > .agent-loop/ARC-5.artifacts.txt
+
+      - name: Upload dogfood artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-loop-arc-5
+          path: |
+            .agent-loop/
+            session_plan/
+          if-no-files-found: error
