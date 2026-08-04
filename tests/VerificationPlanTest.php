@@ -101,6 +101,7 @@ final class VerificationPlanTest extends TestCase
         self::assertStringNotContainsString('accepted_answers', $firstPlan);
         self::assertStringContainsString('accepted_answers', $firstKey);
         self::assertStringNotContainsString('accepted_answers', $writer->renderQuestionsMarkdown($first));
+        self::assertStringNotContainsString('method:Demo\\Service\\SpecialUserService::save', $firstKey);
 
         $probeIds = array_map(
             static fn ($probe): string => $probe->id,
@@ -320,8 +321,8 @@ PHP,
             fqn: 'Demo\\Service\\SpecialUserService',
             lineStart: 3,
             lineEnd: 3,
-            methods: [new MethodEntry('save', 'public', 3, 3, nativeReturnType: 'void', resolvedReturnType: 'void', reconciliationStatus: 'confirmed')],
-            reconciliationStatus: 'confirmed',
+            methods: [new MethodEntry('save', 'public', 3, 3, nativeReturnType: 'void', resolvedReturnType: 'void', reconciliationStatus: 'conflict')],
+            reconciliationStatus: 'conflict',
         );
         $repository = new SymbolEntry(
             kind: 'class',
