@@ -31,7 +31,11 @@ final readonly class EvidenceChecklistGenerator
             $evidenceIds = $blindSpot->evidenceIds === []
                 ? ['blind-spot:' . hash('sha256', $blindSpot->kind . "\0" . $sourceRef . "\0" . $blindSpot->message)]
                 : $this->sortedUnique($blindSpot->evidenceIds);
-            $id = 'check:blind-spot:' . substr(hash('sha256', $blindSpot->kind . "\0" . $sourceRef), 0, 12);
+            $id = 'check:blind-spot:' . substr(
+                hash('sha256', $blindSpot->kind . "\0" . $sourceRef . "\0" . $blindSpot->message),
+                0,
+                12,
+            );
             $items[$id] = new ChecklistItem(
                 id: $id,
                 statement: sprintf('The `%s` map blind spot at %s was explicitly investigated.', $blindSpot->kind, $sourceRef),
@@ -116,6 +120,8 @@ final readonly class EvidenceChecklistGenerator
                 evidenceIds: $evidenceIds,
                 provenance: $provenance,
             ),
+            // Dependencies and type definitions remain context only. Merely being
+            // selected must not turn them into change obligations.
             default => null,
         };
     }
