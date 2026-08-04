@@ -196,7 +196,7 @@ final class CompileCommand
             bundleDigest: $bundleDigest,
             snapshotDigest: $compilation->snapshot->digest(),
         );
-        if ($verification !== null && $verificationArtifacts !== null) {
+        if ($verification !== null) {
             $metaJson = $this->withVerificationMetadata(
                 $metaJson,
                 $verification,
