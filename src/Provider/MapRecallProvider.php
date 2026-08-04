@@ -14,7 +14,7 @@ use voku\AgentRecallCompiler\RecallRootConfig;
 use voku\AgentRecallCompiler\TaskBrief;
 
 /**
- * Read-only adapter for agent-map 0.2 indexes. agent-map owns decoding,
+ * Read-only adapter for agent-map indexes. agent-map owns decoding,
  * freshness checks, target resolution, relation traversal, and source slicing;
  * recall only turns those deterministic results into provider facts.
  */
@@ -135,7 +135,7 @@ final readonly class MapRecallProvider implements RecallProvider
     }
 
     /**
-     * agent-map 0.2 can decode schema-1 entries, but its freshness check is
+     * agent-map can decode schema-1 entries, but its freshness check is
      * intentionally SHA-256-only. Keep recall's existing file-only contract by
      * upgrading a verified legacy SHA-1 entry in memory. New maps never enter
      * this compatibility path.

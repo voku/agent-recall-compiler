@@ -4,6 +4,16 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.7.2] - 2026-08-04
+
+### Changed
+
+- Requires `voku/agent-map` `^0.3.0`. That release moves each top-level index
+  section onto its own line (still ordinary JSON, and `IndexReader` reads both
+  layouts), adds `refresh`/`--merge` for incremental index updates, and stops
+  the symbol extractor from executing host code while parsing. Recall only
+  reads indexes, so nothing in this package changed behaviourally.
+
 ## [0.7.1] - 2026-08-03
 
 ### Added
