@@ -302,7 +302,7 @@ final readonly class KnowledgeProbeGenerator
 
     private function looksLikeTestPath(string $path): bool
     {
-        $path = strtolower(str_replace('\\', '/', $path));
+        $path = '/' . ltrim(strtolower(str_replace('\\', '/', $path)), '/');
 
         return str_contains($path, '/test/')
             || str_contains($path, '/tests/')
