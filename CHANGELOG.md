@@ -4,6 +4,44 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.8.0] - 2026-08-05
+
+### Added
+
+- Deterministic verification plans. When a compilation resolves a map target,
+  `compile` now emits two new artifacts next to the existing recall output:
+  - `verification-plan.json` - the public contract: knowledge probes with their
+    question, answer format and evidence ids, the evidence checklist, the
+    objective gates and which of them are required, the required evidence
+    types, the map digest and analysis fingerprint the plan was derived from,
+    and the omitted probe candidates with the reason each was rejected.
+  - `verification-key.json` - the verifier-owned answer key: canonical probe
+    answers bound to `plan_sha256`, `target` and `map_digest`.
+  The key is deliberately not referenced from `system.md`; the prompt receives
+  only the questions.
+- `system.md` gains a "Repository-Knowledge Verification" section listing the
+  probes, and `validation-plan.md` gains a "Declared Verification Contract"
+  section listing the checklist, the objective gates, and the fixed scoring
+  rule a consumer must apply (`objective_gate != passed -> gated_evidence_score
+  = 0`).
+- `meta.json` gains `verification_plan_sha256`, `verification_key_sha256` and
+  `verification_generator`, and both artifacts are included in `output_hashes`,
+  so a stale key cannot survive a map change unnoticed.
+
+### Changed
+
+- A compilation without an eligible map target removes any
+  `verification-plan.json` / `verification-key.json` left over from an earlier
+  run instead of leaving stale artifacts in the output directory.
+
+### Notes for consumers
+
+This release introduces a cross-package artifact contract rather than a local
+improvement: a consumer that grades an edit must read `verification-plan.json`,
+compare against `verification-key.json`, and honour the objective-gate rule
+above. That is why it is a minor release and not a patch - `voku/agent-loop`
+requires `^0.7.2` and must adopt the protocol deliberately.
+
 ## [0.7.2] - 2026-08-04
 
 ### Changed
