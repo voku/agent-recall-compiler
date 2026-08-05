@@ -34,14 +34,6 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
   `verification-plan.json` / `verification-key.json` left over from an earlier
   run instead of leaving stale artifacts in the output directory.
 
-### Notes for consumers
-
-This release introduces a cross-package artifact contract rather than a local
-improvement: a consumer that grades an edit must read `verification-plan.json`,
-compare against `verification-key.json`, and honour the objective-gate rule
-above. That is why it is a minor release and not a patch - `voku/agent-loop`
-requires `^0.7.2` and must adopt the protocol deliberately.
-
 ## [0.7.2] - 2026-08-04
 
 ### Changed
