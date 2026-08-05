@@ -4,6 +4,17 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.8.1] - 2026-08-05
+
+### Changed
+
+- Requires `voku/agent-map` `^0.4.0`. The compiler keeps using the same
+  `Index` and `Context` API, but the constraint is what lets a consumer install
+  the 0.4.x line at all - the derived hybrid-search index
+  (`agent-map search-index`, `.agent-map/search.sqlite`) and the parallel chunk
+  extraction it brings are unreachable while any package in the tree still pins
+  `^0.3.0`.
+
 ## [0.8.0] - 2026-08-05
 
 ### Added
