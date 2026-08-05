@@ -157,6 +157,30 @@ vendor/bin/agent-recall-compiler compile \
 `--map-root` replaces only the runtime checkout root used for source freshness and
 materialization, which is useful when the index was built inside Docker.
 
+When agent-map's derived search index exists, `--map-search-index` adds ranked
+candidates to the briefing for a task that has no exact `--target` yet:
+
+```bash
+vendor/bin/agent-map search-index build --database ".agent-map/search.sqlite"
+
+vendor/bin/agent-recall-compiler compile \
+  --root infra/doc/agent-learning \
+  --task "PROJECT-367" \
+  --description "Dunning reminder mails are sent twice for the same overdue invoice" \
+  --map-index ".agent-map/php-symbols.json" \
+  --map-root "$PWD" \
+  --map-search-index ".agent-map/search.sqlite" \
+  --map-search-limit 8 \
+  --output-dir ".agent-recall/current"
+```
+
+`--map-search-index` requires `--map-index`, and the search database must have been
+built from the same map: a snapshot mismatch is reported as a `stale` status fact
+instead of silently ranking against an older index. The candidates land in
+`facts.json` as `map.search.candidates` and in `system.md` under *Candidate
+Navigation (ranked, unverified)*. They are leads, not resolved navigation - they
+never enter the effective scope and never select path-scoped guidance.
+
 The map-derived **effective scope** contains primary, contract, direct-caller,
 and verification files. Dependencies and type definitions remain context-only
 and do not select path-scoped guidance merely because they were shown to the agent.

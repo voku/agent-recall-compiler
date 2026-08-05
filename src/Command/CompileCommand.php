@@ -83,6 +83,15 @@ final class CompileCommand
 
         $mapIndex = $parsed->stringOption('map-index');
         $mapRoot = $parsed->stringOption('map-root');
+        $mapSearchIndex = $parsed->stringOption('map-search-index');
+        $mapSearchLimitOption = $parsed->stringOption('map-search-limit');
+        $mapSearchLimit = $mapSearchLimitOption === null ? 8 : (int) $mapSearchLimitOption;
+        if ($mapSearchLimit < 1) {
+            throw new InvalidArgumentException('compile --map-search-limit must be a positive integer');
+        }
+        if ($mapSearchIndex !== null && $mapIndex === null) {
+            throw new InvalidArgumentException('compile --map-search-index requires --map-index');
+        }
         $mapPolicy = new EditContextPolicy(
             focusTerms: $parsed->stringOptions('edit-focus'),
             includeRelatedContext: $parsed->stringOptions('edit-focus') === [],
@@ -99,7 +108,13 @@ final class CompileCommand
                 throw new InvalidArgumentException('compile targets require --map-index');
             }
             if ($mapIndex !== null) {
-                $providers[] = new MapRecallProvider($mapIndex, $mapRoot, $mapPolicy);
+                $providers[] = new MapRecallProvider(
+                    $mapIndex,
+                    $mapRoot,
+                    $mapPolicy,
+                    searchDatabase: $mapSearchIndex,
+                    searchLimit: $mapSearchLimit,
+                );
             }
             $kanbanContext = $parsed->stringOption('kanban-context');
             if ($kanbanContext !== null) {

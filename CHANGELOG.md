@@ -4,6 +4,31 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.9.0] - 2026-08-05
+
+### Added
+
+- `compile --map-search-index PATH` (plus `--map-search-limit N`, default 8) turns
+  agent-map 0.4.0's derived hybrid-search index into ranked candidates for a task
+  that has a description but no exact `--target` yet. The candidates travel as a
+  `navigation_candidates` fact (`map.search.candidates`) and render in `system.md`
+  under *Candidate Navigation (ranked, unverified)*.
+- Every reason the search cannot produce candidates is emitted as a
+  `map.search.status` fact - `missing`, `stale`, `unavailable`, `skipped` - and
+  rendered in the briefing. An absent section would be indistinguishable from
+  "the search found nothing", which is a different answer.
+
+### Changed
+
+- Candidates are deliberately weaker than the existing facts and are labelled as
+  such: they are ranked over a derived index, not resolved through the canonical
+  map. They never widen the effective task scope and therefore never select
+  path-scoped guidance, and the briefing marks them **INFERRED**.
+- A search index whose `map_snapshot` does not match the map's analysis
+  fingerprint is refused rather than used, naming both snapshots.
+- The provider contract version stays `2.0` when no search index is configured,
+  so a compilation that does not use the feature keeps its previous bundle digest.
+
 ## [0.8.1] - 2026-08-05
 
 ### Changed

@@ -79,6 +79,12 @@ final class RecallPromptBuilder
             $md[] = "";
         }
 
+        $searchCandidates = $this->renderSearchCandidates($facts);
+        if ($searchCandidates !== '') {
+            $md[] = $searchCandidates;
+            $md[] = "";
+        }
+
         $projectDocuments = array_values(array_filter(
             $facts,
             static fn (array $fact): bool => in_array($fact['type'] ?? null, ['adr', 'skill'], true),
@@ -224,6 +230,73 @@ final class RecallPromptBuilder
                 ++$index;
             }
         }
+
+        return implode("\n", $md);
+    }
+
+    /**
+     * Renders agent-map's hybrid-search candidates as leads, never as findings.
+     *
+     * The section is deliberately below the edit context: those slices were resolved through the
+     * canonical map, these lines are a ranking over a derived index. Labelling them INFERRED in the
+     * prompt itself is what keeps the Evidence Discipline section above from being contradicted by
+     * a list that reads like resolved navigation.
+     *
+     * @param list<array<string, mixed>> $facts
+     */
+    private function renderSearchCandidates(array $facts): string
+    {
+        $candidateFacts = array_values(array_filter(
+            $facts,
+            static fn (array $fact): bool => ($fact['type'] ?? null) === 'navigation_candidates',
+        ));
+        if ($candidateFacts === []) {
+            return '';
+        }
+
+        $md = [];
+        foreach ($candidateFacts as $fact) {
+            $payload = is_array($fact['payload'] ?? null) ? $fact['payload'] : [];
+            $status = is_string($payload['status'] ?? null) ? $payload['status'] : 'unknown';
+            if ($status !== 'ranked') {
+                $reason = is_string($payload['reason'] ?? null) ? $payload['reason'] : 'no reason recorded';
+                $md[] = '- **No search candidates** (' . $status . '): ' . $reason;
+                continue;
+            }
+
+            $mode = is_string($payload['effective_mode'] ?? null) ? $payload['effective_mode'] : 'unknown';
+            $md[] = '- **Query**: ' . (is_string($payload['query'] ?? null) ? $payload['query'] : '');
+            $md[] = '- **Channels**: ' . $mode . (($payload['degraded'] ?? false) === true
+                ? ' (degraded: ' . (is_string($payload['degraded_reason'] ?? null) ? $payload['degraded_reason'] : 'unknown') . ')'
+                : '');
+
+            $results = is_array($payload['results'] ?? null) ? $payload['results'] : [];
+            if ($results === []) {
+                $md[] = '- No chunk matched; the structural facts above remain the exact path.';
+                continue;
+            }
+            foreach ($results as $hit) {
+                if (!is_array($hit)) {
+                    continue;
+                }
+                $reasons = is_array($hit['reasons'] ?? null) ? $hit['reasons'] : [];
+                $md[] = sprintf(
+                    '- `%s:%s-%s` %s [%s]',
+                    is_string($hit['file_path'] ?? null) ? $hit['file_path'] : '?',
+                    is_int($hit['start_line'] ?? null) ? (string) $hit['start_line'] : '?',
+                    is_int($hit['end_line'] ?? null) ? (string) $hit['end_line'] : '?',
+                    is_string($hit['symbol_id'] ?? null) ? $hit['symbol_id'] : '?',
+                    implode(' ', array_filter($reasons, 'is_string')),
+                );
+            }
+        }
+
+        array_unshift(
+            $md,
+            '## Candidate Navigation (ranked, unverified)',
+            'Ranked leads from the derived agent-map search index. They are **INFERRED**: open the file before treating any of them as the place to change, and do not cite a rank as evidence.',
+            '',
+        );
 
         return implode("\n", $md);
     }
