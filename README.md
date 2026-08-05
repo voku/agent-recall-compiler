@@ -247,6 +247,47 @@ Active constraints are stored as small runtime manifests:
 }
 ```
 
+#### Document Manifest
+`--document-manifest` adds Git-tracked skills and ADRs to a briefing with fixed
+excerpt limits, so the compiler never scans a documentation tree or asks a model
+which file is relevant:
+
+```json
+{
+  "schema_version": "1.0",
+  "documents": [
+    {
+      "id": "project.shell-tooling",
+      "type": "skill",
+      "source": "../agents/skills/shell-tooling/SKILL.md",
+      "scope": ["/"],
+      "tags": ["tooling"],
+      "max_chars": 2200
+    },
+    {
+      "id": "project.adr-database-layer",
+      "type": "adr",
+      "source": "../ADR_DatabaseLayer.md",
+      "scope": ["src/Database/"],
+      "max_chars": 4000
+    }
+  ]
+}
+```
+
+`source` is resolved relative to the manifest and must stay relative. `type` is
+`skill` or `adr` and decides the default authority (`project_skill` /
+`project_adr`); `authority`, `priority`, and `conflict_key` may override it.
+`max_chars` is an integer between 1 and 12000 (default 4000) and truncation is
+marked in the excerpt and reported as `truncated` in the fact payload.
+
+A document is selected when its `scope` prefixes overlap the task's files, when
+it shares at least one `tags` entry with the task, or when it is **project-wide**:
+`scope` empty, `["/"]`, or `["*"]`. Environment-level guidance - how to run
+commands, which shell tooling the repository expects - has no path scope by
+nature, so it belongs in that project-wide form. Without it such a document
+reaches an agent only by chance.
+
 ---
 
 ### 2. Log Session Outcome

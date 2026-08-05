@@ -4,6 +4,17 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.9.1] - 2026-08-05
+
+### Changed
+
+- Documented the `--document-manifest` format in the README: field meanings,
+  `max_chars` bounds and truncation marking, and the three selection paths
+  (path-scope overlap, tag overlap, project-wide). The project-wide form -
+  `scope` empty, `["/"]`, or `["*"]` - was supported but undocumented, so
+  environment-level guidance that has no path scope by nature had no obvious way
+  into a briefing.
+
 ## [0.9.0] - 2026-08-05
 
 ### Added
