@@ -4,6 +4,17 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.9.2] - 2026-08-06
+
+### Fixed
+
+- The binary resolved its autoloader by preferring the package's own `vendor/`
+  directory. When one is present next to an installed copy - a path repository, a
+  mirrored checkout, a stale local install - that autoloader wins and silently
+  loads *its* dependencies instead of the project's. Found by a release-set smoke
+  test that reported `Undefined property Session::$ephemeral` against an
+  installed version that plainly had it. The outer autoloader is now tried first.
+
 ## [0.9.1] - 2026-08-05
 
 ### Changed
