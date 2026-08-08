@@ -58,7 +58,7 @@ final readonly class RecallRootResolver
 
     private function defaultProjectRoot(string $root): string
     {
-        $normalized = rtrim(str_replace('\\', '/', $root), '/');
+        $normalized = $this->normalize($root);
         foreach (self::LEARNING_ROOT_SUFFIXES as $suffix) {
             $needle = '/' . $suffix;
             if (str_ends_with($normalized, $needle)) {
@@ -80,6 +80,26 @@ final readonly class RecallRootResolver
             throw new RuntimeException('configured project_root directory does not exist in ' . $configPath . ': ' . $configured);
         }
 
-        return rtrim(str_replace('\\', '/', $realPath), '/');
+        $projectRoot = $this->normalize($realPath);
+        $normalizedLearningRoot = $this->normalize($root);
+        $inferredProjectRoot = $this->defaultProjectRoot($normalizedLearningRoot);
+
+        // For a known repository layout we have a trustworthy project boundary.
+        // Do not let repository-controlled config make Recall ingest MEMORY.md from
+        // an arbitrary parent/home directory. Non-standard standalone roots retain
+        // the existing explicit-root freedom because there is no inferred boundary.
+        if ($inferredProjectRoot !== $normalizedLearningRoot) {
+            $allowedPrefix = rtrim($inferredProjectRoot, '/') . '/';
+            if ($projectRoot !== $inferredProjectRoot && !str_starts_with($projectRoot, $allowedPrefix)) {
+                throw new RuntimeException('configured project_root escapes the inferred repository root in ' . $configPath . ': ' . $configured);
+            }
+        }
+
+        return $projectRoot;
+    }
+
+    private function normalize(string $path): string
+    {
+        return rtrim(str_replace('\\', '/', $path), '/');
     }
 }
