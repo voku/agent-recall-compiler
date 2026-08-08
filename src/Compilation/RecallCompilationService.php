@@ -41,10 +41,6 @@ final class RecallCompilationService
         usort($providers, static fn (RecallProvider $left, RecallProvider $right): int => strcmp($left->manifest()->id, $right->manifest()->id));
         $this->assertUniqueProviderIds($providers);
 
-        // The map is the only provider allowed to enlarge the task's effective
-        // file scope. Resolve it first so path-scoped documents and guidance
-        // can see exact primary/contract/caller/test files without presenting
-        // dependency-only context as an intended edit.
         $precomputedResults = [];
         $mapFacts = [];
         foreach ($providers as $provider) {
@@ -168,26 +164,27 @@ final class RecallCompilationService
     }
 
     /**
-     * Keep Proposal identity/history known to the decision engine, but do not
-     * render an APPLIED Proposal a second time when this exact compile already
-     * loaded the same canonical Memory/Skill file at the applied content hash.
-     *
      * @param list<RecallGuidance> $activeGuidance
-     * @param list<RecallFact> $facts
+     * @param list<array<string, mixed>> $facts resolved canonical fact projection
      */
     private function preferLoadedCanonicalHomes(RecallResult $selection, array $activeGuidance, array $facts): RecallResult
     {
         $loadedCanonicalSources = [];
         foreach ($facts as $fact) {
-            if (!in_array($fact->type, [GuidanceType::MEMORY->value, GuidanceType::SKILL->value], true)) {
+            $type = $fact['type'] ?? null;
+            if (!is_string($type) || !in_array($type, [GuidanceType::MEMORY->value, GuidanceType::SKILL->value], true)) {
                 continue;
             }
-            $sourceRef = $fact->payload['canonical_source_ref'] ?? null;
-            $sourceHash = $fact->payload['source_sha256'] ?? null;
+            $payload = $fact['payload'] ?? null;
+            if (!is_array($payload)) {
+                continue;
+            }
+            $sourceRef = $payload['canonical_source_ref'] ?? null;
+            $sourceHash = $payload['source_sha256'] ?? null;
             if (!is_string($sourceRef) || trim($sourceRef) === '' || !is_string($sourceHash) || trim($sourceHash) === '') {
                 continue;
             }
-            $loadedCanonicalSources[$this->canonicalSourceKey($fact->type, $sourceRef, $sourceHash)] = true;
+            $loadedCanonicalSources[$this->canonicalSourceKey($type, $sourceRef, $sourceHash)] = true;
         }
 
         if ($loadedCanonicalSources === []) {
@@ -271,11 +268,11 @@ final class RecallCompilationService
 
     private function canonicalSourceKey(string $type, string $sourceRef, string $sha256): string
     {
-        return $type
-            . "\0"
-            . ltrim(str_replace('\\', '/', trim($sourceRef)), '/')
-            . "\0"
-            . strtolower(trim($sha256));
+        return CanonicalJson::digest([
+            'type' => $type,
+            'source_ref' => ltrim(str_replace('\\', '/', trim($sourceRef)), '/'),
+            'sha256' => strtolower(trim($sha256)),
+        ]);
     }
 
     /** @return array<string, mixed> */
