@@ -6,16 +6,11 @@ namespace voku\AgentRecallCompiler\Provider;
 
 use RuntimeException;
 use voku\AgentRecallCompiler\CanonicalJson;
+use voku\AgentRecallCompiler\OperatingPromptOutcomeHistory;
 use voku\AgentRecallCompiler\OperatingPromptRequest;
 use voku\AgentRecallCompiler\RecallRootConfig;
 use voku\AgentRecallCompiler\TaskBrief;
 
-/**
- * Instantiates task-selected prompt recipes from versioned local manifests.
- *
- * The provider owns deterministic loading and substitution only. Prompt semantics
- * stay in the manifest's owning repository rather than being duplicated in PHP.
- */
 final readonly class OperatingPromptRecallProvider implements RecallProvider
 {
     /** @var list<string> */
@@ -54,6 +49,7 @@ final readonly class OperatingPromptRecallProvider implements RecallProvider
     {
         $this->manifest();
         $definitions = $this->loadDefinitions();
+        $history = new OperatingPromptOutcomeHistory();
         $facts = [];
         $seenRequests = [];
 
@@ -68,7 +64,6 @@ final readonly class OperatingPromptRecallProvider implements RecallProvider
                 throw new RuntimeException('unknown operating prompt id: ' . $request->id);
             }
 
-            $rendered = $this->render($request, $definition['template']);
             $facts[] = new RecallFact(
                 'operating-prompt.' . $request->id,
                 'operating_prompt',
@@ -79,8 +74,9 @@ final readonly class OperatingPromptRecallProvider implements RecallProvider
                     'prompt_id' => $request->id,
                     'level' => $definition['level'],
                     'arguments' => $request->arguments,
-                    'content' => $rendered,
+                    'content' => $this->render($request, $definition['template']),
                     'template_sha256' => $definition['template_sha256'],
+                    'outcome_stats' => $history->stats($rootConfig->root, $request->id),
                 ],
             );
         }
@@ -94,9 +90,7 @@ final readonly class OperatingPromptRecallProvider implements RecallProvider
         );
     }
 
-    /**
-     * @return array<string, array{level: 1|2, template: string, source_ref: string, template_sha256: string}>
-     */
+    /** @return array<string, array{level: 1|2, template: string, source_ref: string, template_sha256: string}> */
     private function loadDefinitions(): array
     {
         $definitions = [];
@@ -161,20 +155,12 @@ final readonly class OperatingPromptRecallProvider implements RecallProvider
 
         $missing = array_values(array_diff($placeholders, $argumentNames));
         if ($missing !== []) {
-            throw new RuntimeException(sprintf(
-                'operating prompt %s is missing arguments: %s',
-                $request->id,
-                implode(', ', $missing),
-            ));
+            throw new RuntimeException(sprintf('operating prompt %s is missing arguments: %s', $request->id, implode(', ', $missing)));
         }
 
         $extra = array_values(array_diff($argumentNames, $placeholders));
         if ($extra !== []) {
-            throw new RuntimeException(sprintf(
-                'operating prompt %s received unknown arguments: %s',
-                $request->id,
-                implode(', ', $extra),
-            ));
+            throw new RuntimeException(sprintf('operating prompt %s received unknown arguments: %s', $request->id, implode(', ', $extra)));
         }
 
         $replacements = [];
