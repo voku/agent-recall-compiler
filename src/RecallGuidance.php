@@ -25,6 +25,8 @@ final readonly class RecallGuidance
         public string $status,
         public array $tags = [],
         public ?string $patternKey = null,
+        public ?string $appliedTargetSourceRef = null,
+        public ?string $appliedTargetContentHash = null,
     ) {
     }
 }
