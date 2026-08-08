@@ -14,12 +14,14 @@ use voku\AgentRecallCompiler\FeedbackAssessmentRenderer;
 use voku\AgentRecallCompiler\FeedbackParser;
 use voku\AgentRecallCompiler\InlineTaskBriefResolver;
 use voku\AgentRecallCompiler\JsonTaskBriefResolver;
+use voku\AgentRecallCompiler\OperatingPromptOutcomeDraftAugmenter;
 use voku\AgentRecallCompiler\OperatingPromptRequest;
 use voku\AgentRecallCompiler\Provider\KanbanContextRecallProvider;
 use voku\AgentRecallCompiler\Provider\LearningRecallProvider;
 use voku\AgentRecallCompiler\Provider\MapRecallProvider;
 use voku\AgentRecallCompiler\Provider\MemoryRecallProvider;
 use voku\AgentRecallCompiler\Provider\OperatingPromptRecallProvider;
+use voku\AgentRecallCompiler\Provider\ProjectCapabilityRecallProvider;
 use voku\AgentRecallCompiler\Provider\ScopedDocumentRecallProvider;
 use voku\AgentRecallCompiler\Provider\TaskContextRecallProvider;
 use voku\AgentRecallCompiler\RecallCompilationBlockedException;
@@ -115,6 +117,9 @@ final class CompileCommand
                 new MemoryRecallProvider($repository),
                 new LearningRecallProvider($repository),
             ];
+            if ($rootConfig->projectRoot !== null && $this->hasProjectCapabilityEvidence($rootConfig->projectRoot)) {
+                $providers[] = new ProjectCapabilityRecallProvider($rootConfig->projectRoot);
+            }
             if ($task->operatingPrompts !== []) {
                 $providers[] = new OperatingPromptRecallProvider($operatingPromptManifests);
             }
@@ -196,7 +201,10 @@ final class CompileCommand
                 'key' => $verificationWriter->renderKey($verification),
             ];
         }
-        $logDraft = $this->promptBuilder->buildRecallLogDraft($task, $result, $compilationId);
+        $logDraft = (new OperatingPromptOutcomeDraftAugmenter())->augment(
+            $this->promptBuilder->buildRecallLogDraft($task, $result, $compilationId),
+            $task,
+        );
         $bundleJson = CanonicalJson::pretty($bundle);
         $factsJson = CanonicalJson::pretty($facts);
         $selectionJson = CanonicalJson::pretty($selectionReport);
@@ -376,9 +384,7 @@ final class CompileCommand
         );
     }
 
-    /**
-     * @param list<OperatingPromptRequest> $additional
-     */
+    /** @param list<OperatingPromptRequest> $additional */
     private function withAdditionalOperatingPrompts(TaskBrief $task, array $additional): TaskBrief
     {
         if ($additional === []) {
@@ -446,6 +452,13 @@ final class CompileCommand
         }
 
         return $requests;
+    }
+
+    private function hasProjectCapabilityEvidence(string $projectRoot): bool
+    {
+        $root = rtrim($projectRoot, '/\\');
+
+        return is_file($root . '/composer.json') || is_dir($root . '/.github/workflows');
     }
 
     private function writeFile(string $path, string $content): void

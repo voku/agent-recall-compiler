@@ -79,13 +79,11 @@ final class Cli
         return 1;
     }
 
-    /**
-     * @param list<string> $tokens
-     */
+    /** @param list<string> $tokens */
     private function rootOption(array $tokens): ?string
     {
         $count = count($tokens);
-        for ($i = 0; $i < $count; $i++) {
+        for ($i = 0; $i < $count; ++$i) {
             if ($tokens[$i] !== '--root') {
                 continue;
             }

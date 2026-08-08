@@ -13,14 +13,17 @@ The caller selects prompt requests. The compiler validates and resolves the sele
 
 ## The target shape
 
-A project-specific L1 operational prompt should have exactly four parts:
+A project-specific L1 operational prompt should have exactly five parts:
 
 ```text
-Goal        = measurable outcome / minimum floor
-Context     = exact repository search anchors and known facts
-Constraints = invariants and scope boundaries
-Done When   = observable evidence and stopping condition
+Goal         = measurable outcome / minimum floor
+Context      = exact repository search anchors and known facts
+Constraints  = invariants and scope boundaries
+Verification = exact repository-supported measurement procedure
+Done When    = observable result and stopping condition
 ```
+
+`Verification` and `Done When` are deliberately separate. Verification answers **how reality is measured**. Done When answers **which observed result is sufficient to stop**.
 
 An L2 recipe therefore does **not** say only "increase coverage" or "plan further ahead". It instructs the next agent to use the current recall context to construct something like:
 
@@ -30,15 +33,33 @@ Increase coverage for src/Parser.php by at least 10 percentage points.
 
 Context:
 Use src/Parser.php, tests/ParserTest.php, the existing parser fixtures, and the repository's Infection configuration.
+The exact coverage command is UNKNOWN; resolve it from repository scripts or CI before implementation.
 
 Constraints:
 Keep the public API unchanged. Do not weaken existing assertions. Do not add PHPStan ignores.
 
+Verification:
+Run `vendor/bin/phpunit tests/ParserTest.php`.
+Run `vendor/bin/phpstan analyse -c phpstan.neon.dist`.
+Run the repository-supported coverage command discovered from Context; do not invent one.
+Run `vendor/bin/infection --threads=max` because that exact command was supplied by the selected recipe argument.
+
 Done When:
-The focused tests and PHPStan pass, coverage is at least 10 percentage points higher, and meaningful mutants are killed or explicitly reported as remaining risk.
+The focused tests and PHPStan pass, measured coverage is at least 10 percentage points higher, and meaningful mutants are killed or explicitly reported as remaining risk.
 ```
 
-That L1 prompt is intentionally project-specific. The reusable L2 recipe only defines how to derive it.
+That L1 prompt is intentionally project-specific. The reusable L2 recipe only defines how to derive it. A missing command remains `UNKNOWN`; descriptive phrases such as "run the project's tests" are not substitutes for executable Verification.
+
+## Deterministic project capability evidence
+
+When the configured/inferred project root contains supported repository evidence, recall adds a bounded `project.capabilities` fact. The provider does not crawl arbitrary source code or ask an LLM to guess the toolchain. It reads only supported project metadata such as:
+
+- `composer.json`, including the PHP runtime constraint and exact Composer scripts;
+- PHPUnit, Codeception, PHPStan, Infection, php-cs-fixer, and Rector configuration files when present;
+- known development-tool package constraints from Composer;
+- `.github/workflows/*.yml` and `*.yaml` file names as CI anchors.
+
+Package presence proves that a tool exists; it does **not** prove an invocation command. Exact commands come from repository scripts, configured task validation, constraints, or other explicit project evidence. If the command cannot be resolved, the L2 prompt must keep it `UNKNOWN` and make discovery part of Context.
 
 ## Manifest schema
 
@@ -66,13 +87,15 @@ Every recipe explicitly declares whether it is L1 or L2:
 
 ## L2 construction contract
 
-When a selected recipe has `level: 2`, `system.md` receives an `L2 Operational Prompt Construction` section. It tells the consuming agent to synthesize a concrete L1 prompt with `Goal`, `Context`, `Constraints`, and `Done When`.
+When a selected recipe has `level: 2`, `system.md` receives an `L2 Operational Prompt Construction` section. It tells the consuming agent to synthesize a concrete L1 prompt with `Goal`, `Context`, `Constraints`, `Verification`, and `Done When`.
 
 The L2 pass must:
 
 - preserve numeric floors and explicit stopping conditions from the recipe;
 - prefer exact repository facts over generic advice;
-- use known files, symbols, callers, tests, project documents, task state, constraints, and validation commands as context anchors;
+- use known files, symbols, callers, tests, project documents, task state, and constraints as context anchors;
+- put exact repository-supported commands and probes in Verification;
+- keep Verification separate from the acceptance result in Done When;
 - avoid generic placeholders when recall already contains a concrete value;
 - never invent repository commands, tools, APIs, or architectural rules;
 - mark missing evidence as `UNKNOWN` or make evidence discovery part of the generated Context section;
@@ -135,7 +158,19 @@ agent-recall-compiler compile \
   --operating-prompt '{"id":"coverage-mutation","arguments":{"minimum_percentage_points":10,"mutation_command":"vendor/bin/infection --threads=max"}}'
 ```
 
-The selected request, recipe level, rendered content, source reference, and template digest are included in recall facts and therefore in the canonical bundle digest.
+The selected request, recipe level, rendered content, source reference, template digest, and prior recipe outcome counts are included in recall facts and therefore in the canonical bundle digest.
+
+## Recipe outcome evidence
+
+Selection is not proof that a recipe helped. The recall outcome draft contains one `operating_prompt_outcomes` entry per selected recipe with the selected argument digest, `applied`, an outcome, evidence, and an optional comment.
+
+Final `helpful`, `irrelevant`, or `harmful` classifications require concrete evidence. `helpful` and `harmful` additionally require `applied=true`. Finalized events are stored separately from normal guidance outcomes in:
+
+```text
+history/operating-prompt-outcomes.jsonl
+```
+
+Future compilations expose aggregate counts for the selected recipe. Those counts are evidence for later human review of the recipe catalog; they do not automatically rewrite, promote, weaken, or retire a recipe.
 
 ## Design boundaries
 
@@ -143,5 +178,7 @@ The selected request, recipe level, rendered content, source reference, and temp
 - No hidden threshold defaults. The caller chooses measurable task policy.
 - No project-specific paths or commands baked into reusable first-party recipes unless they are explicit parameters.
 - No automatic assumption that an L2 recipe is executable task work. L2 constructs L1; L1 executes.
+- No universal repository crawler; capability discovery is bounded and evidence-backed.
+- No automatic recipe self-modification from outcome statistics.
 - No duplicated first-party engineering guidance in this package. Keep reusable semantics in the repository that owns them, such as `voku/agent-skills`, and pass its manifest explicitly.
-- Changing a selected recipe, level, template, or argument changes the replayable compilation evidence.
+- Changing a selected recipe, level, template, argument, relevant project capability evidence, or prior recipe outcome history changes replayable compilation evidence.

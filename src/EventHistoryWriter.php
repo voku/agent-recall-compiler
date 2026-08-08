@@ -19,8 +19,9 @@ final class EventHistoryWriter
     /**
      * @param list<RecallSelectionEvent> $selectionEvents
      * @param list<GuidanceOutcomeEvent> $outcomeEvents
+     * @param list<OperatingPromptOutcomeEvent> $operatingPromptOutcomeEvents
      */
-    public function append(string $root, array $selectionEvents, array $outcomeEvents): void
+    public function append(string $root, array $selectionEvents, array $outcomeEvents, array $operatingPromptOutcomeEvents = []): void
     {
         $historyDir = $root . '/history';
         if (!is_dir($historyDir) && !mkdir($historyDir, 0777, true) && !is_dir($historyDir)) {
@@ -29,6 +30,7 @@ final class EventHistoryWriter
 
         $selectionPath = $historyDir . '/recall-selections.jsonl';
         $outcomePath = $historyDir . '/outcomes.jsonl';
+        $operatingPromptOutcomePath = $historyDir . '/operating-prompt-outcomes.jsonl';
         $lockPath = $historyDir . '/.event-history.lock';
 
         $lock = fopen($lockPath, 'c');
@@ -43,7 +45,15 @@ final class EventHistoryWriter
 
             $this->assertAppendIsUnique($selectionPath, $selectionEvents, 'selection');
             $this->assertAppendIsUnique($outcomePath, $outcomeEvents, 'outcome');
-            $this->appendRollbackSafe($selectionPath, $this->encodeLines($selectionEvents, $selectionPath), $outcomePath, $this->encodeLines($outcomeEvents, $outcomePath));
+            $this->assertAppendIsUnique($operatingPromptOutcomePath, $operatingPromptOutcomeEvents, 'operating prompt outcome');
+            $this->appendRollbackSafe(
+                $selectionPath,
+                $this->encodeLines($selectionEvents, $selectionPath),
+                $outcomePath,
+                $this->encodeLines($outcomeEvents, $outcomePath),
+                $operatingPromptOutcomePath,
+                $this->encodeLines($operatingPromptOutcomeEvents, $operatingPromptOutcomePath),
+            );
         } finally {
             flock($lock, LOCK_UN);
             fclose($lock);
@@ -61,8 +71,8 @@ final class EventHistoryWriter
                 continue;
             }
             $suffix = substr($id, strlen($datePrefix));
-            if (preg_match('/^\\d+$/', $suffix) === 1) {
-                $max = max($max, (int)$suffix);
+            if (preg_match('/^\d+$/', $suffix) === 1) {
+                $max = max($max, (int) $suffix);
             }
         }
 
@@ -70,47 +80,48 @@ final class EventHistoryWriter
     }
 
     /**
-     * @param list<RecallSelectionEvent>|list<GuidanceOutcomeEvent> $events
+     * @param list<RecallSelectionEvent>|list<GuidanceOutcomeEvent>|list<OperatingPromptOutcomeEvent> $events
      */
     private function assertAppendIsUnique(string $path, array $events, string $type): void
     {
         $existingIds = [];
-        $existingCompilationGuidance = [];
+        $existingCompilationSubjects = [];
         foreach ($this->records($path) as $record) {
             $id = $record['id'] ?? null;
             if (is_string($id) && $id !== '') {
                 $existingIds[$id] = true;
             }
             $compilationId = $record['compilation_id'] ?? null;
-            $guidanceId = $record['guidance_id'] ?? null;
-            if (is_string($compilationId) && is_string($guidanceId)) {
-                $existingCompilationGuidance[$compilationId . "\0" . $guidanceId] = true;
+            $subjectId = $record['guidance_id'] ?? $record['prompt_id'] ?? null;
+            if (is_string($compilationId) && is_string($subjectId)) {
+                $existingCompilationSubjects[$compilationId . "\0" . $subjectId] = true;
             }
         }
 
         $batchIds = [];
-        $batchCompilationGuidance = [];
+        $batchCompilationSubjects = [];
         foreach ($events as $event) {
             $id = $event->id;
-            $key = $event->compilationId . "\0" . $event->guidanceId;
+            $subjectId = $event instanceof OperatingPromptOutcomeEvent ? $event->promptId : $event->guidanceId;
+            $key = $event->compilationId . "\0" . $subjectId;
             if (isset($existingIds[$id]) || isset($batchIds[$id])) {
                 throw new RuntimeException(sprintf('duplicate %s event id: %s', $type, $id));
             }
-            if (isset($existingCompilationGuidance[$key]) || isset($batchCompilationGuidance[$key])) {
+            if (isset($existingCompilationSubjects[$key]) || isset($batchCompilationSubjects[$key])) {
                 throw new RuntimeException(sprintf(
-                    'duplicate %s event for compilation %s and guidance %s',
+                    'duplicate %s event for compilation %s and subject %s',
                     $type,
                     $event->compilationId,
-                    $event->guidanceId,
+                    $subjectId,
                 ));
             }
             $batchIds[$id] = true;
-            $batchCompilationGuidance[$key] = true;
+            $batchCompilationSubjects[$key] = true;
         }
     }
 
     /**
-     * @param list<RecallSelectionEvent>|list<GuidanceOutcomeEvent> $events
+     * @param list<RecallSelectionEvent>|list<GuidanceOutcomeEvent>|list<OperatingPromptOutcomeEvent> $events
      * @return list<string>
      */
     private function encodeLines(array $events, string $path): array
@@ -128,12 +139,20 @@ final class EventHistoryWriter
     /**
      * @param list<string> $selectionLines
      * @param list<string> $outcomeLines
+     * @param list<string> $operatingPromptOutcomeLines
      */
-    private function appendRollbackSafe(string $selectionPath, array $selectionLines, string $outcomePath, array $outcomeLines): void
-    {
+    private function appendRollbackSafe(
+        string $selectionPath,
+        array $selectionLines,
+        string $outcomePath,
+        array $outcomeLines,
+        string $operatingPromptOutcomePath,
+        array $operatingPromptOutcomeLines,
+    ): void {
         $selectionOriginal = is_file($selectionPath) ? file_get_contents($selectionPath) : '';
         $outcomeOriginal = is_file($outcomePath) ? file_get_contents($outcomePath) : '';
-        if ($selectionOriginal === false || $outcomeOriginal === false) {
+        $operatingPromptOutcomeOriginal = is_file($operatingPromptOutcomePath) ? file_get_contents($operatingPromptOutcomePath) : '';
+        if ($selectionOriginal === false || $outcomeOriginal === false || $operatingPromptOutcomeOriginal === false) {
             throw new RuntimeException('cannot read existing event history before append');
         }
 
@@ -144,16 +163,18 @@ final class EventHistoryWriter
             if ($outcomeLines !== []) {
                 $this->appendLines($outcomePath, $outcomeLines);
             }
+            if ($operatingPromptOutcomeLines !== []) {
+                $this->appendLines($operatingPromptOutcomePath, $operatingPromptOutcomeLines);
+            }
         } catch (\Throwable $throwable) {
             file_put_contents($selectionPath, $selectionOriginal);
             file_put_contents($outcomePath, $outcomeOriginal);
+            file_put_contents($operatingPromptOutcomePath, $operatingPromptOutcomeOriginal);
             throw $throwable;
         }
     }
 
-    /**
-     * @param list<string> $lines
-     */
+    /** @param list<string> $lines */
     private function appendLines(string $path, array $lines): void
     {
         $payload = implode("\n", $lines) . "\n";
@@ -162,9 +183,7 @@ final class EventHistoryWriter
         }
     }
 
-    /**
-     * @return list<array<string, mixed>>
-     */
+    /** @return list<array<string, mixed>> */
     private function records(string $path): array
     {
         if (!is_file($path)) {
