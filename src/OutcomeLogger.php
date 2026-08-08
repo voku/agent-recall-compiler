@@ -19,9 +19,7 @@ final class OutcomeLogger
         $this->eventHistoryWriter = new EventHistoryWriter();
     }
 
-    /**
-     * Log a finalized outcome from draft file.
-     */
+    /** Log a finalized outcome from draft file. */
     public function log(string $root, string $draftPath, string $actor, string $commit): string
     {
         if (!is_file($draftPath)) {
@@ -51,17 +49,13 @@ final class OutcomeLogger
             return $this->logEventDraft($root, $draftPath, $data, $actor, $commit);
         }
 
-        // Validate required fields
         $taskId = $data['task_id'] ?? null;
         if (!is_string($taskId) || trim($taskId) === '') {
             throw new RuntimeException('outcome draft requires non-empty string: task_id');
         }
 
-        // Load active proposals to validate references
         $activeGuidance = $this->repository->loadActiveGuidance($root);
-        $validIds = array_map(static fn(RecallGuidance $g) => $g->id, $activeGuidance);
-
-        // Also check rejected proposals as valid references
+        $validIds = array_map(static fn (RecallGuidance $g) => $g->id, $activeGuidance);
         $rejectedGuidance = $this->repository->loadRejectedGuidance($root);
         foreach ($rejectedGuidance as $rg) {
             $validIds[] = $rg->id;
@@ -107,7 +101,6 @@ final class OutcomeLogger
             throw new RuntimeException('unsupported outcome result value in draft');
         }
 
-        // Generate sequential outcome ID
         $now = new DateTimeImmutable('now');
         $dateStr = $now->format('Y-m-d');
         $prefix = 'outcome.' . $dateStr . '.';
@@ -119,13 +112,12 @@ final class OutcomeLogger
             if (str_starts_with($id, $prefix)) {
                 $suffix = substr($id, strlen($prefix));
                 if (is_numeric($suffix)) {
-                    $maxNum = max($maxNum, (int)$suffix);
+                    $maxNum = max($maxNum, (int) $suffix);
                 }
             }
         }
         $outcomeId = $prefix . sprintf('%03d', $maxNum + 1);
 
-        // Format outcome line
         $outcomeRecord = [
             'schema_version' => '1.0',
             'id' => $outcomeId,
@@ -151,11 +143,11 @@ final class OutcomeLogger
         $historyDir = $root . '/history';
         if (!is_dir($historyDir)) {
             if (!mkdir($historyDir, 0777, true) && !is_dir($historyDir)) {
-                throw new \RuntimeException(sprintf('Directory "%s" was not created', $historyDir));
+                throw new RuntimeException(sprintf('Directory "%s" was not created', $historyDir));
             }
         }
         $outcomesPath = $historyDir . '/outcomes.jsonl';
-        
+
         $written = file_put_contents($outcomesPath, $outcomeLine, FILE_APPEND);
         if ($written === false) {
             throw new RuntimeException('failed to write outcome record to outcomes.jsonl');
@@ -164,12 +156,6 @@ final class OutcomeLogger
         return $outcomeId;
     }
 
-    /**
-     * @param mixed $selected
-     * @param mixed $helpful
-     * @param mixed $irrelevant
-     * @param mixed $harmful
-     */
     private function assertSelectedFeedbackIsExplicit(mixed $selected, mixed $helpful, mixed $irrelevant, mixed $harmful): void
     {
         $selectedList = $this->stringList($selected);
@@ -186,7 +172,7 @@ final class OutcomeLogger
             $matches = 0;
             foreach ([$helpfulList, $irrelevantList, $harmfulList] as $bucket) {
                 if (in_array($id, $bucket, true)) {
-                    $matches++;
+                    ++$matches;
                 }
             }
             if ($matches === 0) {
@@ -204,10 +190,7 @@ final class OutcomeLogger
         }
     }
 
-    /**
-     * @param mixed $value
-     * @return list<string>
-     */
+    /** @return list<string> */
     private function stringList(mixed $value): array
     {
         if (!is_array($value)) {
@@ -217,9 +200,7 @@ final class OutcomeLogger
         return array_values(array_filter($value, 'is_string'));
     }
 
-    /**
-     * @param array<string, mixed> $data
-     */
+    /** @param array<string, mixed> $data */
     private function logEventDraft(string $root, string $draftPath, array $data, string $actor, string $commit): string
     {
         $taskId = $this->requiredString($data, 'task_id', $draftPath);
@@ -227,6 +208,7 @@ final class OutcomeLogger
         $taskFiles = $this->stringList($data['task_files'] ?? []);
         $evaluatedGuidance = $this->parseEvaluatedGuidance($data['evaluated_guidance'] ?? null, $draftPath);
         $guidanceOutcomes = $this->parseGuidanceOutcomes($data['guidance_outcomes'] ?? null, $draftPath);
+        $operatingPromptOutcomes = $this->parseOperatingPromptOutcomes($data['operating_prompt_outcomes'] ?? [], $draftPath);
 
         $knownTypes = $this->knownGuidanceTypesById($root);
         $selected = [];
@@ -269,6 +251,12 @@ final class OutcomeLogger
         $recordedAt = (new DateTimeImmutable('now'))->format(DateTimeInterface::ATOM);
         $selectionIds = $this->nextEventIds($root, 'recall-selections.jsonl', 'recall-selection', count($evaluatedGuidance));
         $outcomeIds = $this->nextEventIds($root, 'outcomes.jsonl', 'guidance-outcome', count($guidanceOutcomes));
+        $operatingPromptOutcomeIds = $this->nextEventIds(
+            $root,
+            'operating-prompt-outcomes.jsonl',
+            'operating-prompt-outcome',
+            count($operatingPromptOutcomes),
+        );
 
         $selectionEvents = [];
         foreach ($evaluatedGuidance as $index => $eventDraft) {
@@ -303,14 +291,30 @@ final class OutcomeLogger
             );
         }
 
-        $this->eventHistoryWriter->append($root, $selectionEvents, $outcomeEvents);
+        $operatingPromptEvents = [];
+        foreach ($operatingPromptOutcomes as $index => $outcome) {
+            $operatingPromptEvents[] = new OperatingPromptOutcomeEvent(
+                $operatingPromptOutcomeIds[$index],
+                $compilationId,
+                $taskId,
+                $outcome['prompt_id'],
+                $outcome['arguments_sha256'],
+                $outcome['outcome'],
+                $outcome['applied'],
+                $outcome['evidence'],
+                $outcome['comment'],
+                $commit,
+                $actor,
+                $recordedAt,
+            );
+        }
+
+        $this->eventHistoryWriter->append($root, $selectionEvents, $outcomeEvents, $operatingPromptEvents);
 
         return $compilationId;
     }
 
-    /**
-     * @return array<string, GuidanceType>
-     */
+    /** @return array<string, GuidanceType> */
     private function knownGuidanceTypesById(string $root): array
     {
         $known = [];
@@ -324,9 +328,7 @@ final class OutcomeLogger
         return $known;
     }
 
-    /**
-     * @return list<EvaluatedGuidance>
-     */
+    /** @return list<EvaluatedGuidance> */
     private function parseEvaluatedGuidance(mixed $value, string $file): array
     {
         if (!is_array($value)) {
@@ -365,9 +367,7 @@ final class OutcomeLogger
         return $items;
     }
 
-    /**
-     * @return list<array{guidance_id: string, guidance_type: GuidanceType, selected: bool, applied: bool, outcome: OutcomeValue, comment: string|null}>
-     */
+    /** @return list<array{guidance_id: string, guidance_type: GuidanceType, selected: bool, applied: bool, outcome: OutcomeValue, comment: string|null}> */
     private function parseGuidanceOutcomes(mixed $value, string $file): array
     {
         if (!is_array($value)) {
@@ -403,8 +403,66 @@ final class OutcomeLogger
     }
 
     /**
-     * @return list<string>
+     * @return list<array{prompt_id: string, arguments_sha256: string, selected: bool, applied: bool, outcome: OutcomeValue, evidence: list<string>, comment: string|null}>
      */
+    private function parseOperatingPromptOutcomes(mixed $value, string $file): array
+    {
+        if (!is_array($value)) {
+            throw new RuntimeException('outcome draft requires operating_prompt_outcomes list');
+        }
+
+        $items = [];
+        $seen = [];
+        foreach (array_values($value) as $index => $item) {
+            if (!is_array($item)) {
+                throw new RuntimeException(sprintf('operating_prompt_outcomes[%d] must be an object', $index));
+            }
+            /** @var array<string, mixed> $item */
+            $promptId = $this->requiredString($item, 'prompt_id', $file);
+            if (isset($seen[$promptId])) {
+                throw new RuntimeException(sprintf("duplicate operating prompt outcome '%s' in draft", $promptId));
+            }
+            $seen[$promptId] = true;
+            $argumentsSha256 = $this->requiredString($item, 'arguments_sha256', $file);
+            if (preg_match('/^[a-f0-9]{64}$/', $argumentsSha256) !== 1) {
+                throw new RuntimeException(sprintf("operating prompt outcome '%s' has invalid arguments_sha256", $promptId));
+            }
+            $selected = $this->requiredBool($item, 'selected', $file);
+            if (!$selected) {
+                throw new RuntimeException(sprintf("operating prompt outcome '%s' must keep selected=true", $promptId));
+            }
+            $applied = $this->requiredBool($item, 'applied', $file);
+            $outcome = OutcomeValue::tryFrom($this->requiredString($item, 'outcome', $file));
+            if (!$outcome instanceof OutcomeValue) {
+                throw new RuntimeException(sprintf("unknown outcome value for operating prompt '%s'", $promptId));
+            }
+            $evidence = $this->requiredStringList($item, 'evidence', $file);
+            if (in_array($outcome, [OutcomeValue::HELPFUL, OutcomeValue::IRRELEVANT, OutcomeValue::HARMFUL], true) && $evidence === []) {
+                throw new RuntimeException(sprintf("operating prompt outcome '%s' requires evidence for %s", $promptId, $outcome->value));
+            }
+            if (in_array($outcome, [OutcomeValue::HELPFUL, OutcomeValue::HARMFUL], true) && !$applied) {
+                throw new RuntimeException(sprintf("operating prompt outcome '%s' cannot be %s when applied=false", $promptId, $outcome->value));
+            }
+            $comment = $item['comment'] ?? null;
+            if ($comment !== null && !is_string($comment)) {
+                throw new RuntimeException(sprintf("operating prompt outcome '%s' comment must be string or null", $promptId));
+            }
+
+            $items[] = [
+                'prompt_id' => $promptId,
+                'arguments_sha256' => $argumentsSha256,
+                'selected' => true,
+                'applied' => $applied,
+                'outcome' => $outcome,
+                'evidence' => $evidence,
+                'comment' => $comment,
+            ];
+        }
+
+        return $items;
+    }
+
+    /** @return list<string> */
     private function nextEventIds(string $root, string $fileName, string $prefix, int $count): array
     {
         if ($count === 0) {
@@ -416,18 +474,16 @@ final class OutcomeLogger
             throw new RuntimeException('invalid generated event id: ' . $first);
         }
         $base = substr($first, 0, $lastDot + 1);
-        $next = (int)substr($first, $lastDot + 1);
+        $next = (int) substr($first, $lastDot + 1);
         $ids = [];
-        for ($i = 0; $i < $count; $i++) {
+        for ($i = 0; $i < $count; ++$i) {
             $ids[] = $base . sprintf('%03d', $next + $i);
         }
 
         return $ids;
     }
 
-    /**
-     * @param array<string, mixed> $data
-     */
+    /** @param array<string, mixed> $data */
     private function requiredString(array $data, string $key, string $file): string
     {
         $value = $data[$key] ?? null;
@@ -438,9 +494,7 @@ final class OutcomeLogger
         return $value;
     }
 
-    /**
-     * @param array<string, mixed> $data
-     */
+    /** @param array<string, mixed> $data */
     private function requiredBool(array $data, string $key, string $file): bool
     {
         $value = $data[$key] ?? null;
