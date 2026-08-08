@@ -2,7 +2,7 @@
 
 `agent-recall-compiler` can instantiate reusable, measurable execution contracts from versioned local manifests.
 
-The compiler owns selection, validation, substitution, provenance, and rendering. The manifest owns the actual prompt semantics. This keeps repository guidance out of PHP source while still making the compiled `system.md` deterministic and replayable.
+The caller selects prompt requests. The compiler owns validation, resolution, substitution, provenance, and rendering. The manifest owns the actual prompt semantics. This keeps repository guidance out of PHP source while still making the compiled `system.md` deterministic and replayable.
 
 ## Manifest schema
 
@@ -22,7 +22,7 @@ The compiler owns selection, validation, substitution, provenance, and rendering
 }
 ```
 
-Placeholders use the exact `{{name}}` form. Every placeholder must receive one scalar argument. Unknown arguments, missing arguments, duplicate prompt IDs, unknown selected prompts, and malformed placeholder syntax fail compilation.
+Placeholders use the exact `{{name}}` form. Every placeholder must receive one boolean, integer, or string argument. Unknown arguments, missing arguments, duplicate prompt IDs, unknown selected prompts, and malformed placeholder syntax fail compilation.
 
 ## Task brief
 
@@ -44,7 +44,17 @@ Placeholders use the exact `{{name}}` form. Every placeholder must receive one s
 }
 ```
 
-Compile it with:
+Compile it directly with this package:
+
+```bash
+agent-recall-compiler compile \
+  --task-brief .agent-session/work-brief.json \
+  --operating-prompt-manifest /path/to/operating-prompts.json
+```
+
+## Through agent-loop
+
+`voku/agent-loop` delegates `recall` commands to `agent-recall-compiler` and preserves the extra compile options, so the same contract can be compiled through the unified CLI:
 
 ```bash
 agent-loop recall compile \
@@ -52,14 +62,12 @@ agent-loop recall compile \
   --operating-prompt-manifest /path/to/operating-prompts.json
 ```
 
-`agent-loop` forwards recall options to `agent-recall-compiler`, so no separate prompt runtime is required.
-
 ## Inline selection
 
 For callers that already construct the task at the CLI boundary:
 
 ```bash
-agent-loop recall compile \
+agent-recall-compiler compile \
   --task TEST-42 \
   --description "Raise the verification bar for the parser." \
   --operating-prompt-manifest /path/to/operating-prompts.json \
