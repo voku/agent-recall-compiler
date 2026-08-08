@@ -29,14 +29,16 @@ final class TaskContextRecallProvider implements RecallProvider
             'behavior_anchors' => $task->behaviorAnchors,
             'tags' => $task->tags,
             'targets' => $task->targets,
-            'operating_prompts' => array_map(
-                static fn (OperatingPromptRequest $request): array => $request->toArray(),
-                $task->operatingPrompts,
-            ),
             'status' => $task->status,
             'revision' => $task->revision,
             'source_path' => $task->sourcePath,
         ];
+        if ($task->operatingPrompts !== []) {
+            $payload['operating_prompts'] = array_map(
+                static fn (OperatingPromptRequest $request): array => $request->toArray(),
+                $task->operatingPrompts,
+            );
+        }
 
         return new RecallProviderResult(
             CanonicalJson::digest($payload),
