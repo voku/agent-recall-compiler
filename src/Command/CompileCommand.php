@@ -211,9 +211,7 @@ final class CompileCommand
             bundleDigest: $bundleDigest,
             snapshotDigest: $compilation->snapshot->digest(),
         );
-        // Both are populated by the same branch above; naming both keeps that invariant checkable
-        // instead of leaving the rendered artifacts as an unverified assumption about $verification.
-        if ($verification !== null && $verificationArtifacts !== null) {
+        if ($verification !== null) {
             $metaJson = $this->withVerificationMetadata(
                 $metaJson,
                 $verification,
