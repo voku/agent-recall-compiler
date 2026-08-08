@@ -13,14 +13,17 @@ The caller selects prompt requests. The compiler validates and resolves the sele
 
 ## The target shape
 
-A project-specific L1 operational prompt should have exactly four parts:
+A project-specific L1 operational prompt should have exactly five parts:
 
 ```text
-Goal        = measurable outcome / minimum floor
-Context     = exact repository search anchors and known facts
-Constraints = invariants and scope boundaries
-Done When   = observable evidence and stopping condition
+Goal         = measurable outcome / minimum floor
+Context      = exact repository search anchors and known facts
+Constraints  = invariants and scope boundaries
+Verification = exact repository-supported measurement procedure
+Done When    = observable result and stopping condition
 ```
+
+`Verification` and `Done When` are deliberately separate. Verification answers **how reality is measured**. Done When answers **which observed result is sufficient to stop**.
 
 An L2 recipe therefore does **not** say only "increase coverage" or "plan further ahead". It instructs the next agent to use the current recall context to construct something like:
 
@@ -33,6 +36,9 @@ Use src/Parser.php, tests/ParserTest.php, the existing parser fixtures, and the 
 
 Constraints:
 Keep the public API unchanged. Do not weaken existing assertions. Do not add PHPStan ignores.
+
+Verification:
+Run the focused parser tests, the repository PHPStan command, coverage measurement, and the configured Infection command.
 
 Done When:
 The focused tests and PHPStan pass, coverage is at least 10 percentage points higher, and meaningful mutants are killed or explicitly reported as remaining risk.
@@ -66,13 +72,15 @@ Every recipe explicitly declares whether it is L1 or L2:
 
 ## L2 construction contract
 
-When a selected recipe has `level: 2`, `system.md` receives an `L2 Operational Prompt Construction` section. It tells the consuming agent to synthesize a concrete L1 prompt with `Goal`, `Context`, `Constraints`, and `Done When`.
+When a selected recipe has `level: 2`, `system.md` receives an `L2 Operational Prompt Construction` section. It tells the consuming agent to synthesize a concrete L1 prompt with `Goal`, `Context`, `Constraints`, `Verification`, and `Done When`.
 
 The L2 pass must:
 
 - preserve numeric floors and explicit stopping conditions from the recipe;
 - prefer exact repository facts over generic advice;
-- use known files, symbols, callers, tests, project documents, task state, constraints, and validation commands as context anchors;
+- use known files, symbols, callers, tests, project documents, task state, and constraints as context anchors;
+- put exact repository-supported commands and probes in Verification;
+- keep Verification separate from the acceptance result in Done When;
 - avoid generic placeholders when recall already contains a concrete value;
 - never invent repository commands, tools, APIs, or architectural rules;
 - mark missing evidence as `UNKNOWN` or make evidence discovery part of the generated Context section;
