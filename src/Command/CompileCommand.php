@@ -20,6 +20,7 @@ use voku\AgentRecallCompiler\Provider\LearningRecallProvider;
 use voku\AgentRecallCompiler\Provider\MapRecallProvider;
 use voku\AgentRecallCompiler\Provider\MemoryRecallProvider;
 use voku\AgentRecallCompiler\Provider\OperatingPromptRecallProvider;
+use voku\AgentRecallCompiler\Provider\ProjectCapabilityRecallProvider;
 use voku\AgentRecallCompiler\Provider\ScopedDocumentRecallProvider;
 use voku\AgentRecallCompiler\Provider\TaskContextRecallProvider;
 use voku\AgentRecallCompiler\RecallCompilationBlockedException;
@@ -92,6 +93,7 @@ final class CompileCommand
             ? (new FeedbackParser())->parseFile($feedbackPath)
             : null;
 
+        $projectRoot = $parsed->stringOption('project-root');
         $mapIndex = $parsed->stringOption('map-index');
         $mapRoot = $parsed->stringOption('map-root');
         $mapSearchIndex = $parsed->stringOption('map-search-index');
@@ -115,6 +117,9 @@ final class CompileCommand
                 new MemoryRecallProvider($repository),
                 new LearningRecallProvider($repository),
             ];
+            if ($projectRoot !== null && trim($projectRoot) !== '') {
+                $providers[] = new ProjectCapabilityRecallProvider($projectRoot);
+            }
             if ($task->operatingPrompts !== []) {
                 $providers[] = new OperatingPromptRecallProvider($operatingPromptManifests);
             }
