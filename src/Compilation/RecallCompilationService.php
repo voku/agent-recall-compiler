@@ -7,6 +7,9 @@ namespace voku\AgentRecallCompiler\Compilation;
 use LogicException;
 use voku\AgentRecallCompiler\CanonicalJson;
 use voku\AgentRecallCompiler\ConstraintManifest;
+use voku\AgentRecallCompiler\EvaluatedGuidance;
+use voku\AgentRecallCompiler\ExclusionReason;
+use voku\AgentRecallCompiler\GuidanceType;
 use voku\AgentRecallCompiler\OperatingPromptRequest;
 use voku\AgentRecallCompiler\Provider\RecallFact;
 use voku\AgentRecallCompiler\Provider\RecallProvider;
@@ -14,6 +17,7 @@ use voku\AgentRecallCompiler\Provider\RecallProviderResult;
 use voku\AgentRecallCompiler\RecallDecisionEngine;
 use voku\AgentRecallCompiler\RecallGuidance;
 use voku\AgentRecallCompiler\RecallRejection;
+use voku\AgentRecallCompiler\RecallResult;
 use voku\AgentRecallCompiler\RecallRetirement;
 use voku\AgentRecallCompiler\RecallRootConfig;
 use voku\AgentRecallCompiler\TaskBrief;
@@ -37,10 +41,6 @@ final class RecallCompilationService
         usort($providers, static fn (RecallProvider $left, RecallProvider $right): int => strcmp($left->manifest()->id, $right->manifest()->id));
         $this->assertUniqueProviderIds($providers);
 
-        // The map is the only provider allowed to enlarge the task's effective
-        // file scope. Resolve it first so path-scoped documents and guidance
-        // can see exact primary/contract/caller/test files without presenting
-        // dependency-only context as an intended edit.
         $precomputedResults = [];
         $mapFacts = [];
         foreach ($providers as $provider) {
@@ -88,6 +88,8 @@ final class RecallCompilationService
             $constraints,
             $retiredProposals,
         );
+        $selection = $this->preferLoadedCanonicalHomes($selection, $activeGuidance, $factResolution->facts);
+
         $snapshot = new CompilationSnapshot(CanonicalJson::digest($this->taskArray($task)), $snapshotProviders);
         $bundle = [
             'schema_version' => '1.0',
@@ -159,6 +161,118 @@ final class RecallCompilationService
         array_push($constraints, ...$result->constraints);
         array_push($retiredProposals, ...$result->retiredProposals);
         array_push($factCandidates, ...$result->facts);
+    }
+
+    /**
+     * @param list<RecallGuidance> $activeGuidance
+     * @param list<array<string, mixed>> $facts resolved canonical fact projection
+     */
+    private function preferLoadedCanonicalHomes(RecallResult $selection, array $activeGuidance, array $facts): RecallResult
+    {
+        $loadedCanonicalSources = [];
+        foreach ($facts as $fact) {
+            $type = $fact['type'] ?? null;
+            if (!is_string($type) || !in_array($type, [GuidanceType::MEMORY->value, GuidanceType::SKILL->value], true)) {
+                continue;
+            }
+            $payload = $fact['payload'] ?? null;
+            if (!is_array($payload)) {
+                continue;
+            }
+            $sourceRef = $payload['canonical_source_ref'] ?? null;
+            $sourceHash = $payload['source_sha256'] ?? null;
+            if (!is_string($sourceRef) || trim($sourceRef) === '' || !is_string($sourceHash) || trim($sourceHash) === '') {
+                continue;
+            }
+            $loadedCanonicalSources[$this->canonicalSourceKey($type, $sourceRef, $sourceHash)] = true;
+        }
+
+        if ($loadedCanonicalSources === []) {
+            return $selection;
+        }
+
+        $selectedIds = [];
+        foreach ($selection->selectedGuidance as $guidance) {
+            $selectedIds[$guidance->id] = true;
+        }
+
+        $suppressedIds = [];
+        foreach ($activeGuidance as $guidance) {
+            if (
+                $guidance->status !== 'applied'
+                || !isset($selectedIds[$guidance->id])
+                || $guidance->appliedTargetSourceRef === null
+                || $guidance->appliedTargetContentHash === null
+            ) {
+                continue;
+            }
+
+            $type = GuidanceType::fromTargetType($guidance->targetType, $guidance->id);
+            if ($type === GuidanceType::CONSTRAINT) {
+                continue;
+            }
+
+            $key = $this->canonicalSourceKey(
+                $type->value,
+                $guidance->appliedTargetSourceRef,
+                $guidance->appliedTargetContentHash,
+            );
+            if (isset($loadedCanonicalSources[$key])) {
+                $suppressedIds[$guidance->id] = true;
+            }
+        }
+
+        if ($suppressedIds === []) {
+            return $selection;
+        }
+
+        $selectedGuidance = array_values(array_filter(
+            $selection->selectedGuidance,
+            static fn (RecallGuidance $guidance): bool => !isset($suppressedIds[$guidance->id]),
+        ));
+
+        $evaluatedGuidance = array_map(
+            static function (EvaluatedGuidance $evaluated) use ($suppressedIds): EvaluatedGuidance {
+                if (!isset($suppressedIds[$evaluated->guidanceId]) || !$evaluated->selected) {
+                    return $evaluated;
+                }
+
+                return new EvaluatedGuidance(
+                    $evaluated->guidanceId,
+                    $evaluated->guidanceType,
+                    true,
+                    false,
+                    null,
+                    ExclusionReason::CANONICAL_HOME_LOADED,
+                    $evaluated->taskFiles,
+                    $evaluated->sourceProposal,
+                );
+            },
+            $selection->evaluatedGuidance,
+        );
+
+        $outcomeStats = $selection->outcomeStats;
+        foreach (array_keys($suppressedIds) as $guidanceId) {
+            unset($outcomeStats[$guidanceId]);
+        }
+
+        return new RecallResult(
+            $selectedGuidance,
+            $selection->selectedRejections,
+            $selection->warnings,
+            $selection->selectedConstraints,
+            $outcomeStats,
+            $evaluatedGuidance,
+        );
+    }
+
+    private function canonicalSourceKey(string $type, string $sourceRef, string $sha256): string
+    {
+        return CanonicalJson::digest([
+            'type' => $type,
+            'source_ref' => ltrim(str_replace('\\', '/', trim($sourceRef)), '/'),
+            'sha256' => strtolower(trim($sha256)),
+        ]);
     }
 
     /** @return array<string, mixed> */
