@@ -136,6 +136,7 @@ final class ScopedDocumentRecallProvider implements RecallProvider
         );
     }
 
+    /** @return array<string, mixed> */
     private function decodeManifest(): array
     {
         $content = file_get_contents($this->manifestPath);
