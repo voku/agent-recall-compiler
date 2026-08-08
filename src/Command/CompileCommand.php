@@ -14,6 +14,7 @@ use voku\AgentRecallCompiler\FeedbackAssessmentRenderer;
 use voku\AgentRecallCompiler\FeedbackParser;
 use voku\AgentRecallCompiler\InlineTaskBriefResolver;
 use voku\AgentRecallCompiler\JsonTaskBriefResolver;
+use voku\AgentRecallCompiler\OperatingPromptOutcomeDraftAugmenter;
 use voku\AgentRecallCompiler\OperatingPromptRequest;
 use voku\AgentRecallCompiler\Provider\KanbanContextRecallProvider;
 use voku\AgentRecallCompiler\Provider\LearningRecallProvider;
@@ -93,7 +94,6 @@ final class CompileCommand
             ? (new FeedbackParser())->parseFile($feedbackPath)
             : null;
 
-        $projectRoot = $parsed->stringOption('project-root');
         $mapIndex = $parsed->stringOption('map-index');
         $mapRoot = $parsed->stringOption('map-root');
         $mapSearchIndex = $parsed->stringOption('map-search-index');
@@ -117,8 +117,8 @@ final class CompileCommand
                 new MemoryRecallProvider($repository),
                 new LearningRecallProvider($repository),
             ];
-            if ($projectRoot !== null && trim($projectRoot) !== '') {
-                $providers[] = new ProjectCapabilityRecallProvider($projectRoot);
+            if ($rootConfig->projectRoot !== null) {
+                $providers[] = new ProjectCapabilityRecallProvider($rootConfig->projectRoot);
             }
             if ($task->operatingPrompts !== []) {
                 $providers[] = new OperatingPromptRecallProvider($operatingPromptManifests);
@@ -201,7 +201,10 @@ final class CompileCommand
                 'key' => $verificationWriter->renderKey($verification),
             ];
         }
-        $logDraft = $this->promptBuilder->buildRecallLogDraft($task, $result, $compilationId);
+        $logDraft = (new OperatingPromptOutcomeDraftAugmenter())->augment(
+            $this->promptBuilder->buildRecallLogDraft($task, $result, $compilationId),
+            $task,
+        );
         $bundleJson = CanonicalJson::pretty($bundle);
         $factsJson = CanonicalJson::pretty($facts);
         $selectionJson = CanonicalJson::pretty($selectionReport);
@@ -381,9 +384,7 @@ final class CompileCommand
         );
     }
 
-    /**
-     * @param list<OperatingPromptRequest> $additional
-     */
+    /** @param list<OperatingPromptRequest> $additional */
     private function withAdditionalOperatingPrompts(TaskBrief $task, array $additional): TaskBrief
     {
         if ($additional === []) {
