@@ -187,18 +187,8 @@ final readonly class OperatingPromptRecallProvider implements RecallProvider
     private function placeholderNames(string $id, string $template): array
     {
         preg_match_all('/\{\{([a-z][a-z0-9_]*)\}\}/', $template, $matches);
-        $matchedNames = $matches[1] ?? [];
-        if (!is_array($matchedNames)) {
-            $matchedNames = [];
-        }
-
         /** @var list<string> $names */
-        $names = [];
-        foreach ($matchedNames as $name) {
-            if (is_string($name) && !in_array($name, $names, true)) {
-                $names[] = $name;
-            }
-        }
+        $names = array_values(array_unique($matches[1]));
         sort($names, SORT_STRING);
 
         $withoutPlaceholders = preg_replace('/\{\{[a-z][a-z0-9_]*\}\}/', '', $template);
