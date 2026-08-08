@@ -27,7 +27,7 @@ final class MemoryRecallProvider implements RecallProvider
 
     public function collect(TaskBrief $task, RecallRootConfig $rootConfig): RecallProviderResult
     {
-        $memory = trim($this->repository->loadMemory($rootConfig->root));
+        $memory = trim($this->loadMemory($rootConfig));
         if ($memory === '') {
             return new RecallProviderResult(CanonicalJson::digest(['memory' => '']));
         }
@@ -38,5 +38,21 @@ final class MemoryRecallProvider implements RecallProvider
             CanonicalJson::digest($payload),
             [new RecallFact('memory.global', 'memory', 'repository_memory', 'MEMORY.md', ['/'], $payload)],
         );
+    }
+
+    private function loadMemory(RecallRootConfig $rootConfig): string
+    {
+        if ($rootConfig->projectRoot === null) {
+            return $this->repository->loadMemory($rootConfig->root);
+        }
+
+        $path = rtrim($rootConfig->projectRoot, '/\\') . '/MEMORY.md';
+        if (!is_file($path)) {
+            return '';
+        }
+
+        $content = file_get_contents($path);
+
+        return $content === false ? '' : $content;
     }
 }

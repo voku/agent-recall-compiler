@@ -9,6 +9,7 @@ final readonly class RecallRootConfig
     public function __construct(
         public string $root,
         public string $activeConstraintsDir,
+        public ?string $projectRoot = null,
     ) {
     }
 }
