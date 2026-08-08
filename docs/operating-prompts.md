@@ -1,10 +1,48 @@
-# Operating prompt contracts
+# Operating prompt recipes
 
-`agent-recall-compiler` can instantiate reusable, measurable execution contracts from versioned local manifests.
+`agent-recall-compiler` can compile reusable prompt recipes together with task-specific recall context.
 
-The caller selects prompt requests. The compiler owns validation, resolution, substitution, provenance, and rendering. The manifest owns the actual prompt semantics. This keeps repository guidance out of PHP source while still making the compiled `system.md` deterministic and replayable.
+The important distinction is prompt level:
+
+- **L2 recipe**: tells an agent how to build a project-specific L1 operational prompt from the current recall bundle.
+- **L1 contract**: an already executable instruction that can be applied directly to the task.
+
+Most reusable engineering advice belongs at L2. The reusable part is the method and quality bar; the concrete files, symbols, commands, architecture, risks, and invariants belong to the project context. Context is therefore resolved at compile time instead of hard-coded into a generic prompt library.
+
+The caller selects prompt requests. The compiler validates and resolves the selected recipe, substitutes explicit parameters, records provenance, and renders the result beside the task-specific context in `system.md`. The manifest owns the reusable prompt semantics.
+
+## The target shape
+
+A project-specific L1 operational prompt should have exactly four parts:
+
+```text
+Goal        = measurable outcome / minimum floor
+Context     = exact repository search anchors and known facts
+Constraints = invariants and scope boundaries
+Done When   = observable evidence and stopping condition
+```
+
+An L2 recipe therefore does **not** say only "increase coverage" or "plan further ahead". It instructs the next agent to use the current recall context to construct something like:
+
+```text
+Goal:
+Increase coverage for src/Parser.php by at least 10 percentage points.
+
+Context:
+Use src/Parser.php, tests/ParserTest.php, the existing parser fixtures, and the repository's Infection configuration.
+
+Constraints:
+Keep the public API unchanged. Do not weaken existing assertions. Do not add PHPStan ignores.
+
+Done When:
+The focused tests and PHPStan pass, coverage is at least 10 percentage points higher, and meaningful mutants are killed or explicitly reported as remaining risk.
+```
+
+That L1 prompt is intentionally project-specific. The reusable L2 recipe only defines how to derive it.
 
 ## Manifest schema
+
+Every recipe explicitly declares whether it is L1 or L2:
 
 ```json
 {
@@ -12,17 +50,36 @@ The caller selects prompt requests. The compiler owns validation, resolution, su
   "prompts": [
     {
       "id": "plan-horizon",
-      "template": "Plan the next {{horizon}}, not merely the next step.\nCover the complete horizon with measurable milestones and explicit evidence."
+      "level": 2,
+      "template": "Create a project-specific planning prompt for the next {{horizon}}. Use the current repository architecture, task state, dependencies, validation capabilities, and unresolved unknowns from recall context."
     },
     {
-      "id": "coverage-mutation",
-      "template": "Increase coverage by at least {{minimum_percentage_points}} percentage points.\nRun {{mutation_command}} and use surviving meaningful mutants as evidence that the tests are still weak."
+      "id": "evidence-report",
+      "level": 1,
+      "template": "Do not claim success beyond observable evidence. Report exact verification commands, relevant results, skipped verification, and remaining risks."
     }
   ]
 }
 ```
 
-Placeholders use the exact `{{name}}` form. Every placeholder must receive one boolean, integer, or string argument. Unknown arguments, missing arguments, duplicate prompt IDs, unknown selected prompts, and malformed placeholder syntax fail compilation.
+`level` is required and must be `1` or `2`. Placeholders use the exact `{{name}}` form. Every placeholder must receive one boolean, integer, or string argument. Unknown arguments, missing arguments, duplicate prompt IDs, unknown selected prompts, and malformed placeholder syntax fail compilation.
+
+## L2 construction contract
+
+When a selected recipe has `level: 2`, `system.md` receives an `L2 Operational Prompt Construction` section. It tells the consuming agent to synthesize a concrete L1 prompt with `Goal`, `Context`, `Constraints`, and `Done When`.
+
+The L2 pass must:
+
+- preserve numeric floors and explicit stopping conditions from the recipe;
+- prefer exact repository facts over generic advice;
+- use known files, symbols, callers, tests, project documents, task state, constraints, and validation commands as context anchors;
+- avoid generic placeholders when recall already contains a concrete value;
+- never invent repository commands, tools, APIs, or architectural rules;
+- mark missing evidence as `UNKNOWN` or make evidence discovery part of the generated Context section;
+- remove hedge language such as "maybe", "try to", "consider", and "if possible";
+- stop after constructing the L1 prompt rather than implementing the task during the L2 pass.
+
+This is the point of putting the mechanism in recall rather than storing a pile of polished generic prompts: the reusable recipe stays small, while the generated L1 prompt gets shaped by the actual project.
 
 ## Task brief
 
@@ -44,7 +101,9 @@ Placeholders use the exact `{{name}}` form. Every placeholder must receive one b
 }
 ```
 
-Compile it directly with this package:
+The task selects a recipe and supplies hard task policy such as the minimum percentage-point increase. Repository context still comes from recall providers rather than being repeated in the request.
+
+## Compile directly
 
 ```bash
 agent-recall-compiler compile \
@@ -54,7 +113,7 @@ agent-recall-compiler compile \
 
 ## Through agent-loop
 
-`voku/agent-loop` delegates `recall` commands to `agent-recall-compiler` and preserves the extra compile options, so the same contract can be compiled through the unified CLI:
+`voku/agent-loop` delegates `recall` commands to `agent-recall-compiler` and preserves extra compile options, so the same recipe can be reused through the unified CLI:
 
 ```bash
 agent-loop recall compile \
@@ -62,24 +121,27 @@ agent-loop recall compile \
   --operating-prompt-manifest /path/to/operating-prompts.json
 ```
 
-## Inline selection
+`agent-loop` should then consume the compiled `system.md`. For L2 recipes, the first agent pass creates the project-specific L1 prompt from that context; the L1 prompt is the execution contract for the implementation pass.
 
-For callers that already construct the task at the CLI boundary:
+## Inline selection
 
 ```bash
 agent-recall-compiler compile \
   --task TEST-42 \
   --description "Raise the verification bar for the parser." \
+  --file src/Parser.php \
+  --file tests/ParserTest.php \
   --operating-prompt-manifest /path/to/operating-prompts.json \
   --operating-prompt '{"id":"coverage-mutation","arguments":{"minimum_percentage_points":10,"mutation_command":"vendor/bin/infection --threads=max"}}'
 ```
 
-The compiled prompt appears under `## Operating Contract` in `system.md`. The selected request, rendered content, source reference, and template digest are also included in recall facts and therefore in the canonical bundle digest.
+The selected request, recipe level, rendered content, source reference, and template digest are included in recall facts and therefore in the canonical bundle digest.
 
 ## Design boundaries
 
 - No prompt selection by LLM or keyword heuristic.
-- No hidden threshold defaults. The caller must choose measurable values.
-- No automatic execution. Recall compiles the contract; the host or workflow executes it.
+- No hidden threshold defaults. The caller chooses measurable task policy.
+- No project-specific paths or commands baked into reusable first-party recipes unless they are explicit parameters.
+- No automatic assumption that an L2 recipe is executable task work. L2 constructs L1; L1 executes.
 - No duplicated first-party engineering guidance in this package. Keep reusable semantics in the repository that owns them, such as `voku/agent-skills`, and pass its manifest explicitly.
-- Changing a selected template or its arguments changes the replayable compilation evidence.
+- Changing a selected recipe, level, template, or argument changes the replayable compilation evidence.
