@@ -47,7 +47,6 @@ final class Cli
         fwrite(STDOUT, "  review              Generate deterministic blind-spot reports and L2 review prompts.\n\n");
         fwrite(STDOUT, "Options:\n");
         fwrite(STDOUT, "  --root PATH              Learning repository root directory.\n");
-        fwrite(STDOUT, "  --project-root PATH      Explicit repository root for bounded runtime/tooling/CI capability facts.\n");
         fwrite(STDOUT, "  --task-brief PATH        Path to JSON task brief file.\n");
         fwrite(STDOUT, "  --output-dir PATH        Where to write output files (defaults to current directory).\n");
         fwrite(STDOUT, "  --task ID                Inline task ID selector.\n");
@@ -80,13 +79,11 @@ final class Cli
         return 1;
     }
 
-    /**
-     * @param list<string> $tokens
-     */
+    /** @param list<string> $tokens */
     private function rootOption(array $tokens): ?string
     {
         $count = count($tokens);
-        for ($i = 0; $i < $count; $i++) {
+        for ($i = 0; $i < $count; ++$i) {
             if ($tokens[$i] !== '--root') {
                 continue;
             }
