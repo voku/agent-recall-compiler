@@ -84,7 +84,7 @@ final class ReviewTest extends TestCase
         self::assertStringContainsString('src/Foo.php', $prompt);
         self::assertStringContainsString('Select one dominant installed `code-review-*` engineering lens', $prompt);
         self::assertStringContainsString('at most one HANDOFF', $prompt);
-        self::assertStringContainsString('STATUS: blocked', $prompt);
+        self::assertStringContainsString('required HANDOFF target lens is unavailable, return `STATUS: blocked`', $prompt);
         self::assertStringNotContainsString('### ../secret', $prompt);
 
         file_put_contents($this->root . '/.agent-recall/current/meta.json', '{invalid');
