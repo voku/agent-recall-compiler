@@ -43,7 +43,7 @@ final readonly class OperatingPromptRequest
         }
 
         $arguments = $data['arguments'] ?? [];
-        if (!is_array($arguments) || array_is_list($arguments)) {
+        if (!is_array($arguments)) {
             throw new InvalidArgumentException('operating prompt arguments must be a JSON object');
         }
 
