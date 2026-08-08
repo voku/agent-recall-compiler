@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace voku\AgentRecallCompiler\Provider;
 
 use voku\AgentRecallCompiler\CanonicalJson;
+use voku\AgentRecallCompiler\RecallGuidance;
 use voku\AgentRecallCompiler\RecallRepository;
 use voku\AgentRecallCompiler\RecallRootConfig;
 use voku\AgentRecallCompiler\TaskBrief;
@@ -27,7 +28,10 @@ final class LearningRecallProvider implements RecallProvider
 
     public function collect(TaskBrief $task, RecallRootConfig $rootConfig): RecallProviderResult
     {
-        $activeGuidance = $this->repository->loadActiveGuidance($rootConfig->root);
+        $activeGuidance = $this->withAppliedTargetEvidence(
+            $rootConfig->root,
+            $this->repository->loadActiveGuidance($rootConfig->root),
+        );
         $rejectedGuidance = $this->repository->loadRejectedGuidance($rootConfig->root);
         $outcomes = $this->repository->loadOutcomes($rootConfig->root);
         $constraints = $this->repository->loadConstraintManifests($rootConfig->root);
@@ -49,5 +53,58 @@ final class LearningRecallProvider implements RecallProvider
             constraints: $constraints,
             retiredProposals: $retiredProposals,
         );
+    }
+
+    /**
+     * @param list<RecallGuidance> $guidance
+     * @return list<RecallGuidance>
+     */
+    private function withAppliedTargetEvidence(string $root, array $guidance): array
+    {
+        foreach ($guidance as $index => $item) {
+            if ($item->status !== 'applied') {
+                continue;
+            }
+
+            $path = rtrim($root, '/\\') . '/proposals/applied/' . $item->id . '.json';
+            if (!is_file($path)) {
+                continue;
+            }
+            $content = file_get_contents($path);
+            if ($content === false) {
+                continue;
+            }
+            $data = json_decode($content, true);
+            $appliedValidation = is_array($data) ? ($data['applied_validation'] ?? null) : null;
+            if (!is_array($appliedValidation)) {
+                continue;
+            }
+
+            $sourceRef = $appliedValidation['target_source_ref'] ?? null;
+            $contentHash = $appliedValidation['target_content_hash'] ?? null;
+            if (!is_string($sourceRef) || trim($sourceRef) === '' || !is_string($contentHash) || trim($contentHash) === '') {
+                continue;
+            }
+
+            $guidance[$index] = new RecallGuidance(
+                $item->id,
+                $item->action,
+                $item->targetType,
+                $item->target,
+                $item->scope,
+                $item->old,
+                $item->new,
+                $item->reason,
+                $item->boundary,
+                $item->validation,
+                $item->status,
+                $item->tags,
+                $item->patternKey,
+                str_replace('\\', '/', trim($sourceRef)),
+                strtolower(trim($contentHash)),
+            );
+        }
+
+        return $guidance;
     }
 }
