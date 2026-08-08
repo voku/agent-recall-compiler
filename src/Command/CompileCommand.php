@@ -117,7 +117,7 @@ final class CompileCommand
                 new MemoryRecallProvider($repository),
                 new LearningRecallProvider($repository),
             ];
-            if ($rootConfig->projectRoot !== null) {
+            if ($rootConfig->projectRoot !== null && $this->hasProjectCapabilityEvidence($rootConfig->projectRoot)) {
                 $providers[] = new ProjectCapabilityRecallProvider($rootConfig->projectRoot);
             }
             if ($task->operatingPrompts !== []) {
@@ -452,6 +452,13 @@ final class CompileCommand
         }
 
         return $requests;
+    }
+
+    private function hasProjectCapabilityEvidence(string $projectRoot): bool
+    {
+        $root = rtrim($projectRoot, '/\\');
+
+        return is_file($root . '/composer.json') || is_dir($root . '/.github/workflows');
     }
 
     private function writeFile(string $path, string $content): void
