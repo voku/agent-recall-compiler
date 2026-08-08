@@ -7,6 +7,7 @@ namespace voku\AgentRecallCompiler\Compilation;
 use LogicException;
 use voku\AgentRecallCompiler\CanonicalJson;
 use voku\AgentRecallCompiler\ConstraintManifest;
+use voku\AgentRecallCompiler\OperatingPromptRequest;
 use voku\AgentRecallCompiler\Provider\RecallFact;
 use voku\AgentRecallCompiler\Provider\RecallProvider;
 use voku\AgentRecallCompiler\Provider\RecallProviderResult;
@@ -176,6 +177,10 @@ final class RecallCompilationService
             'tags' => $task->tags,
             'behavior_anchors' => $task->behaviorAnchors,
             'targets' => $task->targets,
+            'operating_prompts' => array_map(
+                static fn (OperatingPromptRequest $request): array => $request->toArray(),
+                $task->operatingPrompts,
+            ),
         ];
     }
 }
