@@ -81,7 +81,6 @@ final readonly class OperatingPromptRecallProvider implements RecallProvider
                     'content' => $rendered,
                     'template_sha256' => $definition['template_sha256'],
                 ],
-                'operating-prompt:' . $request->id,
             );
         }
 
@@ -148,9 +147,6 @@ final readonly class OperatingPromptRecallProvider implements RecallProvider
         return $definitions;
     }
 
-    /**
-     * @param array{template: string, source_ref: string, template_sha256: string} $definition
-     */
     private function render(OperatingPromptRequest $request, string $template): string
     {
         $placeholders = $this->placeholderNames($request->id, $template);
@@ -187,14 +183,22 @@ final readonly class OperatingPromptRecallProvider implements RecallProvider
         return $rendered;
     }
 
-    /**
-     * @return list<string>
-     */
+    /** @return list<string> */
     private function placeholderNames(string $id, string $template): array
     {
         preg_match_all('/\{\{([a-z][a-z0-9_]*)\}\}/', $template, $matches);
+        $matchedNames = $matches[1] ?? [];
+        if (!is_array($matchedNames)) {
+            $matchedNames = [];
+        }
+
         /** @var list<string> $names */
-        $names = array_values(array_unique($matches[1] ?? []));
+        $names = [];
+        foreach ($matchedNames as $name) {
+            if (is_string($name) && !in_array($name, $names, true)) {
+                $names[] = $name;
+            }
+        }
         sort($names, SORT_STRING);
 
         $withoutPlaceholders = preg_replace('/\{\{[a-z][a-z0-9_]*\}\}/', '', $template);
