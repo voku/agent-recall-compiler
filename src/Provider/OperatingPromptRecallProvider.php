@@ -175,12 +175,8 @@ final readonly class OperatingPromptRecallProvider implements RecallProvider
         foreach ($request->arguments as $name => $value) {
             $replacements['{{' . $name . '}}'] = $this->argumentValue($value);
         }
-        $rendered = strtr($template, $replacements);
-        if (str_contains($rendered, '{{') || str_contains($rendered, '}}')) {
-            throw new RuntimeException('operating prompt contains unresolved placeholder syntax after rendering: ' . $request->id);
-        }
 
-        return $rendered;
+        return strtr($template, $replacements);
     }
 
     /** @return list<string> */
@@ -199,7 +195,7 @@ final readonly class OperatingPromptRecallProvider implements RecallProvider
         return $names;
     }
 
-    private function argumentValue(bool|float|int|string $value): string
+    private function argumentValue(bool|int|string $value): string
     {
         if (is_bool($value)) {
             return $value ? 'true' : 'false';
