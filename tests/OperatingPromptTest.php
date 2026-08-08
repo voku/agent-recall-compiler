@@ -6,6 +6,7 @@ namespace voku\AgentRecallCompiler\Tests;
 
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
+use voku\AgentRecallCompiler\Cli;
 use voku\AgentRecallCompiler\Compilation\RecallCompilationService;
 use voku\AgentRecallCompiler\OperatingPromptRequest;
 use voku\AgentRecallCompiler\Provider\OperatingPromptRecallProvider;
@@ -23,7 +24,15 @@ final class OperatingPromptTest extends TestCase
     protected function setUp(): void
     {
         $this->root = sys_get_temp_dir() . '/agent-recall-operating-prompt-' . bin2hex(random_bytes(6));
-        mkdir($this->root, 0777, true);
+        foreach ([
+            '/proposals/approved',
+            '/proposals/applied',
+            '/proposals/rejected',
+            '/constraints/active',
+            '/history',
+        ] as $directory) {
+            mkdir($this->root . $directory, 0777, true);
+        }
         $this->manifest = $this->root . '/operating-prompts.json';
         $this->writeManifest([
             [
@@ -39,12 +48,7 @@ final class OperatingPromptTest extends TestCase
 
     protected function tearDown(): void
     {
-        foreach (glob($this->root . '/*') ?: [] as $path) {
-            if (is_file($path)) {
-                unlink($path);
-            }
-        }
-        rmdir($this->root);
+        $this->removeDirectory($this->root);
     }
 
     public function testTaskBriefParserKeepsTypedOperatingPromptRequests(): void
@@ -67,6 +71,49 @@ final class OperatingPromptTest extends TestCase
             'id' => 'plan-horizon',
             'arguments' => ['horizon' => '3 months'],
         ], $task->operatingPrompts[0]->toArray());
+    }
+
+    public function testCliCompilesInlineOperatingPromptIntoSystemBriefing(): void
+    {
+        $output = $this->root . '/cli-output';
+        $request = json_encode([
+            'id' => 'coverage-mutation',
+            'arguments' => [
+                'minimum_percentage_points' => 10,
+                'mutation_command' => 'vendor/bin/infection --threads=max',
+            ],
+        ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
+
+        self::assertSame(0, (new Cli())->run([
+            'agent-recall-compiler',
+            'compile',
+            '--root',
+            $this->root,
+            '--task',
+            'OPS-CLI',
+            '--description',
+            'Make coverage growth prove something.',
+            '--operating-prompt-manifest',
+            $this->manifest,
+            '--operating-prompt',
+            $request,
+            '--output-dir',
+            $output,
+            '--compilation-id',
+            'compilation.OPS-CLI.fixed',
+        ]));
+
+        $system = (string) file_get_contents($output . '/system.md');
+        self::assertStringContainsString('## Operating Contract', $system);
+        self::assertStringContainsString('Increase coverage by at least 10 percentage points.', $system);
+        self::assertStringContainsString('vendor/bin/infection --threads=max', $system);
+
+        $bundle = json_decode((string) file_get_contents($output . '/recall.bundle.json'), true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame('coverage-mutation', $bundle['task']['operating_prompts'][0]['id']);
+        self::assertContains(
+            'operating-prompts',
+            array_map(static fn (array $provider): string => $provider['manifest']['id'], $bundle['snapshot']['providers']),
+        );
     }
 
     public function testSelectedPromptIsRenderedAsAnOperatingContract(): void
@@ -200,5 +247,24 @@ final class OperatingPromptTest extends TestCase
             'schema_version' => '1.0',
             'prompts' => $prompts,
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+    }
+
+    private function removeDirectory(string $directory): void
+    {
+        if (!is_dir($directory)) {
+            return;
+        }
+        foreach (scandir($directory) ?: [] as $entry) {
+            if ($entry === '.' || $entry === '..') {
+                continue;
+            }
+            $path = $directory . '/' . $entry;
+            if (is_dir($path)) {
+                $this->removeDirectory($path);
+            } else {
+                unlink($path);
+            }
+        }
+        rmdir($directory);
     }
 }
