@@ -13,4 +13,5 @@ enum ExclusionReason: string
     case CONFLICTING = 'conflicting';
     case REJECTED = 'rejected';
     case INVALID_SCHEMA = 'invalid_schema';
+    case CANONICAL_HOME_LOADED = 'canonical_home_loaded';
 }
