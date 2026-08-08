@@ -54,7 +54,7 @@ final class ReviewPromptBuilder
             'Review the complete implementation against the task/brief, recall briefing, validation plan, and real source artifacts below.',
             'Select one dominant installed `code-review-*` engineering lens. Do not run a default review swarm.',
             'Allow at most one HANDOFF, only with an installed target lens, observed `path:line`, and why that concern is dominant.',
-            'If the primary lens, handoff target, or required evidence is unavailable, return `STATUS: blocked` and name the exact gap.',
+            'If the primary lens or required evidence is unavailable, or a required HANDOFF target lens is unavailable, return `STATUS: blocked` and name the exact gap.',
             'Preserve the lens-local `STATUS: findings|clean|blocked` result. Do not treat it as workflow approval or claim commands were run.',
             '',
             '## Artifacts',
