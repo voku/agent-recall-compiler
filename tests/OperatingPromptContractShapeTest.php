@@ -22,12 +22,23 @@ final class OperatingPromptContractShapeTest extends TestCase
         ]]);
 
         self::assertStringContainsString('produce exactly these five sections', $markdown);
-        self::assertStringContainsString('1. **Goal**', $markdown);
-        self::assertStringContainsString('2. **Context**', $markdown);
-        self::assertStringContainsString('3. **Constraints**', $markdown);
-        self::assertStringContainsString('4. **Verification**', $markdown);
-        self::assertStringContainsString('5. **Done When**', $markdown);
+
+        preg_match_all('/^([1-9]\. \*\*[^\n]+\*\*)/m', $markdown, $matches);
+        self::assertSame([
+            '1. **Goal**',
+            '2. **Context**',
+            '3. **Constraints**',
+            '4. **Verification**',
+            '5. **Done When**',
+        ], $matches[1]);
+
+        self::assertSame(1, substr_count($markdown, '1. **Goal**'));
+        self::assertSame(1, substr_count($markdown, '2. **Context**'));
+        self::assertSame(1, substr_count($markdown, '3. **Constraints**'));
+        self::assertSame(1, substr_count($markdown, '4. **Verification**'));
+        self::assertSame(1, substr_count($markdown, '5. **Done When**'));
         self::assertStringContainsString('Verification names how reality is measured', $markdown);
         self::assertStringContainsString('Done When names the acceptable observed result', $markdown);
+        self::assertStringContainsString('observable results and stopping conditions', $markdown);
     }
 }
