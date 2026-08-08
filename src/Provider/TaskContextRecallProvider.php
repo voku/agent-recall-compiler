@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace voku\AgentRecallCompiler\Provider;
 
 use voku\AgentRecallCompiler\CanonicalJson;
+use voku\AgentRecallCompiler\OperatingPromptRequest;
 use voku\AgentRecallCompiler\RecallRootConfig;
 use voku\AgentRecallCompiler\TaskBrief;
 
@@ -28,6 +29,10 @@ final class TaskContextRecallProvider implements RecallProvider
             'behavior_anchors' => $task->behaviorAnchors,
             'tags' => $task->tags,
             'targets' => $task->targets,
+            'operating_prompts' => array_map(
+                static fn (OperatingPromptRequest $request): array => $request->toArray(),
+                $task->operatingPrompts,
+            ),
             'status' => $task->status,
             'revision' => $task->revision,
             'source_path' => $task->sourcePath,
