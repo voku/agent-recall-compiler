@@ -27,12 +27,17 @@ final class MemoryRecallProvider implements RecallProvider
 
     public function collect(TaskBrief $task, RecallRootConfig $rootConfig): RecallProviderResult
     {
-        $memory = trim($this->loadMemory($rootConfig));
+        $loaded = $this->loadMemory($rootConfig);
+        $memory = trim($loaded['content']);
         if ($memory === '') {
             return new RecallProviderResult(CanonicalJson::digest(['memory' => '']));
         }
 
         $payload = ['content' => $memory];
+        if ($loaded['sourceSha256'] !== null) {
+            $payload['canonical_source_ref'] = 'MEMORY.md';
+            $payload['source_sha256'] = $loaded['sourceSha256'];
+        }
 
         return new RecallProviderResult(
             CanonicalJson::digest($payload),
@@ -40,19 +45,27 @@ final class MemoryRecallProvider implements RecallProvider
         );
     }
 
-    private function loadMemory(RecallRootConfig $rootConfig): string
+    /** @return array{content: string, sourceSha256: string|null} */
+    private function loadMemory(RecallRootConfig $rootConfig): array
     {
         if ($rootConfig->projectRoot === null) {
-            return $this->repository->loadMemory($rootConfig->root);
+            return [
+                'content' => $this->repository->loadMemory($rootConfig->root),
+                'sourceSha256' => null,
+            ];
         }
 
         $path = rtrim($rootConfig->projectRoot, '/\\') . '/MEMORY.md';
         if (!is_file($path)) {
-            return '';
+            return ['content' => '', 'sourceSha256' => null];
         }
 
         $content = file_get_contents($path);
+        $sha256 = hash_file('sha256', $path);
+        if ($content === false || $sha256 === false) {
+            return ['content' => '', 'sourceSha256' => null];
+        }
 
-        return $content === false ? '' : $content;
+        return ['content' => $content, 'sourceSha256' => $sha256];
     }
 }
