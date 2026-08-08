@@ -164,7 +164,7 @@ final class RecallCompilationService
     /** @return array<string, mixed> */
     private function taskArray(TaskBrief $task): array
     {
-        return [
+        $data = [
             'id' => $task->id,
             'description' => $task->description,
             'files' => $task->files,
@@ -177,10 +177,14 @@ final class RecallCompilationService
             'tags' => $task->tags,
             'behavior_anchors' => $task->behaviorAnchors,
             'targets' => $task->targets,
-            'operating_prompts' => array_map(
+        ];
+        if ($task->operatingPrompts !== []) {
+            $data['operating_prompts'] = array_map(
                 static fn (OperatingPromptRequest $request): array => $request->toArray(),
                 $task->operatingPrompts,
-            ),
-        ];
+            );
+        }
+
+        return $data;
     }
 }
