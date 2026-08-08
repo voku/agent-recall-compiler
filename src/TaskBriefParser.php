@@ -91,6 +91,14 @@ final class TaskBriefParser
             $targets = $this->targetList($data['targets']);
         }
 
+        $operatingPrompts = [];
+        if (array_key_exists('operating_prompts', $data)) {
+            if (!is_array($data['operating_prompts'])) {
+                throw new RuntimeException('task operating_prompts must be an array');
+            }
+            $operatingPrompts = $this->operatingPromptList($data['operating_prompts']);
+        }
+
         return new TaskBrief(
             $id,
             $description,
@@ -104,6 +112,7 @@ final class TaskBriefParser
             $this->stringList($tags),
             $this->stringList($behaviorAnchors),
             $targets,
+            $operatingPrompts,
         );
     }
 
@@ -138,5 +147,33 @@ final class TaskBriefParser
         }
 
         return array_values(array_unique($targets));
+    }
+
+    /**
+     * @param array<mixed> $values
+     * @return list<OperatingPromptRequest>
+     */
+    private function operatingPromptList(array $values): array
+    {
+        $requests = [];
+        $seenIds = [];
+        foreach ($values as $value) {
+            if (!is_array($value)) {
+                throw new RuntimeException('task operating_prompts entries must be JSON objects');
+            }
+            try {
+                /** @var array<string, mixed> $value */
+                $request = OperatingPromptRequest::fromArray($value);
+            } catch (\InvalidArgumentException $exception) {
+                throw new RuntimeException('invalid task operating prompt: ' . $exception->getMessage(), 0, $exception);
+            }
+            if (isset($seenIds[$request->id])) {
+                throw new RuntimeException('task selects operating prompt more than once: ' . $request->id);
+            }
+            $seenIds[$request->id] = true;
+            $requests[] = $request;
+        }
+
+        return $requests;
     }
 }
