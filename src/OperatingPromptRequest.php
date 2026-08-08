@@ -9,7 +9,7 @@ use InvalidArgumentException;
 final readonly class OperatingPromptRequest
 {
     /**
-     * @param array<string, bool|float|int|string> $arguments
+     * @param array<string, bool|int|string> $arguments
      */
     public function __construct(
         public string $id,
@@ -25,9 +25,6 @@ final readonly class OperatingPromptRequest
             }
             if (is_string($value) && trim($value) === '') {
                 throw new InvalidArgumentException('operating prompt argument must not be an empty string: ' . $name);
-            }
-            if (is_float($value) && !is_finite($value)) {
-                throw new InvalidArgumentException('operating prompt argument must be finite: ' . $name);
             }
         }
     }
@@ -47,14 +44,14 @@ final readonly class OperatingPromptRequest
             throw new InvalidArgumentException('operating prompt arguments must be a JSON object');
         }
 
-        /** @var array<string, bool|float|int|string> $normalized */
+        /** @var array<string, bool|int|string> $normalized */
         $normalized = [];
         foreach ($arguments as $name => $value) {
             if (!is_string($name)) {
                 throw new InvalidArgumentException('operating prompt argument names must be strings');
             }
-            if (!is_bool($value) && !is_float($value) && !is_int($value) && !is_string($value)) {
-                throw new InvalidArgumentException('operating prompt arguments must be scalar JSON values: ' . $name);
+            if (!is_bool($value) && !is_int($value) && !is_string($value)) {
+                throw new InvalidArgumentException('operating prompt arguments must be boolean, integer, or string JSON values: ' . $name);
             }
             $normalized[$name] = $value;
         }
@@ -62,7 +59,7 @@ final readonly class OperatingPromptRequest
         return new self(trim($id), $normalized);
     }
 
-    /** @return array{id: string, arguments: array<string, bool|float|int|string>} */
+    /** @return array{id: string, arguments: array<string, bool|int|string>} */
     public function toArray(): array
     {
         return [
