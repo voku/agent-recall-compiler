@@ -37,11 +37,18 @@ final class OperatingPromptTest extends TestCase
         $this->writeManifest([
             [
                 'id' => 'plan-horizon',
-                'template' => "Plan the next {{horizon}}, not merely the next step.\nDone when the full horizon has measurable milestones.",
+                'level' => 2,
+                'template' => "Create a project-specific planning prompt for the next {{horizon}}.\nUse concrete repository context.",
             ],
             [
                 'id' => 'coverage-mutation',
-                'template' => "Increase coverage by at least {{minimum_percentage_points}} percentage points.\nRun {{mutation_command}} and use surviving meaningful mutants as evidence that tests are still weak.",
+                'level' => 2,
+                'template' => "Create a project-specific test prompt that increases coverage by at least {{minimum_percentage_points}} percentage points.\nRequire {{mutation_command}}.",
+            ],
+            [
+                'id' => 'evidence-report',
+                'level' => 1,
+                'template' => 'Report only success that is backed by observable evidence.',
             ],
         ]);
     }
@@ -73,7 +80,7 @@ final class OperatingPromptTest extends TestCase
         ], $task->operatingPrompts[0]->toArray());
     }
 
-    public function testCliCompilesInlineOperatingPromptIntoSystemBriefing(): void
+    public function testCliCompilesL2PromptRecipeIntoSystemBriefing(): void
     {
         $output = $this->root . '/cli-output';
         $request = json_encode([
@@ -93,6 +100,10 @@ final class OperatingPromptTest extends TestCase
             'OPS-CLI',
             '--description',
             'Make coverage growth prove something.',
+            '--file',
+            'src/Parser.php',
+            '--file',
+            'tests/ParserTest.php',
             '--operating-prompt-manifest',
             $this->manifest,
             '--operating-prompt',
@@ -104,9 +115,15 @@ final class OperatingPromptTest extends TestCase
         ]));
 
         $system = (string) file_get_contents($output . '/system.md');
-        self::assertStringContainsString('## Operating Contract', $system);
-        self::assertStringContainsString('Increase coverage by at least 10 percentage points.', $system);
+        self::assertStringContainsString('## L2 Operational Prompt Construction', $system);
+        self::assertStringContainsString('Goal', $system);
+        self::assertStringContainsString('Context', $system);
+        self::assertStringContainsString('Constraints', $system);
+        self::assertStringContainsString('Done When', $system);
+        self::assertStringContainsString('Create a project-specific test prompt', $system);
+        self::assertStringContainsString('at least 10 percentage points', $system);
         self::assertStringContainsString('vendor/bin/infection --threads=max', $system);
+        self::assertStringContainsString('Do not implement the task during prompt construction.', $system);
 
         $bundle = json_decode((string) file_get_contents($output . '/recall.bundle.json'), true, 512, JSON_THROW_ON_ERROR);
         self::assertSame('coverage-mutation', $bundle['task']['operating_prompts'][0]['id']);
@@ -116,13 +133,16 @@ final class OperatingPromptTest extends TestCase
         );
     }
 
-    public function testSelectedPromptIsRenderedAsAnOperatingContract(): void
+    public function testRendererSeparatesL2RecipesFromL1Contracts(): void
     {
         $task = new TaskBrief(
             id: 'OPS-2',
             description: 'Make planning measurable.',
-            files: [],
-            operatingPrompts: [new OperatingPromptRequest('plan-horizon', ['horizon' => '3 months'])],
+            files: ['src/Planner.php'],
+            operatingPrompts: [
+                new OperatingPromptRequest('plan-horizon', ['horizon' => '3 months']),
+                new OperatingPromptRequest('evidence-report'),
+            ],
         );
         $rootConfig = new RecallRootConfig($this->root, $this->root . '/constraints');
         $compilation = (new RecallCompilationService([
@@ -132,10 +152,11 @@ final class OperatingPromptTest extends TestCase
 
         $markdown = (new OperatingPromptRenderer())->render($compilation->facts);
 
-        self::assertStringContainsString('## Operating Contract', $markdown);
-        self::assertStringContainsString('### plan-horizon', $markdown);
-        self::assertStringContainsString('Plan the next 3 months, not merely the next step.', $markdown);
-        self::assertSame('plan-horizon', $compilation->bundle['task']['operating_prompts'][0]['id']);
+        self::assertStringContainsString('## L2 Operational Prompt Construction', $markdown);
+        self::assertStringContainsString('### plan-horizon (L2)', $markdown);
+        self::assertStringContainsString('Create a project-specific planning prompt for the next 3 months.', $markdown);
+        self::assertStringContainsString('## L1 Operating Contract', $markdown);
+        self::assertStringContainsString('### evidence-report (L1)', $markdown);
     }
 
     public function testSelectedTemplateChangeChangesProviderDigest(): void
@@ -152,7 +173,8 @@ final class OperatingPromptTest extends TestCase
 
         $this->writeManifest([[
             'id' => 'plan-horizon',
-            'template' => 'Plan the entire {{horizon}} and prove every milestone.',
+            'level' => 2,
+            'template' => 'Create a different project-specific plan for {{horizon}}.',
         ]]);
         $second = $provider->collect($task, $rootConfig);
 
@@ -218,14 +240,36 @@ final class OperatingPromptTest extends TestCase
         );
     }
 
+    public function testMissingPromptLevelIsRejected(): void
+    {
+        $this->writeManifest([[
+            'id' => 'plan-horizon',
+            'template' => 'Plan {{horizon}}.',
+        ]]);
+        $task = new TaskBrief(
+            id: 'OPS-7',
+            description: '',
+            files: [],
+            operatingPrompts: [new OperatingPromptRequest('plan-horizon', ['horizon' => '3 months'])],
+        );
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('requires level 1 or 2');
+
+        (new OperatingPromptRecallProvider([$this->manifest]))->collect(
+            $task,
+            new RecallRootConfig($this->root, $this->root . '/constraints'),
+        );
+    }
+
     public function testDuplicateManifestDefinitionsAreRejected(): void
     {
         $this->writeManifest([
-            ['id' => 'plan-horizon', 'template' => 'Plan {{horizon}}.'],
-            ['id' => 'plan-horizon', 'template' => 'Still plan {{horizon}}.'],
+            ['id' => 'plan-horizon', 'level' => 2, 'template' => 'Plan {{horizon}}.'],
+            ['id' => 'plan-horizon', 'level' => 2, 'template' => 'Still plan {{horizon}}.'],
         ]);
         $task = new TaskBrief(
-            id: 'OPS-7',
+            id: 'OPS-8',
             description: '',
             files: [],
             operatingPrompts: [new OperatingPromptRequest('plan-horizon', ['horizon' => '3 months'])],
@@ -240,7 +284,7 @@ final class OperatingPromptTest extends TestCase
         );
     }
 
-    /** @param list<array{id: string, template: string}> $prompts */
+    /** @param list<array{id: string, level?: 1|2, template: string}> $prompts */
     private function writeManifest(array $prompts): void
     {
         file_put_contents($this->manifest, json_encode([
