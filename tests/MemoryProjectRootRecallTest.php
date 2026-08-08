@@ -64,26 +64,33 @@ final class MemoryProjectRootRecallTest extends TestCase
 
     public function testMissingProjectMemoryIsOptionalAndDoesNotFallOutsideProjectRoot(): void
     {
-        $learningRoot = $this->repositoryRoot . '/infra/doc/agent-learning';
+        $projectRoot = $this->repositoryRoot . '/project';
+        $learningRoot = $projectRoot . '/infra/doc/agent-learning';
+        mkdir($learningRoot, 0777, true);
         file_put_contents($learningRoot . '/config.json', json_encode(['project_root' => '../../..'], JSON_THROW_ON_ERROR));
+        file_put_contents($this->repositoryRoot . '/MEMORY.md', 'Must not be selected.');
 
-        $outsideMemory = dirname($this->repositoryRoot) . '/MEMORY.md';
-        $hadOutsideMemory = is_file($outsideMemory);
-        $outsideContents = $hadOutsideMemory ? file_get_contents($outsideMemory) : null;
-        file_put_contents($outsideMemory, 'Must not be selected.');
+        $config = (new RecallRootResolver())->resolve($learningRoot);
+        $result = (new MemoryRecallProvider())->collect($this->task(), $config);
 
-        try {
-            $config = (new RecallRootResolver())->resolve($learningRoot);
-            $result = (new MemoryRecallProvider())->collect($this->task(), $config);
+        self::assertSame([], $result->facts);
+    }
 
-            self::assertSame([], $result->facts);
-        } finally {
-            if ($hadOutsideMemory && is_string($outsideContents)) {
-                file_put_contents($outsideMemory, $outsideContents);
-            } else {
-                @unlink($outsideMemory);
-            }
-        }
+    public function testConfiguredProjectRootCannotEscapeKnownRepositoryBoundary(): void
+    {
+        $projectRoot = $this->repositoryRoot . '/project';
+        $learningRoot = $projectRoot . '/infra/doc/agent-learning';
+        $outsideRoot = $this->repositoryRoot . '/outside';
+        mkdir($learningRoot, 0777, true);
+        mkdir($outsideRoot, 0777, true);
+        file_put_contents($outsideRoot . '/MEMORY.md', 'External memory must not be ingested.');
+        file_put_contents($learningRoot . '/config.json', json_encode([
+            'project_root' => '../../../../outside',
+        ], JSON_THROW_ON_ERROR));
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('configured project_root escapes the inferred repository root');
+        (new RecallRootResolver())->resolve($learningRoot);
     }
 
     public function testKnownLearningRootSuffixResolvesProjectRootWithoutConfig(): void
