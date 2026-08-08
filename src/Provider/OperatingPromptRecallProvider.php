@@ -11,7 +11,7 @@ use voku\AgentRecallCompiler\RecallRootConfig;
 use voku\AgentRecallCompiler\TaskBrief;
 
 /**
- * Instantiates task-selected operating prompts from versioned local manifests.
+ * Instantiates task-selected prompt recipes from versioned local manifests.
  *
  * The provider owns deterministic loading and substitution only. Prompt semantics
  * stay in the manifest's owning repository rather than being duplicated in PHP.
@@ -77,6 +77,7 @@ final readonly class OperatingPromptRecallProvider implements RecallProvider
                 $task->scopes === [] ? $task->files : $task->scopes,
                 [
                     'prompt_id' => $request->id,
+                    'level' => $definition['level'],
                     'arguments' => $request->arguments,
                     'content' => $rendered,
                     'template_sha256' => $definition['template_sha256'],
@@ -94,7 +95,7 @@ final readonly class OperatingPromptRecallProvider implements RecallProvider
     }
 
     /**
-     * @return array<string, array{template: string, source_ref: string, template_sha256: string}>
+     * @return array<string, array{level: 1|2, template: string, source_ref: string, template_sha256: string}>
      */
     private function loadDefinitions(): array
     {
@@ -128,6 +129,10 @@ final readonly class OperatingPromptRecallProvider implements RecallProvider
                 if (isset($definitions[$id])) {
                     throw new RuntimeException('operating prompt id is defined more than once: ' . $id);
                 }
+                $level = $prompt['level'] ?? null;
+                if ($level !== 1 && $level !== 2) {
+                    throw new RuntimeException('operating prompt ' . $id . ' requires level 1 or 2');
+                }
                 $template = $prompt['template'] ?? null;
                 if (!is_string($template) || trim($template) === '') {
                     throw new RuntimeException('operating prompt ' . $id . ' requires a non-empty template');
@@ -135,6 +140,7 @@ final readonly class OperatingPromptRecallProvider implements RecallProvider
                 $template = trim(str_replace(["\r\n", "\r"], "\n", $template));
                 $this->placeholderNames($id, $template);
                 $definitions[$id] = [
+                    'level' => $level,
                     'template' => $template,
                     'source_ref' => $manifestPath . '#' . $id,
                     'template_sha256' => hash('sha256', $template),
