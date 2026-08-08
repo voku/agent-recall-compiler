@@ -76,6 +76,11 @@ final class ScopedDocumentRecallProvider implements RecallProvider
             if ($content === false) {
                 throw new RuntimeException('cannot read document source for ' . $id . ': ' . $source);
             }
+            $rawSha256 = hash_file('sha256', $sourcePath);
+            if ($rawSha256 === false) {
+                throw new RuntimeException('cannot hash document source for ' . $id . ': ' . $source);
+            }
+
             $maxChars = $document['max_chars'] ?? 4000;
             if (!is_int($maxChars) || $maxChars < 1 || $maxChars > 12000) {
                 throw new RuntimeException('document ' . $id . ' max_chars must be an integer between 1 and 12000');
@@ -95,19 +100,26 @@ final class ScopedDocumentRecallProvider implements RecallProvider
                 throw new RuntimeException('document ' . $id . ' conflict_key must be a non-empty string when set');
             }
 
+            $payload = [
+                'document_id' => $id,
+                'content' => $excerpt,
+                'content_sha256' => hash('sha256', $normalized),
+                'truncated' => $excerpt !== $normalized,
+                'tags' => $tags,
+            ];
+            $canonicalSourceRef = $this->projectRelativeSourceRef($sourcePath, $rootConfig->projectRoot);
+            if ($canonicalSourceRef !== null) {
+                $payload['canonical_source_ref'] = $canonicalSourceRef;
+                $payload['source_sha256'] = $rawSha256;
+            }
+
             $facts[] = new RecallFact(
                 'document.' . $id,
                 $type,
                 trim($authority),
                 $source,
                 $scope,
-                [
-                    'document_id' => $id,
-                    'content' => $excerpt,
-                    'content_sha256' => hash('sha256', $normalized),
-                    'truncated' => $excerpt !== $normalized,
-                    'tags' => $tags,
-                ],
+                $payload,
                 $conflictKey,
                 $priority,
             );
@@ -124,7 +136,6 @@ final class ScopedDocumentRecallProvider implements RecallProvider
         );
     }
 
-    /** @return array<string, mixed> */
     private function decodeManifest(): array
     {
         $content = file_get_contents($this->manifestPath);
@@ -176,11 +187,6 @@ final class ScopedDocumentRecallProvider implements RecallProvider
     }
 
     /**
-     * A document matches when its path scope overlaps the task's files, when it declares no
-     * scope at all (project-wide), or when it shares at least one relevance tag with the task.
-     * Tags let a project register documents by domain/system/capability instead of directory
-     * prefix, so this provider works the same way regardless of how a project lays out its code.
-     *
      * @param list<string> $scope
      * @param list<string> $tags
      */
@@ -199,6 +205,27 @@ final class ScopedDocumentRecallProvider implements RecallProvider
         }
 
         return $tags !== [] && $task->tags !== [] && array_intersect($tags, $task->tags) !== [];
+    }
+
+    private function projectRelativeSourceRef(string $sourcePath, ?string $projectRoot): ?string
+    {
+        if ($projectRoot === null) {
+            return null;
+        }
+
+        $realProjectRoot = realpath($projectRoot);
+        $realSourcePath = realpath($sourcePath);
+        if ($realProjectRoot === false || $realSourcePath === false) {
+            return null;
+        }
+
+        $projectPrefix = rtrim(str_replace('\\', '/', $realProjectRoot), '/') . '/';
+        $normalizedSource = str_replace('\\', '/', $realSourcePath);
+        if (!str_starts_with($normalizedSource, $projectPrefix)) {
+            return null;
+        }
+
+        return substr($normalizedSource, strlen($projectPrefix));
     }
 
     private function truncate(string $content, int $maxChars): string
