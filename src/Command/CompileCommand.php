@@ -14,10 +14,12 @@ use voku\AgentRecallCompiler\FeedbackAssessmentRenderer;
 use voku\AgentRecallCompiler\FeedbackParser;
 use voku\AgentRecallCompiler\InlineTaskBriefResolver;
 use voku\AgentRecallCompiler\JsonTaskBriefResolver;
+use voku\AgentRecallCompiler\OperatingPromptRequest;
 use voku\AgentRecallCompiler\Provider\KanbanContextRecallProvider;
 use voku\AgentRecallCompiler\Provider\LearningRecallProvider;
 use voku\AgentRecallCompiler\Provider\MapRecallProvider;
 use voku\AgentRecallCompiler\Provider\MemoryRecallProvider;
+use voku\AgentRecallCompiler\Provider\OperatingPromptRecallProvider;
 use voku\AgentRecallCompiler\Provider\ScopedDocumentRecallProvider;
 use voku\AgentRecallCompiler\Provider\TaskContextRecallProvider;
 use voku\AgentRecallCompiler\RecallCompilationBlockedException;
@@ -25,6 +27,7 @@ use voku\AgentRecallCompiler\RecallPromptBuilder;
 use voku\AgentRecallCompiler\RecallRepository;
 use voku\AgentRecallCompiler\RecallResult;
 use voku\AgentRecallCompiler\RecallRootResolver;
+use voku\AgentRecallCompiler\Rendering\OperatingPromptRenderer;
 use voku\AgentRecallCompiler\TaskBrief;
 use voku\AgentRecallCompiler\Verification\CompiledVerificationPlan;
 use voku\AgentRecallCompiler\Verification\VerificationArtifactWriter;
@@ -51,10 +54,12 @@ final class CompileCommand
         $rootConfig = $this->rootResolver->resolve($parsed->stringOption('root'));
 
         $targets = $parsed->stringOptions('target');
+        $inlineOperatingPrompts = $this->parseOperatingPrompts($parsed->stringOptions('operating-prompt'));
         $briefPath = $parsed->stringOption('task-brief');
         if ($briefPath !== null) {
             $task = (new JsonTaskBriefResolver())->resolveFile($briefPath);
             $task = $this->withAdditionalTargets($task, $targets);
+            $task = $this->withAdditionalOperatingPrompts($task, $inlineOperatingPrompts);
         } else {
             $taskId = $parsed->stringOption('task');
             if ($taskId === null || trim($taskId) === '') {
@@ -66,7 +71,13 @@ final class CompileCommand
                 $parsed->stringOptions('file'),
                 tags: $parsed->stringOptions('tag'),
                 targets: $targets,
+                operatingPrompts: $inlineOperatingPrompts,
             );
+        }
+
+        $operatingPromptManifests = $parsed->stringOptions('operating-prompt-manifest');
+        if ($task->operatingPrompts !== [] && $operatingPromptManifests === []) {
+            throw new InvalidArgumentException('compile operating prompts require at least one --operating-prompt-manifest');
         }
 
         $outputDir = $parsed->stringOption('output-dir') ?? '.';
@@ -104,6 +115,9 @@ final class CompileCommand
                 new MemoryRecallProvider($repository),
                 new LearningRecallProvider($repository),
             ];
+            if ($task->operatingPrompts !== []) {
+                $providers[] = new OperatingPromptRecallProvider($operatingPromptManifests);
+            }
             if ($task->targets !== [] && $mapIndex === null) {
                 throw new InvalidArgumentException('compile targets require --map-index');
             }
@@ -167,6 +181,10 @@ final class CompileCommand
             $compilation->facts,
             $bundleDigest,
         );
+        $operatingContract = (new OperatingPromptRenderer())->render($compilation->facts);
+        if ($operatingContract !== '') {
+            $systemMd = rtrim($systemMd) . "\n\n" . $operatingContract;
+        }
         $validationPlan = $this->promptBuilder->buildValidationPlan($compilation->effectiveTask, $result);
         /** @var array{plan: string, key: string}|null $verificationArtifacts */
         $verificationArtifacts = null;
@@ -354,7 +372,80 @@ final class CompileCommand
             tags: $task->tags,
             behaviorAnchors: $task->behaviorAnchors,
             targets: $merged,
+            operatingPrompts: $task->operatingPrompts,
         );
+    }
+
+    /**
+     * @param list<OperatingPromptRequest> $additional
+     */
+    private function withAdditionalOperatingPrompts(TaskBrief $task, array $additional): TaskBrief
+    {
+        if ($additional === []) {
+            return $task;
+        }
+
+        $merged = $task->operatingPrompts;
+        $seen = [];
+        foreach ($merged as $request) {
+            $seen[$request->id] = true;
+        }
+        foreach ($additional as $request) {
+            if (isset($seen[$request->id])) {
+                throw new InvalidArgumentException('task selects operating prompt more than once: ' . $request->id);
+            }
+            $seen[$request->id] = true;
+            $merged[] = $request;
+        }
+
+        return new TaskBrief(
+            id: $task->id,
+            description: $task->description,
+            files: $task->files,
+            scopes: $task->scopes,
+            nonGoals: $task->nonGoals,
+            validation: $task->validation,
+            status: $task->status,
+            revision: $task->revision,
+            sourcePath: $task->sourcePath,
+            tags: $task->tags,
+            behaviorAnchors: $task->behaviorAnchors,
+            targets: $task->targets,
+            operatingPrompts: $merged,
+        );
+    }
+
+    /**
+     * @param list<string> $jsonRequests
+     * @return list<OperatingPromptRequest>
+     */
+    private function parseOperatingPrompts(array $jsonRequests): array
+    {
+        $requests = [];
+        $seen = [];
+        foreach ($jsonRequests as $jsonRequest) {
+            try {
+                $data = json_decode($jsonRequest, true, 512, JSON_THROW_ON_ERROR);
+            } catch (\JsonException $exception) {
+                throw new InvalidArgumentException('invalid --operating-prompt JSON: ' . $exception->getMessage(), 0, $exception);
+            }
+            if (!is_array($data)) {
+                throw new InvalidArgumentException('--operating-prompt must be a JSON object');
+            }
+            try {
+                /** @var array<string, mixed> $data */
+                $request = OperatingPromptRequest::fromArray($data);
+            } catch (\InvalidArgumentException $exception) {
+                throw new InvalidArgumentException('invalid --operating-prompt: ' . $exception->getMessage(), 0, $exception);
+            }
+            if (isset($seen[$request->id])) {
+                throw new InvalidArgumentException('inline operating prompt selected more than once: ' . $request->id);
+            }
+            $seen[$request->id] = true;
+            $requests[] = $request;
+        }
+
+        return $requests;
     }
 
     private function writeFile(string $path, string $content): void

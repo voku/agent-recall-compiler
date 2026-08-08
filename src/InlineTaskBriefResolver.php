@@ -11,6 +11,7 @@ final readonly class InlineTaskBriefResolver
      * @param list<string> $scopes
      * @param list<string> $tags
      * @param list<string> $targets
+     * @param list<OperatingPromptRequest> $operatingPrompts
      */
     public function resolve(
         string $id,
@@ -19,6 +20,7 @@ final readonly class InlineTaskBriefResolver
         array $scopes = [],
         array $tags = [],
         array $targets = [],
+        array $operatingPrompts = [],
     ): TaskBrief {
         if (trim($id) === '') {
             throw new \InvalidArgumentException('inline task input requires a non-empty task id');
@@ -32,6 +34,7 @@ final readonly class InlineTaskBriefResolver
             sourcePath: 'inline',
             tags: $this->nonEmptyStrings($tags),
             targets: $this->nonEmptyStrings($targets),
+            operatingPrompts: $operatingPrompts,
         );
     }
 

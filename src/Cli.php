@@ -54,6 +54,8 @@ final class Cli
         fwrite(STDOUT, "  --file PATH              Inline changed file path. Repeatable.\n");
         fwrite(STDOUT, "  --target CLASS::METHOD   Exact agent-map edit target. Requires --map-index. Repeatable.\n");
         fwrite(STDOUT, "  --tag LABEL              Inline relevance tag (domain/system/capability). Repeatable.\n");
+        fwrite(STDOUT, "  --operating-prompt JSON  Task-selected operating prompt request. Repeatable.\n");
+        fwrite(STDOUT, "  --operating-prompt-manifest PATH  Versioned operating prompt manifest. Repeatable.\n");
         fwrite(STDOUT, "  --feedback PATH          Untrusted peer-agent feedback file to assess (JSON or text).\n");
         fwrite(STDOUT, "  --map-index PATH         Agent-map JSON or TOON index. Required when --target is used.\n");
         fwrite(STDOUT, "  --map-root PATH          Project root used to verify map entries when the index came from another runtime.\n");

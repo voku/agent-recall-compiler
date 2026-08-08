@@ -7,6 +7,7 @@ namespace voku\AgentRecallCompiler\Compilation;
 use LogicException;
 use voku\AgentRecallCompiler\CanonicalJson;
 use voku\AgentRecallCompiler\ConstraintManifest;
+use voku\AgentRecallCompiler\OperatingPromptRequest;
 use voku\AgentRecallCompiler\Provider\RecallFact;
 use voku\AgentRecallCompiler\Provider\RecallProvider;
 use voku\AgentRecallCompiler\Provider\RecallProviderResult;
@@ -163,7 +164,7 @@ final class RecallCompilationService
     /** @return array<string, mixed> */
     private function taskArray(TaskBrief $task): array
     {
-        return [
+        $data = [
             'id' => $task->id,
             'description' => $task->description,
             'files' => $task->files,
@@ -177,5 +178,13 @@ final class RecallCompilationService
             'behavior_anchors' => $task->behaviorAnchors,
             'targets' => $task->targets,
         ];
+        if ($task->operatingPrompts !== []) {
+            $data['operating_prompts'] = array_map(
+                static fn (OperatingPromptRequest $request): array => $request->toArray(),
+                $task->operatingPrompts,
+            );
+        }
+
+        return $data;
     }
 }

@@ -73,6 +73,7 @@ final readonly class TaskScopeResolver
                 tags: $task->tags,
                 behaviorAnchors: $task->behaviorAnchors,
                 targets: $task->targets,
+                operatingPrompts: $task->operatingPrompts,
             ),
             explicitFiles: $explicitFiles,
             derivedFiles: $derivedFiles,
