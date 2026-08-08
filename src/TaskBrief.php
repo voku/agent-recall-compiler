@@ -17,6 +17,8 @@ final readonly class TaskBrief
      * @param list<string> $behaviorAnchors Concrete runtime/request/consumer boundaries
      *        that should be inspected or verified when the task changes behavior.
      * @param list<string> $targets Exact agent-map method targets in Class::method form.
+     * @param list<OperatingPromptRequest> $operatingPrompts Versioned operating-prompt
+     *        requests selected by the task. Definitions are resolved by a manifest provider.
      */
     public function __construct(
         public string $id,
@@ -31,6 +33,7 @@ final readonly class TaskBrief
         public array $tags = [],
         public array $behaviorAnchors = [],
         public array $targets = [],
+        public array $operatingPrompts = [],
     ) {
     }
 }
