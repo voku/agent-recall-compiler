@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace voku\AgentRecallCompiler\Tests;
 
 use PHPUnit\Framework\TestCase;
+use voku\AgentRecallCompiler\Compilation\RecallCompilation;
 use voku\AgentRecallCompiler\Compilation\RecallCompilationService;
+use voku\AgentRecallCompiler\EvaluatedGuidance;
 use voku\AgentRecallCompiler\ExclusionReason;
 use voku\AgentRecallCompiler\Provider\LearningRecallProvider;
 use voku\AgentRecallCompiler\Provider\MemoryRecallProvider;
+use voku\AgentRecallCompiler\Provider\RecallProvider;
 use voku\AgentRecallCompiler\Provider\ScopedDocumentRecallProvider;
 use voku\AgentRecallCompiler\RecallRepository;
 use voku\AgentRecallCompiler\RecallRootConfig;
@@ -53,10 +56,8 @@ final class CanonicalGuidanceHandoffTest extends TestCase
             ExclusionReason::CANONICAL_HOME_LOADED,
             $this->evaluated($compilation->result->evaluatedGuidance, 'proposal.2026-08-08.001')->exclusionReason,
         );
-        self::assertSame(
-            'MEMORY.md',
-            $this->fact($compilation->facts, 'memory.global')->payload['canonical_source_ref'],
-        );
+        $memoryFact = $this->fact($compilation->facts, 'memory.global');
+        self::assertSame('MEMORY.md', $memoryFact['payload']['canonical_source_ref'] ?? null);
     }
 
     public function testMemoryHashDriftKeepsAppliedProposalSelected(): void
@@ -106,7 +107,7 @@ final class CanonicalGuidanceHandoffTest extends TestCase
         );
         self::assertSame([], array_values(array_filter(
             $compilation->facts,
-            static fn ($fact): bool => $fact->type === 'skill',
+            static fn (array $fact): bool => ($fact['type'] ?? null) === 'skill',
         )));
     }
 
@@ -133,14 +134,12 @@ final class CanonicalGuidanceHandoffTest extends TestCase
             ExclusionReason::CANONICAL_HOME_LOADED,
             $this->evaluated($compilation->result->evaluatedGuidance, 'proposal.2026-08-08.004')->exclusionReason,
         );
-        self::assertSame(
-            'skills/auth-context.md',
-            $this->fact($compilation->facts, 'document.auth-context')->payload['canonical_source_ref'],
-        );
+        $skillFact = $this->fact($compilation->facts, 'document.auth-context');
+        self::assertSame('skills/auth-context.md', $skillFact['payload']['canonical_source_ref'] ?? null);
     }
 
-    /** @param list<object> $providers */
-    private function compile(array $providers): \voku\AgentRecallCompiler\Compilation\RecallCompilation
+    /** @param list<RecallProvider> $providers */
+    private function compile(array $providers): RecallCompilation
     {
         return (new RecallCompilationService($providers))->compile(
             new TaskBrief('TASK-1', 'Exercise canonical handoff.', ['src/Auth.php']),
@@ -191,8 +190,8 @@ final class CanonicalGuidanceHandoffTest extends TestCase
         return $manifest;
     }
 
-    /** @param list<\voku\AgentRecallCompiler\EvaluatedGuidance> $evaluated */
-    private function evaluated(array $evaluated, string $id): \voku\AgentRecallCompiler\EvaluatedGuidance
+    /** @param list<EvaluatedGuidance> $evaluated */
+    private function evaluated(array $evaluated, string $id): EvaluatedGuidance
     {
         foreach ($evaluated as $item) {
             if ($item->guidanceId === $id) {
@@ -203,11 +202,14 @@ final class CanonicalGuidanceHandoffTest extends TestCase
         self::fail('Missing evaluated guidance: ' . $id);
     }
 
-    /** @param list<\voku\AgentRecallCompiler\Provider\RecallFact> $facts */
-    private function fact(array $facts, string $id): \voku\AgentRecallCompiler\Provider\RecallFact
+    /**
+     * @param list<array<string, mixed>> $facts
+     * @return array<string, mixed>
+     */
+    private function fact(array $facts, string $id): array
     {
         foreach ($facts as $fact) {
-            if ($fact->id === $id) {
+            if (($fact['id'] ?? null) === $id) {
                 return $fact;
             }
         }
