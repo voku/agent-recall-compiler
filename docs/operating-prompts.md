@@ -136,15 +136,24 @@ agent-recall-compiler compile \
 
 ## Through agent-loop
 
-`voku/agent-loop` delegates `recall` commands to `agent-recall-compiler` and preserves extra compile options, so the same recipe can be reused through the unified CLI:
+`voku/agent-loop` owns the governed orchestration around this compiler. Its current L2 flow is deliberately two-pass:
 
-```bash
-agent-loop recall compile \
-  --task-brief .agent-session/work-brief.json \
-  --operating-prompt-manifest /path/to/operating-prompts.json
+```text
+PLAN -> APPROVE -> CONTEXT -> CONTRACT -> IMPLEMENT
 ```
 
-`agent-loop` should then consume the compiled `system.md`. For L2 recipes, the first agent pass creates the project-specific L1 prompt from that context; the L1 prompt is the execution contract for the implementation pass.
+`workflow plan` records the manifest source and selected recipe/arguments in the revisioned WorkBrief. `workflow approve` compiles recall from that approved policy. The agent then uses the L2 section plus current recall evidence to construct exactly one project-specific L1 document and persists it through the workflow contract gate:
+
+```bash
+agent-loop workflow contract TEST-42 \
+  --status ready \
+  --from .agent-loop/tmp/TEST-42-l1.md \
+  --by agent
+```
+
+For L2-selected tasks, `agent-loop` binds the persisted execution contract to the current WorkBrief revision, recall bundle, prompt semantics, and content digest. Mutating edit runners remain blocked while that contract is `missing`, `stale`, `invalid`, `blocked`, or `rejected`. A re-plan or recall change therefore cannot silently reuse an older L1.
+
+The recall compiler itself still does not execute the generated prompt and does not own workflow state. Its job ends at deterministic context, recipe resolution, rendering, provenance, and outcome evidence.
 
 ## Inline selection
 
