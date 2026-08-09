@@ -4,6 +4,65 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.10.0] - 2026-08-09
+
+### Added
+
+- Added versioned operating-prompt manifests and typed prompt requests. Recipes
+  explicitly declare `level: 1|2`; selected prompt IDs, arguments, rendered
+  content, source references, and template digests are carried in replayable
+  recall facts and bundle evidence.
+- L2 recipes now compile into an explicit project-specific L1 construction
+  contract with exactly five ordered sections: `Goal`, `Context`, `Constraints`,
+  `Verification`, and `Done When`. `Verification` defines how reality is measured;
+  `Done When` defines which observed result permits the task to stop.
+- Added bounded deterministic project-capability discovery from supported
+  repository evidence: PHP/Composer metadata, exact Composer scripts, known test,
+  static-analysis, mutation and formatting tool packages/configuration, plus CI
+  workflow anchors. Tool presence never invents an invocation command; unresolved
+  commands remain `UNKNOWN`.
+- Added per-recipe outcome evidence in
+  `history/operating-prompt-outcomes.jsonl`. Selected recipes can record
+  `helpful`, `irrelevant`, `harmful`, `not_used`, or `unknown` outcomes with
+  argument digest, application state, evidence, actor, task, compilation, commit,
+  and time. Future recall facts expose aggregate prior outcome counts without
+  automatically mutating recipe policy.
+- Added `operating_prompt_outcomes` rows to the outcome draft so recipe use can be
+  evaluated separately from normal guidance use.
+
+### Changed
+
+- Generated code-review prompts route through one dominant installed engineering
+  review lens with at most one evidence-backed required handoff instead of
+  embedding a generic review ritual in recall.
+- Repository `MEMORY.md` and other project-root evidence resolve through the
+  configured recall project root, with boundary checks that prevent path escape.
+- Canonical guidance handoff now prefers the exact physical canonical source when
+  an applied proposal has transferred authority there, avoiding duplicate active
+  proposal wording in the same compile.
+- L2 construction preserves hard numeric floors and stop conditions, prefers
+  exact files/symbols/callers/tests/commands from recall, removes hedge language,
+  never invents repository policy, and stops after L1 construction rather than
+  implementing during the meta-prompt pass.
+
+### Fixed
+
+- Prompt arguments are restricted to deterministic `bool|int|string` values;
+  float formatting cannot silently change replay identity across runtimes.
+- Literal `{{...}}` text inside supplied argument values is preserved instead of
+  being mistaken for an unresolved manifest placeholder.
+- Empty prompt selections do not change legacy task-context or bundle shapes and
+  therefore do not cause digest drift for tasks that do not use operating prompts.
+- Project-capability facts are omitted when no supported evidence exists rather
+  than adding an empty provider that changes otherwise identical compilations.
+
+### Documentation
+
+- `docs/operating-prompts.md` defines the L2 -> project-specific L1 flow, exact
+  five-section contract, manifest schema, project-capability evidence, recipe
+  outcome history, and the boundary that reusable prompt semantics belong in the
+  owning catalog while project facts stay in recall.
+
 ## [0.9.2] - 2026-08-06
 
 ### Fixed
