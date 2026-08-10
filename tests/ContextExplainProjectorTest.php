@@ -47,7 +47,7 @@ final class ContextExplainProjectorTest extends TestCase
                             'path' => 'src/Future/GeneratedContext.php',
                             'line_start' => 1,
                             'line_end' => 4,
-                            'roles' => ['future_role'],
+                            'roles' => ['primary', 'future_role'],
                             'reasons' => ['role introduced by a newer map producer'],
                             'evidence_ids' => [],
                         ],
