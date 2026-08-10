@@ -101,7 +101,7 @@ final class MapArchitectureDiscoveryRecallTest extends TestCase
 
         $fact = $this->discoveryFact($result->facts);
         self::assertNotNull($fact);
-        self::assertSame('2.1', $provider->manifest()->version);
+        self::assertSame('2.1', $provider->manifest()->contractVersion);
         self::assertSame('ready', $fact->payload['status'] ?? null);
         self::assertSame([], $fact->payload['namespace_coupling'] ?? null);
         self::assertContains([
