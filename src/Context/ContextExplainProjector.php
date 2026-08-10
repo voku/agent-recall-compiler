@@ -88,7 +88,6 @@ final readonly class ContextExplainProjector
     {
         $payload = $this->payload($fact);
         $sourceRef = $this->string($fact['source_ref'] ?? null);
-        $navigationAuthority = $this->string($fact['authority'] ?? null) ?? 'derived_navigation';
         $items = [];
 
         foreach ($this->arrays($payload['slices'] ?? []) as $index => $slice) {
@@ -134,7 +133,7 @@ final readonly class ContextExplainProjector
                 what: $what,
                 why: $this->string($blindSpot['message'] ?? null) ?? 'agent-map reported an unresolved blind spot.',
                 how: 'agent-map reported a static-analysis blind spot while constructing EditContextPlan.',
-                authority: $navigationAuthority,
+                authority: 'derived_navigation',
                 use: 'investigate_before_claiming_complete',
                 state: 'unknown',
                 selected: true,
@@ -152,7 +151,7 @@ final readonly class ContextExplainProjector
                 what: $symbol,
                 why: 'The candidate was considered while constructing bounded edit context.',
                 how: 'agent-map EditContextPlan omission for role ' . $role . '.',
-                authority: $navigationAuthority,
+                authority: 'derived_navigation',
                 use: 'investigate_if_relevant',
                 state: 'unknown',
                 selected: false,
@@ -389,7 +388,8 @@ final readonly class ContextExplainProjector
         );
     }
 
-    /** @param list<string> $evidenceIds
+    /**
+     * @param list<string> $evidenceIds
      * @param 'verified'|'inferred'|'unknown'|'blocked' $state
      * @return ExplainItem
      */
@@ -427,7 +427,8 @@ final readonly class ContextExplainProjector
         return $item;
     }
 
-    /** @param array<string, mixed> $fact
+    /**
+     * @param array<string, mixed> $fact
      * @return array<string, mixed>
      */
     private function payload(array $fact): array
