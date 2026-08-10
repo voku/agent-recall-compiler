@@ -32,6 +32,7 @@ final readonly class ContextExplainRenderer
             '## Context Explain Plan',
             '',
             'These explanations describe **context provenance**, not the implementing agent\'s rationale. Use them to understand why Recall exposed a source, how that relevance was derived, what authority it carries, and what the source may be used for.',
+            'The **State** classifies the provenance claim shown here; `VERIFIED` does not mean every statement inside the referenced source is automatically correct.',
             '',
         ];
 
