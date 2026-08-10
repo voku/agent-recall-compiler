@@ -10,27 +10,89 @@ final class TaskBriefParser
 {
     public function parseFile(string $path): TaskBrief
     {
+        $data = $this->decodeFile($path);
+        if (($data['kind'] ?? null) === 'governed_recall_input') {
+            return $this->parseGovernedInput($data, $path);
+        }
+
+        return $this->parseTaskData($data, $path);
+    }
+
+    /** @return array<string, mixed> */
+    private function decodeFile(string $path): array
+    {
         if (!is_file($path)) {
             throw new RuntimeException('task brief file not found: ' . $path);
         }
-
         $content = file_get_contents($path);
         if ($content === false) {
             throw new RuntimeException('cannot read task brief file: ' . $path);
         }
-
         try {
             $data = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
         } catch (\JsonException $e) {
             throw new RuntimeException('malformed JSON in task brief: ' . $e->getMessage());
         }
-
         if (!is_array($data)) {
             throw new RuntimeException('task brief must be a JSON object');
         }
 
+        /** @var array<string, mixed> $data */
+        return $data;
+    }
+
+    /** @param array<string, mixed> $data */
+    private function parseGovernedInput(array $data, string $envelopePath): TaskBrief
+    {
+        if (($data['schema_version'] ?? null) !== '1.0') {
+            throw new RuntimeException('unsupported governed recall input schema version');
+        }
+        $runId = $data['run_id'] ?? null;
+        if (!is_string($runId) || trim($runId) === '') {
+            throw new RuntimeException('governed recall input requires non-empty run_id');
+        }
+        $contract = $data['contract'] ?? null;
+        if (!is_array($contract)) {
+            throw new RuntimeException('governed recall input requires contract object');
+        }
+        $sourceRef = $contract['path'] ?? null;
+        $sha256 = $contract['sha256'] ?? null;
+        $revision = $contract['revision'] ?? null;
+        if (!is_string($sourceRef) || trim($sourceRef) === '') {
+            throw new RuntimeException('governed recall input contract.path must be non-empty');
+        }
+        if (!is_string($sha256) || preg_match('/^sha256:[a-f0-9]{64}$/', $sha256) !== 1) {
+            throw new RuntimeException('governed recall input contract.sha256 is invalid');
+        }
+        if (!is_int($revision) || $revision < 1) {
+            throw new RuntimeException('governed recall input contract.revision must be positive');
+        }
+
+        $contractPath = $this->resolveReference(dirname($envelopePath), $sourceRef);
+        $actualHash = hash_file('sha256', $contractPath);
+        if ($actualHash === false || !hash_equals($sha256, 'sha256:' . $actualHash)) {
+            throw new RuntimeException('governed recall input Contract digest does not match current source');
+        }
+
+        $binding = new GovernedRunBinding(trim($runId), $revision, trim($sourceRef), $sha256);
+        $task = $this->parseTaskData($this->decodeFile($contractPath), $contractPath, $binding);
+        if ($task->status !== 'approved') {
+            throw new RuntimeException('governed recall input requires an approved Contract');
+        }
+        if ($task->revision !== $revision) {
+            throw new RuntimeException('governed recall input Contract revision does not match current source');
+        }
+
+        return $task;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function parseTaskData(array $data, string $path, ?GovernedRunBinding $governedRun = null): TaskBrief
+    {
         if (isset($data['schema_version']) && $data['schema_version'] !== '1.0') {
-            throw new RuntimeException("unsupported task brief schema version: " . $data['schema_version']);
+            throw new RuntimeException('unsupported task brief schema version: ' . $data['schema_version']);
         }
 
         $id = $data['id'] ?? $data['task_id'] ?? '';
@@ -38,9 +100,6 @@ final class TaskBriefParser
             throw new RuntimeException('missing or empty task ID in brief');
         }
 
-        // agent-session's approved work-brief is a first-class task-context
-        // input: its goal and scope are more precise than hand-entered --file
-        // values, while the legacy task-brief shape keeps working unchanged.
         $description = $data['description'] ?? $data['goal'] ?? '';
         if (!is_string($description)) {
             throw new RuntimeException('task description must be a string');
@@ -100,7 +159,7 @@ final class TaskBriefParser
         }
 
         return new TaskBrief(
-            $id,
+            trim($id),
             $description,
             $fileList,
             $scopeList,
@@ -113,7 +172,19 @@ final class TaskBriefParser
             $this->stringList($behaviorAnchors),
             $targets,
             $operatingPrompts,
+            $governedRun,
         );
+    }
+
+    private function resolveReference(string $baseDirectory, string $reference): string
+    {
+        $candidate = str_starts_with($reference, '/') ? $reference : $baseDirectory . '/' . $reference;
+        $resolved = realpath($candidate);
+        if ($resolved === false || !is_file($resolved)) {
+            throw new RuntimeException('governed recall Contract source not found: ' . $reference);
+        }
+
+        return $resolved;
     }
 
     /**
