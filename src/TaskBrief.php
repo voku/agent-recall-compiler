@@ -34,6 +34,7 @@ final readonly class TaskBrief
         public array $behaviorAnchors = [],
         public array $targets = [],
         public array $operatingPrompts = [],
+        public ?GovernedRunBinding $governedRun = null,
     ) {
     }
 }
