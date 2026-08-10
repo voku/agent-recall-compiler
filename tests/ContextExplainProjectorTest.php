@@ -72,18 +72,23 @@ final class ContextExplainProjectorTest extends TestCase
 
         self::assertSame('implementation_candidate', $byWhat['src/Service/UserService.php:10-20']['use']);
         self::assertSame('verified', $byWhat['src/Service/UserService.php:10-20']['state']);
+        self::assertSame('repository_source_via_agent_map', $byWhat['src/Service/UserService.php:10-20']['authority']);
         self::assertSame(['symbol:save'], $byWhat['src/Service/UserService.php:10-20']['evidence_ids']);
 
         self::assertSame('context_only_do_not_edit_from_selection_alone', $byWhat['src/Repository/UserRepository.php:30-40']['use']);
         self::assertSame('verified', $byWhat['src/Repository/UserRepository.php:30-40']['state']);
+        self::assertSame('repository_source_via_agent_map', $byWhat['src/Repository/UserRepository.php:30-40']['authority']);
 
         self::assertSame('context_only_until_verified', $byWhat['src/Future/GeneratedContext.php:1-4']['use']);
         self::assertSame('unknown', $byWhat['src/Future/GeneratedContext.php:1-4']['state']);
+        self::assertSame('repository_source_via_agent_map', $byWhat['src/Future/GeneratedContext.php:1-4']['authority']);
 
         self::assertSame('investigate_before_claiming_complete', $byWhat['src/Service/UserService.php:18']['use']);
         self::assertSame('unknown', $byWhat['src/Service/UserService.php:18']['state']);
+        self::assertSame('derived_navigation', $byWhat['src/Service/UserService.php:18']['authority']);
 
         self::assertFalse($byWhat['method:App\\Import\\ImportUsers::run']['selected']);
+        self::assertSame('derived_navigation', $byWhat['method:App\\Import\\ImportUsers::run']['authority']);
         self::assertSame('maximum caller count reached', $byWhat['method:App\\Import\\ImportUsers::run']['why_not']);
     }
 
@@ -212,6 +217,7 @@ final class ContextExplainProjectorTest extends TestCase
         self::assertStringContainsString('## Context Explain Plan', $markdown);
         self::assertStringContainsString('context provenance', $markdown);
         self::assertStringContainsString('not the implementing agent\'s rationale', $markdown);
+        self::assertStringContainsString('VERIFIED` does not mean every statement inside the referenced source is automatically correct', $markdown);
         self::assertStringContainsString('### composer ci', $markdown);
     }
 
