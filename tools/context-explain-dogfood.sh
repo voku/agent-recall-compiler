@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-TASK_ID="CTX-EXPLAIN-DOGFOOD"
+TASK_ID="ARC-17"
 ACTOR="context-explain-dogfood"
 AGENT_LOOP_BIN="${AGENT_LOOP_BIN:-build/agent-loop/bin/agent-loop}"
 AGENT_MAP_BIN="${AGENT_MAP_BIN:-build/agent-loop/vendor/bin/agent-map}"
@@ -75,7 +75,7 @@ $data = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_
 $present = isset($data["context_explain"]) && is_array($data["context_explain"]);
 file_put_contents($out, json_encode([
     "schema_version" => "1.0",
-    "task_id" => "CTX-EXPLAIN-DOGFOOD",
+    "task_id" => "ARC-17",
     "selection_report" => $path,
     "context_explain_present" => $present,
 ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . PHP_EOL);
