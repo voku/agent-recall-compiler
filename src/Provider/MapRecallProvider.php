@@ -7,6 +7,8 @@ namespace voku\AgentRecallCompiler\Provider;
 use RuntimeException;
 use voku\AgentMap\Context\EditContextPlanner;
 use voku\AgentMap\Context\EditContextPolicy;
+use voku\AgentMap\Discovery\ArchitectureDiscovery;
+use voku\AgentMap\Discovery\RankedNode;
 use voku\AgentMap\Index\AgentMapIndex;
 use voku\AgentMap\Index\FileEntry;
 use voku\AgentMap\Index\IndexReader;
@@ -29,6 +31,8 @@ final readonly class MapRecallProvider implements RecallProvider
      */
     private const MIN_QUERY_LENGTH = 12;
 
+    private const DISCOVERY_LIMIT = 10;
+
     public function __construct(
         private string $indexPath,
         private ?string $sourceRoot = null,
@@ -37,6 +41,7 @@ final readonly class MapRecallProvider implements RecallProvider
         private EditContextPlanner $planner = new EditContextPlanner(),
         private ?string $searchDatabase = null,
         private int $searchLimit = 8,
+        private ArchitectureDiscovery $discovery = new ArchitectureDiscovery(),
     ) {
     }
 
@@ -44,10 +49,10 @@ final readonly class MapRecallProvider implements RecallProvider
     {
         return new RecallProviderManifest(
             'agent-map',
-            // The contract version tracks the fact shapes this instance can emit, and a configured
-            // search index adds one. A compilation that never enabled search keeps the 2.0 snapshot
-            // it had before, so its bundle digest does not move for a feature it does not use.
-            $this->searchDatabase === null ? '2.0' : '2.1',
+            // The contract version tracks the fact shapes this instance can emit. Architecture
+            // discovery adds one shape for under-specified tasks, and a configured search index
+            // adds another. Keep those capabilities explicit in the provider contract version.
+            $this->searchDatabase === null ? '2.1' : '2.2',
             array_values(array_filter([$this->indexPath, $this->sourceRoot, $this->searchDatabase])),
             required: false,
         );
@@ -118,6 +123,12 @@ final readonly class MapRecallProvider implements RecallProvider
             );
         }
 
+        if ($task->files === [] && $task->targets === []) {
+            $facts[] = $staleByPath === []
+                ? $this->architectureDiscoveryFact($runtimeMap)
+                : $this->architectureDiscoveryStatusFact($staleByPath);
+        }
+
         foreach ($this->searchFacts($runtimeMap, $task) as $searchFact) {
             $facts[] = $searchFact;
         }
@@ -128,6 +139,56 @@ final readonly class MapRecallProvider implements RecallProvider
         }
 
         return new RecallProviderResult('sha256:' . $sourceDigest, $facts);
+    }
+
+    private function architectureDiscoveryFact(AgentMapIndex $map): RecallFact
+    {
+        $report = $this->discovery->discover($map, self::DISCOVERY_LIMIT);
+        $scope = [];
+        foreach ([
+            $report->entrypointCandidates,
+            $report->callHubs,
+            $report->orchestrators,
+            $report->typeHubs,
+        ] as $ranking) {
+            foreach ($ranking as $row) {
+                if ($row instanceof RankedNode) {
+                    $scope[$row->node->file] = true;
+                }
+            }
+        }
+        $paths = array_keys($scope);
+        sort($paths, SORT_STRING);
+
+        return new RecallFact(
+            id: 'map.architecture.discovery',
+            type: 'architecture_discovery',
+            authority: 'derived_navigation',
+            sourceRef: $this->indexPath . '#discover',
+            scope: $paths,
+            payload: ['status' => 'ready'] + $report->toArray(),
+        );
+    }
+
+    /** @param array<string, string> $staleByPath */
+    private function architectureDiscoveryStatusFact(array $staleByPath): RecallFact
+    {
+        $paths = array_keys($staleByPath);
+        sort($paths, SORT_STRING);
+        ksort($staleByPath, SORT_STRING);
+
+        return new RecallFact(
+            id: 'map.architecture.discovery',
+            type: 'architecture_discovery',
+            authority: 'derived_navigation',
+            sourceRef: $this->indexPath . '#discover',
+            scope: $paths,
+            payload: [
+                'status' => 'stale',
+                'reason' => 'architecture discovery requires a fresh map',
+                'stale_files' => $staleByPath,
+            ],
+        );
     }
 
     /**
