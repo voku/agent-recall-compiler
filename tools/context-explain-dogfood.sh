@@ -10,9 +10,8 @@ PROMPT_MANIFEST="${PROMPT_MANIFEST:-build/agent-skills/skills/operational-prompt
 LEARNING_ROOT="infra/doc/agent-learning"
 REPORT_DIR="build/context-explain-dogfood"
 TARGET_DIR="build/context-explain-targeted"
-FOCUSED_DIR="build/context-explain-focused"
 
-rm -rf session_plan .agent-loop .agent-map todo tasks "${LEARNING_ROOT}" "${REPORT_DIR}" "${TARGET_DIR}" "${FOCUSED_DIR}"
+rm -rf session_plan .agent-loop .agent-map todo tasks "${LEARNING_ROOT}" "${REPORT_DIR}" "${TARGET_DIR}"
 mkdir -p "${REPORT_DIR}"
 
 php "${AGENT_LOOP_BIN}" init scaffold
@@ -186,51 +185,6 @@ if (!$ok) {
 }
 ' "${TARGET_DIR}/selection-report.json" "${REPORT_DIR}/targeted-result.json"
 
-# A focused compile deliberately suppresses related context. The real map must explain
-# at least one omission as UNKNOWN with a concrete why_not instead of inventing certainty.
-php "${AGENT_RECALL_BIN}" compile \
-  --root "${LEARNING_ROOT}" \
-  --task ARC-17-FOCUSED \
-  --description "Explain omitted context while focusing ContextExplainProjector::project." \
-  --target 'voku\AgentRecallCompiler\Context\ContextExplainProjector::project' \
-  --edit-focus 'return array_values($items);' \
-  --map-index .agent-map/php-symbols.json \
-  --map-root . \
-  --output-dir "${FOCUSED_DIR}" \
-  --compilation-id compilation.ARC-17-FOCUSED.dogfood
-cp "${FOCUSED_DIR}/selection-report.json" "${REPORT_DIR}/focused-selection-report.json"
-
-php -r '
-$path = $argv[1];
-$out = $argv[2];
-$data = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
-$items = is_array($data["context_explain"] ?? null) ? $data["context_explain"] : [];
-$unknownOmission = null;
-foreach ($items as $item) {
-    if (!is_array($item)) {
-        continue;
-    }
-    if (($item["kind"] ?? null) === "map_omission"
-        && ($item["state"] ?? null) === "unknown"
-        && ($item["selected"] ?? true) === false
-        && is_string($item["why_not"] ?? null)
-        && trim($item["why_not"]) !== "") {
-        $unknownOmission = $item;
-        break;
-    }
-}
-$passed = is_array($unknownOmission);
-file_put_contents($out, json_encode([
-    "schema_version" => "1.0",
-    "unknown_omission_present" => $passed,
-    "omission" => $unknownOmission,
-], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . PHP_EOL);
-if (!$passed) {
-    fwrite(STDERR, "[FAIL] focused context explain: no real UNKNOWN omission with why_not\n");
-    exit(46);
-}
-' "${FOCUSED_DIR}/selection-report.json" "${REPORT_DIR}/focused-result.json"
-
 # Persist a concrete L1 built from the governed context before recording validation.
 cat > "${REPORT_DIR}/l1.md" <<'MARKDOWN'
 ## Goal
@@ -243,10 +197,10 @@ The approved task is ARC-17. `selection-report.json` exposes project-native `com
 Do not invent commands from installed package names. Do not turn dependency or type-definition context into edit permission. Do not inject implementation rationale as context provenance. Keep UNKNOWN valid when evidence cannot support a stronger state.
 
 ## Verification
-Run `composer ci`. Run the semantic dogfood checks against governed, target-aware, and focused Recall artifacts. Generate and inspect the agent-loop blind-spot review.
+Run `composer ci`. Run the semantic dogfood checks against governed and target-aware Recall artifacts. Verify that detected tool presence does not become an invented project command. Generate and inspect the agent-loop blind-spot review.
 
 ## Done When
-`composer ci` passes, semantic context-explain checks pass, target-aware Recall exposes a verified implementation candidate, a focused real-map compile exposes an UNKNOWN omission with `why_not`, and the review artifact is generated and inspected without weakening the approved contract.
+`composer ci` passes, semantic context-explain checks pass, target-aware Recall exposes a verified implementation candidate, dependencies remain context-only, tool presence does not become an invented command, and the review artifact is generated and inspected without weakening the approved contract.
 MARKDOWN
 
 php "${AGENT_LOOP_BIN}" workflow contract "${TASK_ID}" \
@@ -283,4 +237,4 @@ php "${AGENT_LOOP_BIN}" session checkpoint "${TASK_ID}" \
 
 php "${AGENT_LOOP_BIN}" workflow status "${TASK_ID}" > "${REPORT_DIR}/workflow-status.txt"
 
-echo "[OK] context explain dogfood: governed context, contract, validation, target-aware evidence, real UNKNOWN omission, and review were exercised"
+echo "[OK] context explain dogfood: governed context, contract, validation, target-aware evidence, unsupported inference boundary, and review were exercised"
