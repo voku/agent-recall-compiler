@@ -49,7 +49,7 @@ final class GovernedRunBindingTest extends TestCase
 
         $fact = (new TaskContextRecallProvider())->collect(
             $brief,
-            new RecallRootConfig($this->root, null, null, null, null),
+            new RecallRootConfig($this->root, $this->root . '/constraints/active', $this->root),
         )->facts[0];
         self::assertSame('approved_contract_bound_to_governed_run', $fact->evidenceLabel);
         self::assertSame('run:ABC-123:one', $fact->payload['governed_run']['run_id'] ?? null);
