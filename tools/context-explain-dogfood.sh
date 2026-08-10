@@ -112,6 +112,7 @@ $checks = [
     "scope_prefix_not_fake_file" => $fakeDirectory === null,
     "system_renders_provenance_not_rationale" => str_contains($system, "## Context Explain Plan")
         && str_contains($system, "not the implementing agent\x27s rationale"),
+    "verified_state_is_provenance_not_content_truth" => str_contains($system, "VERIFIED` does not mean every statement inside the referenced source is automatically correct"),
 ];
 $ok = !in_array(false, $checks, true);
 file_put_contents($out, json_encode([
@@ -147,26 +148,41 @@ $path = $argv[1];
 $out = $argv[2];
 $data = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
 $items = is_array($data["context_explain"] ?? null) ? $data["context_explain"] : [];
-$primary = false;
-$contextOnly = false;
+$primary = null;
+$contextOnly = null;
 foreach ($items as $item) {
     if (!is_array($item)) {
         continue;
     }
     if (($item["use"] ?? null) === "implementation_candidate" && ($item["state"] ?? null) === "verified") {
-        $primary = true;
+        $primary = $item;
     }
     if (($item["use"] ?? null) === "context_only_do_not_edit_from_selection_alone") {
-        $contextOnly = true;
+        $contextOnly = $item;
     }
 }
+$checks = [
+    "primary_verified" => is_array($primary),
+    "primary_authority_is_repository_source" => is_array($primary)
+        && ($primary["authority"] ?? null) === "repository_source_via_agent_map"
+        && str_contains((string) ($primary["how"] ?? ""), "agent-map EditContextPlan role(s): primary"),
+    "context_only_present" => is_array($contextOnly),
+    "context_only_has_no_edit_permission" => is_array($contextOnly)
+        && ($contextOnly["authority"] ?? null) === "repository_source_via_agent_map"
+        && str_starts_with((string) ($contextOnly["use"] ?? ""), "context_only_"),
+];
+$ok = !in_array(false, $checks, true);
 file_put_contents($out, json_encode([
     "schema_version" => "1.0",
-    "primary_verified" => $primary,
-    "context_only_present" => $contextOnly,
+    "checks" => $checks,
+    "passed" => $ok,
 ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR) . PHP_EOL);
-if (!$primary) {
-    fwrite(STDERR, "[FAIL] targeted context explain: no verified implementation candidate\n");
+if (!$ok) {
+    foreach ($checks as $name => $passed) {
+        if (!$passed) {
+            fwrite(STDERR, "[FAIL] targeted context explain semantic check: {$name}\n");
+        }
+    }
     exit(44);
 }
 ' "${TARGET_DIR}/selection-report.json" "${REPORT_DIR}/targeted-result.json"
