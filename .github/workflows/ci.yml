@@ -33,3 +33,93 @@ jobs:
 
       - name: Run PHPStan
         run: vendor/bin/phpstan analyse --configuration=phpstan.neon.dist
+
+  context-explain-dogfood:
+    if: github.event_name == 'pull_request'
+    name: Govern context explain through agent-loop
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout candidate recall compiler
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Checkout qualified agent-loop workflow engine
+        uses: actions/checkout@v4
+        with:
+          repository: voku/agent-loop
+          ref: 05e30320b45581d9f53e3a444e92f24fa579e58d
+          path: build/agent-loop
+          persist-credentials: false
+
+      - name: Checkout candidate agent-learning
+        uses: actions/checkout@v4
+        with:
+          repository: voku/agent-learning
+          ref: 221a9cc893ddf6b350cd87ba615ad003443662d9
+          path: build/agent-learning
+          persist-credentials: false
+
+      - name: Checkout candidate agent-session
+        uses: actions/checkout@v4
+        with:
+          repository: voku/agent-session
+          ref: 8b8700522c28e2650b8c6cd11b3317127fbb8649
+          path: build/agent-session
+          persist-credentials: false
+
+      - name: Checkout first-party operating prompt catalog
+        uses: actions/checkout@v4
+        with:
+          repository: voku/agent-skills
+          ref: c7e9d8bdda59d957600bca8dc9f787f03286b277
+          path: build/agent-skills
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: json, mbstring, pdo_sqlite, sqlite3
+          coverage: none
+          tools: composer:v2
+
+      - name: Install candidate package development dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Configure coordinated candidate dependencies
+        run: |
+          php -r '
+          $path = "build/agent-loop/composer.json";
+          $data = json_decode(file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+          $data["repositories"] = [
+              ["type" => "path", "url" => getcwd(), "options" => ["symlink" => false, "versions" => ["voku/agent-recall-compiler" => "0.10.999"]]],
+              ["type" => "path", "url" => getcwd() . "/build/agent-learning", "options" => ["symlink" => false, "versions" => ["voku/agent-learning" => "0.9.999"]]],
+              ["type" => "path", "url" => getcwd() . "/build/agent-session", "options" => ["symlink" => false, "versions" => ["voku/agent-session" => "0.4.999"]]],
+          ];
+          file_put_contents($path, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . PHP_EOL);
+          '
+
+      - name: Install qualified agent-loop with this recall compiler
+        run: composer update --working-dir=build/agent-loop --no-interaction --prefer-dist --no-progress
+
+      - name: Lint dogfood runner
+        run: bash -n tools/context-explain-dogfood.sh
+
+      - name: Run governed context-explain dogfood
+        run: bash tools/context-explain-dogfood.sh
+
+      - name: Upload dogfood evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: context-explain-dogfood-${{ github.sha }}
+          if-no-files-found: warn
+          path: |
+            build/context-explain-dogfood
+            build/context-explain-targeted
+            infra/doc/agent-learning/recall-output/ARC-17
+            session_plan
+            .agent-loop/runs/ARC-17

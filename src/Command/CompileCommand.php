@@ -10,6 +10,7 @@ use RuntimeException;
 use voku\AgentMap\Context\EditContextPolicy;
 use voku\AgentRecallCompiler\CanonicalJson;
 use voku\AgentRecallCompiler\Compilation\RecallCompilationService;
+use voku\AgentRecallCompiler\Context\ContextExplainProjector;
 use voku\AgentRecallCompiler\FeedbackAssessmentRenderer;
 use voku\AgentRecallCompiler\FeedbackParser;
 use voku\AgentRecallCompiler\InlineTaskBriefResolver;
@@ -29,6 +30,7 @@ use voku\AgentRecallCompiler\RecallPromptBuilder;
 use voku\AgentRecallCompiler\RecallRepository;
 use voku\AgentRecallCompiler\RecallResult;
 use voku\AgentRecallCompiler\RecallRootResolver;
+use voku\AgentRecallCompiler\Rendering\ContextExplainRenderer;
 use voku\AgentRecallCompiler\Rendering\OperatingPromptRenderer;
 use voku\AgentRecallCompiler\TaskBrief;
 use voku\AgentRecallCompiler\Verification\CompiledVerificationPlan;
@@ -163,6 +165,11 @@ final class CompileCommand
 
         $bundle = $compilation->bundle;
         $bundleDigest = CanonicalJson::digest($bundle);
+        $contextExplain = (new ContextExplainProjector())->project(
+            $compilation->effectiveTask,
+            $compilation->facts,
+            $result,
+        );
         $facts = [
             'schema_version' => '1.0',
             'bundle_sha256' => $bundleDigest,
@@ -177,6 +184,7 @@ final class CompileCommand
             'selected_rejections' => $bundle['selected_rejections'],
             'warnings' => $bundle['warnings'],
             'effective_scope' => $compilation->effectiveScope,
+            'context_explain' => $contextExplain,
         ];
         $systemMd = $this->promptBuilder->buildSystemMd(
             $task,
@@ -186,6 +194,10 @@ final class CompileCommand
             $compilation->facts,
             $bundleDigest,
         );
+        $contextExplainMd = (new ContextExplainRenderer())->render($contextExplain);
+        if ($contextExplainMd !== '') {
+            $systemMd = rtrim($systemMd) . "\n\n" . $contextExplainMd;
+        }
         $operatingContract = (new OperatingPromptRenderer())->render($compilation->facts);
         if ($operatingContract !== '') {
             $systemMd = rtrim($systemMd) . "\n\n" . $operatingContract;
