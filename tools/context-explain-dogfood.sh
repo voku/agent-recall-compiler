@@ -225,7 +225,11 @@ php "${AGENT_LOOP_BIN}" review blindspots "${TASK_ID}" > "${REPORT_DIR}/review-b
 review_exit="$?"
 set -e
 printf '%s\n' "${review_exit}" > "${REPORT_DIR}/review-before-checkpoint.exit"
-review_artifact="$(find . "${LEARNING_ROOT}" -type f -name "${TASK_ID}.blindspots.json" -print -quit 2>/dev/null || true)"
+if [[ "${review_exit}" -ne 0 ]]; then
+  echo "[FAIL] context explain dogfood: review blindspots exited with ${review_exit}" >&2
+  exit 45
+fi
+review_artifact="$(find . -type f -name "${TASK_ID}.blindspots.json" -print -quit 2>/dev/null || true)"
 if [[ -z "${review_artifact}" ]]; then
   echo "[FAIL] context explain dogfood: blind-spot review artifact not found" >&2
   exit 45
