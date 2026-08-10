@@ -490,7 +490,7 @@ final readonly class ContextExplainProjector
     {
         $id = 'guidance:' . $evaluated->guidanceId;
         if ($evaluated->selected) {
-            $reason = $evaluated->selectionReason?->value ?? 'unknown';
+            $reason = $evaluated->selectionReason->value;
             $items[$id] = $this->item(
                 id: $id,
                 kind: 'guidance_decision',
@@ -499,7 +499,7 @@ final readonly class ContextExplainProjector
                 how: 'Deterministic guidance eligibility and task-scope selection.',
                 authority: 'guidance_selection',
                 use: 'active_guidance',
-                state: $evaluated->selectionReason === null ? 'unknown' : 'verified',
+                state: 'verified',
                 selected: true,
                 sourceRef: $evaluated->sourceProposal,
                 evidenceIds: [],
@@ -508,7 +508,7 @@ final readonly class ContextExplainProjector
             return;
         }
 
-        $reason = $evaluated->exclusionReason?->value ?? 'unknown';
+        $reason = $evaluated->exclusionReason->value;
         $items[$id] = $this->item(
             id: $id,
             kind: 'guidance_decision',
@@ -517,7 +517,7 @@ final readonly class ContextExplainProjector
             how: 'Deterministic guidance eligibility and task-scope selection.',
             authority: 'guidance_selection',
             use: 'excluded_guidance_do_not_apply',
-            state: $evaluated->exclusionReason === null ? 'unknown' : 'verified',
+            state: 'verified',
             selected: false,
             sourceRef: $evaluated->sourceProposal,
             evidenceIds: [],
