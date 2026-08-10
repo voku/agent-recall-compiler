@@ -43,6 +43,8 @@ jobs:
     steps:
       - name: Checkout candidate recall compiler
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Checkout qualified agent-loop workflow engine
         uses: actions/checkout@v4
