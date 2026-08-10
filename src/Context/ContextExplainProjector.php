@@ -4,17 +4,18 @@ declare(strict_types=1);
 
 namespace voku\AgentRecallCompiler\Context;
 
+use LogicException;
 use voku\AgentRecallCompiler\EvaluatedGuidance;
 use voku\AgentRecallCompiler\RecallResult;
 use voku\AgentRecallCompiler\TaskBrief;
 
 /**
- * Projects already-compiled evidence into an explain plan for receiving agents.
+ * Deterministically explains why compiled context was selected and how it may be used.
  *
- * This class never invents implementation rationale. It only explains why Recall
- * selected or rejected context using provenance that is already present in the
- * compiled facts and deterministic selection result.
+ * It never reconstructs implementation rationale. Every explanation is derived from
+ * provider facts or a selection decision that already exists in the compilation.
  *
+ * @phpstan-type ExplainState 'verified'|'inferred'|'unknown'|'blocked'
  * @phpstan-type ExplainItem array{
  *     id: string,
  *     kind: string,
@@ -23,7 +24,7 @@ use voku\AgentRecallCompiler\TaskBrief;
  *     how: string,
  *     authority: string,
  *     use: string,
- *     state: 'verified'|'inferred'|'unknown'|'blocked',
+ *     state: ExplainState,
  *     selected: bool,
  *     source_ref: string|null,
  *     evidence_ids: list<string>,
@@ -32,6 +33,16 @@ use voku\AgentRecallCompiler\TaskBrief;
  */
 final readonly class ContextExplainProjector
 {
+    /** @var array<string, string> */
+    private const array MAP_ROLE_USE = [
+        'primary' => 'implementation_candidate',
+        'contract' => 'compatibility_contract',
+        'change_candidate' => 'inspect_and_edit_if_required',
+        'verification' => 'verification',
+        'dependency' => 'context_only_do_not_edit_from_selection_alone',
+        'type_definition' => 'context_only_do_not_edit_from_selection_alone',
+    ];
+
     /**
      * @param list<array<string, mixed>> $facts
      * @return list<ExplainItem>
@@ -40,166 +51,127 @@ final readonly class ContextExplainProjector
     {
         /** @var array<string, ExplainItem> $items */
         $items = [];
-
         foreach ($facts as $fact) {
-            $type = $fact['type'] ?? null;
-            if (!is_string($type)) {
-                continue;
+            foreach ($this->explainFact($task, $fact) as $item) {
+                $items[$item['id']] = $item;
             }
-
-            match ($type) {
-                'edit_context' => $this->appendEditContext($items, $fact),
-                'project_capabilities' => $this->appendProjectCapabilities($items, $fact),
-                'adr', 'skill' => $this->appendProjectDocument($items, $fact, $task),
-                'operating_prompt' => $this->appendOperatingPrompt($items, $fact),
-                'navigation_status' => $this->appendNavigationStatus($items, $fact),
-                'navigation_candidates' => $this->appendNavigationCandidates($items, $fact),
-                default => null,
-            };
         }
-
         foreach ($result->evaluatedGuidance as $evaluated) {
-            $this->appendGuidanceDecision($items, $evaluated);
+            $item = $this->explainGuidance($evaluated);
+            $items[$item['id']] = $item;
         }
-
         ksort($items, SORT_STRING);
 
         return array_values($items);
     }
 
     /**
-     * @param array<string, ExplainItem> $items
      * @param array<string, mixed> $fact
+     * @return list<ExplainItem>
      */
-    private function appendEditContext(array &$items, array $fact): void
+    private function explainFact(TaskBrief $task, array $fact): array
+    {
+        return match ($fact['type'] ?? null) {
+            'edit_context' => $this->explainEditContext($fact),
+            'project_capabilities' => $this->explainCapabilities($fact),
+            'adr', 'skill' => [$this->explainDocument($task, $fact)],
+            'operating_prompt' => $this->explainOperatingPrompt($fact),
+            default => [],
+        };
+    }
+
+    /**
+     * @param array<string, mixed> $fact
+     * @return list<ExplainItem>
+     */
+    private function explainEditContext(array $fact): array
     {
         $payload = $this->payload($fact);
         $sourceRef = $this->string($fact['source_ref'] ?? null);
         $navigationAuthority = $this->string($fact['authority'] ?? null) ?? 'derived_navigation';
-        $slices = $payload['slices'] ?? [];
-        if (is_array($slices)) {
-            foreach ($slices as $index => $slice) {
-                if (!is_array($slice)) {
-                    continue;
-                }
-                $path = $this->string($slice['path'] ?? null);
-                if ($path === null) {
-                    continue;
-                }
-                $roles = $this->strings($slice['roles'] ?? []);
-                $reasons = $this->strings($slice['reasons'] ?? []);
-                $evidenceIds = $this->strings($slice['evidence_ids'] ?? []);
-                $lineStart = is_int($slice['line_start'] ?? null) ? $slice['line_start'] : null;
-                $lineEnd = is_int($slice['line_end'] ?? null) ? $slice['line_end'] : null;
-                $what = $path;
-                if ($lineStart !== null && $lineEnd !== null) {
-                    $what .= ':' . $lineStart . '-' . $lineEnd;
-                }
+        $items = [];
 
-                $knownRoles = ['primary', 'contract', 'change_candidate', 'verification', 'dependency', 'type_definition'];
-                $unknownRoles = array_values(array_diff($roles, $knownRoles));
-                $state = $roles === [] || $unknownRoles !== [] ? 'unknown' : 'verified';
-                $use = $this->editUse($roles);
-                $why = $reasons === []
-                    ? ($roles === []
-                        ? 'agent-map selected this source slice but exposed no recognized role or reason.'
-                        : 'agent-map selected this source slice as ' . implode(', ', $roles) . ' context for the current target.')
-                    : implode('; ', $reasons);
-                $how = 'agent-map EditContextPlan';
-                if ($roles !== []) {
-                    $how .= ' role(s): ' . implode(', ', $roles);
-                }
-
-                $id = 'map-slice:' . hash('sha256', $what . "\0" . implode(',', $roles) . "\0" . (string) $index);
-                $items[$id] = $this->item(
-                    id: $id,
-                    kind: 'map_slice',
-                    what: $what,
-                    why: $why,
-                    how: $how,
-                    authority: 'repository_source_via_agent_map',
-                    use: $use,
-                    state: $state,
-                    selected: true,
-                    sourceRef: $sourceRef,
-                    evidenceIds: $evidenceIds,
-                );
+        foreach ($this->arrays($payload['slices'] ?? []) as $index => $slice) {
+            $path = $this->string($slice['path'] ?? null);
+            if ($path === null) {
+                continue;
             }
+            $roles = $this->strings($slice['roles'] ?? []);
+            $reasons = $this->strings($slice['reasons'] ?? []);
+            $lineStart = is_int($slice['line_start'] ?? null) ? $slice['line_start'] : null;
+            $lineEnd = is_int($slice['line_end'] ?? null) ? $slice['line_end'] : null;
+            $what = $path . ($lineStart !== null && $lineEnd !== null ? ':' . $lineStart . '-' . $lineEnd : '');
+            $unknownRoles = array_diff($roles, array_keys(self::MAP_ROLE_USE));
+            $state = $roles === [] || $unknownRoles !== [] ? 'unknown' : 'verified';
+            $why = $reasons !== []
+                ? implode('; ', $reasons)
+                : ($roles === []
+                    ? 'agent-map selected this source slice but exposed no recognized role or reason.'
+                    : 'agent-map selected this source slice as ' . implode(', ', $roles) . ' context for the current target.');
+            $items[] = $this->item(
+                id: 'map-slice:' . hash('sha256', $what . "\0" . implode(',', $roles) . "\0" . (string) $index),
+                kind: 'map_slice',
+                what: $what,
+                why: $why,
+                how: 'agent-map EditContextPlan' . ($roles === [] ? '' : ' role(s): ' . implode(', ', $roles)),
+                authority: 'repository_source_via_agent_map',
+                use: $this->mapUse($roles),
+                state: $state,
+                selected: true,
+                sourceRef: $sourceRef,
+                evidenceIds: $this->strings($slice['evidence_ids'] ?? []),
+            );
         }
 
-        $blindSpots = $payload['blind_spots'] ?? [];
-        if (is_array($blindSpots)) {
-            foreach ($blindSpots as $index => $blindSpot) {
-                if (!is_array($blindSpot)) {
-                    continue;
-                }
-                $kind = $this->string($blindSpot['kind'] ?? null) ?? 'unknown';
-                $message = $this->string($blindSpot['message'] ?? null) ?? 'agent-map reported an unresolved blind spot.';
-                $path = $this->string($blindSpot['path'] ?? null);
-                $line = is_int($blindSpot['line'] ?? null) ? $blindSpot['line'] : null;
-                $what = $path ?? ('blind-spot:' . $kind);
-                if ($path !== null && $line !== null) {
-                    $what .= ':' . $line;
-                }
-                $id = 'map-blind-spot:' . hash('sha256', $kind . "\0" . $what . "\0" . (string) $index);
-                $items[$id] = $this->item(
-                    id: $id,
-                    kind: 'map_blind_spot',
-                    what: $what,
-                    why: $message,
-                    how: 'agent-map reported a static-analysis blind spot while constructing EditContextPlan.',
-                    authority: $navigationAuthority,
-                    use: 'investigate_before_claiming_complete',
-                    state: 'unknown',
-                    selected: true,
-                    sourceRef: $sourceRef,
-                    evidenceIds: $this->strings($blindSpot['evidence_ids'] ?? []),
-                );
-            }
+        foreach ($this->arrays($payload['blind_spots'] ?? []) as $index => $blindSpot) {
+            $kind = $this->string($blindSpot['kind'] ?? null) ?? 'unknown';
+            $path = $this->string($blindSpot['path'] ?? null);
+            $line = is_int($blindSpot['line'] ?? null) ? $blindSpot['line'] : null;
+            $what = ($path ?? 'blind-spot:' . $kind) . ($path !== null && $line !== null ? ':' . $line : '');
+            $items[] = $this->item(
+                id: 'map-blind-spot:' . hash('sha256', $kind . "\0" . $what . "\0" . (string) $index),
+                kind: 'map_blind_spot',
+                what: $what,
+                why: $this->string($blindSpot['message'] ?? null) ?? 'agent-map reported an unresolved blind spot.',
+                how: 'agent-map reported a static-analysis blind spot while constructing EditContextPlan.',
+                authority: $navigationAuthority,
+                use: 'investigate_before_claiming_complete',
+                state: 'unknown',
+                selected: true,
+                sourceRef: $sourceRef,
+                evidenceIds: $this->strings($blindSpot['evidence_ids'] ?? []),
+            );
         }
 
-        $omitted = $payload['omitted'] ?? [];
-        if (is_array($omitted)) {
-            foreach ($omitted as $index => $candidate) {
-                if (!is_array($candidate)) {
-                    continue;
-                }
-                $symbol = $this->string($candidate['symbol_id'] ?? null) ?? 'unknown';
-                $role = $this->string($candidate['role'] ?? null) ?? 'unknown';
-                $reason = $this->string($candidate['reason'] ?? null) ?? 'agent-map omitted this candidate from the bounded context.';
-                $id = 'map-omitted:' . hash('sha256', $symbol . "\0" . $role . "\0" . (string) $index);
-                $items[$id] = $this->item(
-                    id: $id,
-                    kind: 'map_omission',
-                    what: $symbol,
-                    why: 'The candidate was considered while constructing bounded edit context.',
-                    how: 'agent-map EditContextPlan omission for role ' . $role . '.',
-                    authority: $navigationAuthority,
-                    use: 'investigate_if_relevant',
-                    state: 'unknown',
-                    selected: false,
-                    sourceRef: $sourceRef,
-                    evidenceIds: [],
-                    whyNot: $reason,
-                );
-            }
+        foreach ($this->arrays($payload['omitted'] ?? []) as $index => $omitted) {
+            $symbol = $this->string($omitted['symbol_id'] ?? null) ?? 'unknown';
+            $role = $this->string($omitted['role'] ?? null) ?? 'unknown';
+            $items[] = $this->item(
+                id: 'map-omitted:' . hash('sha256', $symbol . "\0" . $role . "\0" . (string) $index),
+                kind: 'map_omission',
+                what: $symbol,
+                why: 'The candidate was considered while constructing bounded edit context.',
+                how: 'agent-map EditContextPlan omission for role ' . $role . '.',
+                authority: $navigationAuthority,
+                use: 'investigate_if_relevant',
+                state: 'unknown',
+                selected: false,
+                sourceRef: $sourceRef,
+                evidenceIds: [],
+                whyNot: $this->string($omitted['reason'] ?? null) ?? 'agent-map omitted this candidate from bounded context.',
+            );
         }
+
+        return $items;
     }
 
     /** @param list<string> $roles */
-    private function editUse(array $roles): string
+    private function mapUse(array $roles): string
     {
-        if (in_array('primary', $roles, true)) {
-            return 'implementation_candidate';
-        }
-        if (in_array('contract', $roles, true)) {
-            return 'compatibility_contract';
-        }
-        if (in_array('change_candidate', $roles, true)) {
-            return 'inspect_and_edit_if_required';
-        }
-        if (in_array('verification', $roles, true)) {
-            return 'verification';
+        foreach (['primary', 'contract', 'change_candidate', 'verification'] as $role) {
+            if (in_array($role, $roles, true)) {
+                return self::MAP_ROLE_USE[$role];
+            }
         }
         if (array_intersect(['dependency', 'type_definition'], $roles) !== []) {
             return 'context_only_do_not_edit_from_selection_alone';
@@ -209,128 +181,108 @@ final readonly class ContextExplainProjector
     }
 
     /**
-     * @param array<string, ExplainItem> $items
      * @param array<string, mixed> $fact
+     * @return list<ExplainItem>
      */
-    private function appendProjectCapabilities(array &$items, array $fact): void
+    private function explainCapabilities(array $fact): array
     {
         $payload = $this->payload($fact);
         $authority = $this->string($fact['authority'] ?? null) ?? 'project_metadata';
         $sourceRef = $this->string($fact['source_ref'] ?? null);
+        $items = [];
 
         $runtime = $this->string($payload['runtime_constraint'] ?? null);
         if ($runtime !== null) {
-            $id = 'project-capability:runtime';
-            $items[$id] = $this->item(
-                id: $id,
-                kind: 'runtime_constraint',
-                what: 'PHP runtime constraint ' . $runtime,
-                why: 'The supported runtime constrains valid implementation syntax and dependencies.',
-                how: 'Read directly from composer.json require.php.',
-                authority: $authority,
-                use: 'implementation_constraint',
-                state: 'verified',
-                selected: true,
-                sourceRef: $sourceRef,
-                evidenceIds: [],
+            $items[] = $this->item(
+                'project-capability:runtime',
+                'runtime_constraint',
+                'PHP runtime constraint ' . $runtime,
+                'The supported runtime constrains valid implementation syntax and dependencies.',
+                'Read directly from composer.json require.php.',
+                $authority,
+                'implementation_constraint',
+                'verified',
+                true,
+                $sourceRef,
+                [],
             );
         }
 
-        $scripts = $payload['composer_scripts'] ?? [];
-        if (is_array($scripts)) {
-            foreach ($scripts as $name => $definition) {
-                if (!is_string($name) || trim($name) === '' || (!is_string($definition) && !is_array($definition))) {
-                    continue;
-                }
-                $command = 'composer ' . trim($name);
-                $id = 'project-capability:composer-script:' . trim($name);
-                $items[$id] = $this->item(
-                    id: $id,
-                    kind: 'repository_command',
-                    what: $command,
-                    why: 'The repository declares this Composer script, so the command is an exact project-native entry point rather than an inferred tool invocation.',
-                    how: 'Read directly from composer.json scripts.' . trim($name) . '.',
-                    authority: $authority,
-                    use: 'verification_candidate',
-                    state: 'verified',
-                    selected: true,
-                    sourceRef: $sourceRef,
-                    evidenceIds: [],
+        $scripts = is_array($payload['composer_scripts'] ?? null) ? $payload['composer_scripts'] : [];
+        foreach ($scripts as $name => $definition) {
+            if (!is_string($name) || trim($name) === '' || (!is_string($definition) && !is_array($definition))) {
+                continue;
+            }
+            $name = trim($name);
+            $items[] = $this->item(
+                'project-capability:composer-script:' . $name,
+                'repository_command',
+                'composer ' . $name,
+                'The repository declares this Composer script, so the command is an exact project-native entry point rather than an inferred tool invocation.',
+                'Read directly from composer.json scripts.' . $name . '.',
+                $authority,
+                'verification_candidate',
+                'verified',
+                true,
+                $sourceRef,
+                [],
+            );
+        }
+
+        $tools = is_array($payload['tool_packages'] ?? null) ? $payload['tool_packages'] : [];
+        foreach ($tools as $name => $constraint) {
+            if (!is_string($name) || !is_string($constraint)) {
+                continue;
+            }
+            $items[] = $this->item(
+                'project-capability:tool:' . $name,
+                'tool_presence',
+                $name . ' ' . $constraint,
+                'Composer declares this known development tool package.',
+                'Read from composer.json require/require-dev; package presence does not prove the repository-preferred invocation.',
+                $authority,
+                'capability_presence_only_do_not_infer_command',
+                'verified',
+                true,
+                $sourceRef,
+                [],
+            );
+        }
+
+        foreach ([
+            ['config_files', 'configuration_anchor', 'A supported project configuration file exists and may constrain the corresponding tool behavior.', 'Detected by the bounded project-capabilities provider allow-list.', 'configuration_anchor'],
+            ['ci_workflows', 'ci_anchor', 'The CI workflow file exists, but this provider does not parse it into executable task policy.', 'Detected as a .github/workflows YAML file by the bounded project-capabilities provider.', 'navigation_anchor_only'],
+        ] as [$payloadKey, $kind, $why, $how, $use]) {
+            foreach ($this->strings($payload[$payloadKey] ?? []) as $path) {
+                $items[] = $this->item(
+                    'project-capability:' . $kind . ':' . $path,
+                    $kind,
+                    $path,
+                    $why,
+                    $how,
+                    $authority,
+                    $use,
+                    'verified',
+                    true,
+                    $path,
+                    [],
                 );
             }
         }
 
-        $toolPackages = $payload['tool_packages'] ?? [];
-        if (is_array($toolPackages)) {
-            foreach ($toolPackages as $name => $constraint) {
-                if (!is_string($name) || !is_string($constraint)) {
-                    continue;
-                }
-                $id = 'project-capability:tool:' . $name;
-                $items[$id] = $this->item(
-                    id: $id,
-                    kind: 'tool_presence',
-                    what: $name . ' ' . $constraint,
-                    why: 'Composer declares this known development tool package.',
-                    how: 'Read from composer.json require/require-dev; package presence does not prove the repository-preferred invocation.',
-                    authority: $authority,
-                    use: 'capability_presence_only_do_not_infer_command',
-                    state: 'verified',
-                    selected: true,
-                    sourceRef: $sourceRef,
-                    evidenceIds: [],
-                );
-            }
-        }
-
-        foreach ($this->strings($payload['config_files'] ?? []) as $configFile) {
-            $id = 'project-capability:config:' . $configFile;
-            $items[$id] = $this->item(
-                id: $id,
-                kind: 'configuration_anchor',
-                what: $configFile,
-                why: 'A supported project configuration file exists and may constrain the corresponding tool behavior.',
-                how: 'Detected by the bounded project-capabilities provider allow-list.',
-                authority: $authority,
-                use: 'configuration_anchor',
-                state: 'verified',
-                selected: true,
-                sourceRef: $configFile,
-                evidenceIds: [],
-            );
-        }
-
-        foreach ($this->strings($payload['ci_workflows'] ?? []) as $workflow) {
-            $id = 'project-capability:ci:' . $workflow;
-            $items[$id] = $this->item(
-                id: $id,
-                kind: 'ci_anchor',
-                what: $workflow,
-                why: 'The CI workflow file exists, but this provider does not parse it into executable task policy.',
-                how: 'Detected as a .github/workflows YAML file by the bounded project-capabilities provider.',
-                authority: $authority,
-                use: 'navigation_anchor_only',
-                state: 'verified',
-                selected: true,
-                sourceRef: $workflow,
-                evidenceIds: [],
-            );
-        }
+        return $items;
     }
 
     /**
-     * @param array<string, ExplainItem> $items
      * @param array<string, mixed> $fact
+     * @return ExplainItem
      */
-    private function appendProjectDocument(array &$items, array $fact, TaskBrief $task): void
+    private function explainDocument(TaskBrief $task, array $fact): array
     {
         $payload = $this->payload($fact);
-        $documentId = $this->string($payload['document_id'] ?? null) ?? $this->string($fact['id'] ?? null) ?? 'unknown';
         $scope = $this->strings($fact['scope'] ?? []);
-        $tags = $this->strings($payload['tags'] ?? []);
         $reasons = [];
-
-        if ($scope === [] || in_array('/', $scope, true) || in_array('*', $scope, true)) {
+        if ($scope === [] || array_intersect(['/', '*'], $scope) !== []) {
             $reasons[] = 'project-wide document policy';
         }
         foreach ($task->files as $file) {
@@ -341,229 +293,104 @@ final readonly class ContextExplainProjector
                 }
             }
         }
-        $matchingTags = array_values(array_intersect($tags, $task->tags));
+        $matchingTags = array_values(array_intersect($this->strings($payload['tags'] ?? []), $task->tags));
         if ($matchingTags !== []) {
             $reasons[] = 'tag overlap: ' . implode(', ', $matchingTags);
         }
         $reasons = array_values(array_unique($reasons));
 
-        $sourceRef = $this->string($payload['canonical_source_ref'] ?? null) ?? $this->string($fact['source_ref'] ?? null);
         $type = $this->string($fact['type'] ?? null) ?? 'document';
-        $id = 'project-document:' . $documentId;
-        $items[$id] = $this->item(
-            id: $id,
-            kind: 'project_document',
-            what: $sourceRef ?? $documentId,
-            why: $reasons === [] ? 'The document provider selected this source, but the exact relevance path cannot be reconstructed from the emitted fact.' : implode('; ', $reasons),
-            how: 'ScopedDocumentRecallProvider selection using path scope, task tags, or project-wide policy.',
-            authority: $this->string($fact['authority'] ?? null) ?? ('project_' . $type),
-            use: $type === 'adr' ? 'architecture_constraint' : 'project_instruction',
-            state: $reasons === [] ? 'unknown' : 'verified',
-            selected: true,
-            sourceRef: $sourceRef,
-            evidenceIds: [],
+        $documentId = $this->string($payload['document_id'] ?? null) ?? $this->string($fact['id'] ?? null) ?? 'unknown';
+        $sourceRef = $this->string($payload['canonical_source_ref'] ?? null) ?? $this->string($fact['source_ref'] ?? null);
+
+        return $this->item(
+            'project-document:' . $documentId,
+            'project_document',
+            $sourceRef ?? $documentId,
+            $reasons === [] ? 'The document provider selected this source, but the exact relevance path cannot be reconstructed from the emitted fact.' : implode('; ', $reasons),
+            'ScopedDocumentRecallProvider selection using path scope, task tags, or project-wide policy.',
+            $this->string($fact['authority'] ?? null) ?? 'project_' . $type,
+            $type === 'adr' ? 'architecture_constraint' : 'project_instruction',
+            $reasons === [] ? 'unknown' : 'verified',
+            true,
+            $sourceRef,
+            [],
         );
     }
 
     /**
-     * @param array<string, ExplainItem> $items
      * @param array<string, mixed> $fact
+     * @return list<ExplainItem>
      */
-    private function appendOperatingPrompt(array &$items, array $fact): void
+    private function explainOperatingPrompt(array $fact): array
     {
         $payload = $this->payload($fact);
         $promptId = $this->string($payload['prompt_id'] ?? null);
         if ($promptId === null) {
-            return;
+            return [];
         }
         $level = is_int($payload['level'] ?? null) ? $payload['level'] : null;
         $templateSha = $this->string($payload['template_sha256'] ?? null);
-        $sourceRef = $this->string($fact['source_ref'] ?? null);
-        $id = 'operating-prompt:' . $promptId;
-        $items[$id] = $this->item(
-            id: $id,
-            kind: 'operating_prompt',
-            what: $promptId . ($level === null ? '' : ' (L' . $level . ')'),
-            why: 'The task explicitly selected this reusable operating-prompt recipe.',
-            how: 'Resolved from the supplied manifest' . ($templateSha === null ? '.' : ' with template SHA-256 ' . $templateSha . '.'),
-            authority: $this->string($fact['authority'] ?? null) ?? 'task_input',
-            use: $level === 2 ? 'construct_project_specific_l1_contract' : 'direct_l1_operating_contract',
-            state: 'verified',
-            selected: true,
-            sourceRef: $sourceRef,
-            evidenceIds: [],
-        );
+
+        return [$this->item(
+            'operating-prompt:' . $promptId,
+            'operating_prompt',
+            $promptId . ($level === null ? '' : ' (L' . $level . ')'),
+            'The task explicitly selected this reusable operating-prompt recipe.',
+            'Resolved from the supplied manifest' . ($templateSha === null ? '.' : ' with template SHA-256 ' . $templateSha . '.'),
+            $this->string($fact['authority'] ?? null) ?? 'task_input',
+            $level === 2 ? 'construct_project_specific_l1_contract' : 'direct_l1_operating_contract',
+            'verified',
+            true,
+            $this->string($fact['source_ref'] ?? null),
+            [],
+        )];
     }
 
-    /**
-     * @param array<string, ExplainItem> $items
-     * @param array<string, mixed> $fact
-     */
-    private function appendNavigationStatus(array &$items, array $fact): void
+    /** @return ExplainItem */
+    private function explainGuidance(EvaluatedGuidance $evaluated): array
     {
-        $payload = $this->payload($fact);
-        $path = $this->string($payload['path'] ?? null) ?? 'unknown';
-        $status = $this->string($payload['status'] ?? null) ?? 'unknown';
-        $reason = $this->string($payload['reason'] ?? null);
-        $id = 'navigation-status:' . $path;
-        $items[$id] = $this->item(
-            id: $id,
-            kind: 'navigation_status',
-            what: $path,
-            why: 'The requested file could not be promoted to current source-backed navigation context.',
-            how: 'agent-map file lookup returned status ' . $status . '.',
-            authority: $this->string($fact['authority'] ?? null) ?? 'derived_navigation',
-            use: 'resolve_before_relying_on_navigation',
-            state: $status === 'stale' ? 'blocked' : 'unknown',
-            selected: false,
-            sourceRef: $this->string($fact['source_ref'] ?? null),
-            evidenceIds: [],
-            whyNot: $reason ?? $status,
-        );
-    }
-
-    /**
-     * @param array<string, ExplainItem> $items
-     * @param array<string, mixed> $fact
-     */
-    private function appendNavigationCandidates(array &$items, array $fact): void
-    {
-        $payload = $this->payload($fact);
-        $status = $this->string($payload['status'] ?? null) ?? 'unknown';
-        $sourceRef = $this->string($fact['source_ref'] ?? null);
-        if ($status !== 'ranked') {
-            $reason = $this->string($payload['reason'] ?? null) ?? 'No ranked navigation candidates were produced.';
-            $id = 'navigation-candidates:status';
-            $items[$id] = $this->item(
-                id: $id,
-                kind: 'navigation_candidates',
-                what: 'ranked navigation candidates',
-                why: 'Hybrid search was considered as an optional navigation aid.',
-                how: 'agent-map search-index status: ' . $status . '.',
-                authority: $this->string($fact['authority'] ?? null) ?? 'derived_navigation',
-                use: 'navigation_leads_only',
-                state: 'unknown',
-                selected: false,
-                sourceRef: $sourceRef,
-                evidenceIds: [],
-                whyNot: $reason,
-            );
-
-            return;
-        }
-
-        $results = $payload['results'] ?? [];
-        if (!is_array($results)) {
-            return;
-        }
-        foreach ($results as $index => $hit) {
-            if (!is_array($hit)) {
-                continue;
-            }
-            $path = $this->string($hit['file_path'] ?? null) ?? 'unknown';
-            $start = is_int($hit['start_line'] ?? null) ? $hit['start_line'] : null;
-            $end = is_int($hit['end_line'] ?? null) ? $hit['end_line'] : null;
-            $what = $path;
-            if ($start !== null && $end !== null) {
-                $what .= ':' . $start . '-' . $end;
-            }
-            $reasons = $this->strings($hit['reasons'] ?? []);
-            $id = 'navigation-candidate:' . hash('sha256', $what . "\0" . (string) $index);
-            $items[$id] = $this->item(
-                id: $id,
-                kind: 'navigation_candidate',
-                what: $what,
-                why: $reasons === [] ? 'Derived search ranked this source as a possible navigation lead.' : implode('; ', $reasons),
-                how: 'agent-map derived hybrid-search ranking; ranking is not resolved source evidence.',
-                authority: $this->string($fact['authority'] ?? null) ?? 'derived_navigation',
-                use: 'open_and_verify_before_using',
-                state: 'inferred',
-                selected: true,
-                sourceRef: $sourceRef,
-                evidenceIds: [],
-            );
-        }
-    }
-
-    /** @param array<string, ExplainItem> $items */
-    private function appendGuidanceDecision(array &$items, EvaluatedGuidance $evaluated): void
-    {
-        $id = 'guidance:' . $evaluated->guidanceId;
         if ($evaluated->selected) {
             if ($evaluated->selectionReason === null) {
-                throw new \LogicException('Selected evaluated guidance requires a selection reason: ' . $evaluated->guidanceId);
+                throw new LogicException('Selected evaluated guidance requires a selection reason: ' . $evaluated->guidanceId);
             }
-            $reason = $evaluated->selectionReason->value;
-            $items[$id] = $this->item(
-                id: $id,
-                kind: 'guidance_decision',
-                what: $evaluated->guidanceId,
-                why: 'RecallDecisionEngine selected this guidance: ' . $reason . '.',
-                how: 'Deterministic guidance eligibility and task-scope selection.',
-                authority: 'guidance_selection',
-                use: 'active_guidance',
-                state: 'verified',
-                selected: true,
-                sourceRef: $evaluated->sourceProposal,
-                evidenceIds: [],
+
+            return $this->item(
+                'guidance:' . $evaluated->guidanceId,
+                'guidance_decision',
+                $evaluated->guidanceId,
+                'RecallDecisionEngine selected this guidance: ' . $evaluated->selectionReason->value . '.',
+                'Deterministic guidance eligibility and task-scope selection.',
+                'guidance_selection',
+                'active_guidance',
+                'verified',
+                true,
+                $evaluated->sourceProposal,
+                [],
             );
-
-            return;
         }
-
         if ($evaluated->exclusionReason === null) {
-            throw new \LogicException('Excluded evaluated guidance requires an exclusion reason: ' . $evaluated->guidanceId);
+            throw new LogicException('Excluded evaluated guidance requires an exclusion reason: ' . $evaluated->guidanceId);
         }
-        $reason = $evaluated->exclusionReason->value;
-        $items[$id] = $this->item(
-            id: $id,
-            kind: 'guidance_decision',
-            what: $evaluated->guidanceId,
-            why: 'RecallDecisionEngine evaluated this guidance for the current task.',
-            how: 'Deterministic guidance eligibility and task-scope selection.',
-            authority: 'guidance_selection',
-            use: 'excluded_guidance_do_not_apply',
-            state: 'verified',
-            selected: false,
-            sourceRef: $evaluated->sourceProposal,
-            evidenceIds: [],
-            whyNot: $reason,
+
+        return $this->item(
+            'guidance:' . $evaluated->guidanceId,
+            'guidance_decision',
+            $evaluated->guidanceId,
+            'RecallDecisionEngine evaluated this guidance for the current task.',
+            'Deterministic guidance eligibility and task-scope selection.',
+            'guidance_selection',
+            'excluded_guidance_do_not_apply',
+            'verified',
+            false,
+            $evaluated->sourceProposal,
+            [],
+            $evaluated->exclusionReason->value,
         );
     }
 
-    /** @param array<string, mixed> $fact
-     * @return array<string, mixed>
-     */
-    private function payload(array $fact): array
-    {
-        return is_array($fact['payload'] ?? null) ? $fact['payload'] : [];
-    }
-
-    private function string(mixed $value): ?string
-    {
-        return is_string($value) && trim($value) !== '' ? trim($value) : null;
-    }
-
-    /** @return list<string> */
-    private function strings(mixed $value): array
-    {
-        if (!is_array($value)) {
-            return [];
-        }
-
-        $strings = [];
-        foreach ($value as $item) {
-            if (is_string($item) && trim($item) !== '') {
-                $strings[] = trim($item);
-            }
-        }
-
-        return array_values(array_unique($strings));
-    }
-
-    /**
+    /** @param list<string> $evidenceIds
      * @param 'verified'|'inferred'|'unknown'|'blocked' $state
-     * @param list<string> $evidenceIds
      * @return ExplainItem
      */
     private function item(
@@ -598,5 +425,42 @@ final readonly class ContextExplainProjector
         }
 
         return $item;
+    }
+
+    /** @param array<string, mixed> $fact
+     * @return array<string, mixed>
+     */
+    private function payload(array $fact): array
+    {
+        return is_array($fact['payload'] ?? null) ? $fact['payload'] : [];
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function arrays(mixed $value): array
+    {
+        if (!is_array($value)) {
+            return [];
+        }
+
+        return array_values(array_filter($value, 'is_array'));
+    }
+
+    /** @return list<string> */
+    private function strings(mixed $value): array
+    {
+        if (!is_array($value)) {
+            return [];
+        }
+        $values = array_values(array_filter(array_map(
+            static fn (mixed $item): ?string => is_string($item) && trim($item) !== '' ? trim($item) : null,
+            $value,
+        )));
+
+        return array_values(array_unique($values));
+    }
+
+    private function string(mixed $value): ?string
+    {
+        return is_string($value) && trim($value) !== '' ? trim($value) : null;
     }
 }
