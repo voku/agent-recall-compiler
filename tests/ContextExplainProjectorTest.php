@@ -23,7 +23,7 @@ final class ContextExplainProjectorTest extends TestCase
             [[
                 'id' => 'map.edit-context.user-service',
                 'type' => 'edit_context',
-                'authority' => 'derived_navigation',
+                'authority' => 'project_metadata',
                 'source_ref' => '.agent-map/php-symbols.json#App\\Service\\UserService::save',
                 'payload' => [
                     'slices' => [
