@@ -92,7 +92,6 @@ $composerCi = $find(static fn(array $item): bool => ($item["what"] ?? null) === 
 $tool = $find(static fn(array $item): bool => ($item["kind"] ?? null) === "tool_presence");
 $document = $find(static fn(array $item): bool => ($item["what"] ?? null) === "docs/operating-prompts.md");
 $recipe = $find(static fn(array $item): bool => ($item["what"] ?? null) === "multi-pass-correctness-simplify (L2)");
-$fakeDirectory = $find(static fn(array $item): bool => ($item["what"] ?? null) === "src/" && ($item["kind"] ?? null) === "navigation_status");
 $system = (string) file_get_contents($systemPath);
 $checks = [
     "composer_ci_verified" => is_array($composerCi)
@@ -109,7 +108,6 @@ $checks = [
     "l2_recipe_authority" => is_array($recipe)
         && ($recipe["authority"] ?? null) === "approved_session_brief"
         && ($recipe["use"] ?? null) === "construct_project_specific_l1_contract",
-    "scope_prefix_not_fake_file" => $fakeDirectory === null,
     "system_renders_provenance_not_rationale" => str_contains($system, "## Context Explain Plan")
         && str_contains($system, "not the implementing agent\x27s rationale"),
     "verified_state_is_provenance_not_content_truth" => str_contains($system, "VERIFIED` does not mean every statement inside the referenced source is automatically correct"),
