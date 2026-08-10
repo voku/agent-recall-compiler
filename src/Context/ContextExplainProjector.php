@@ -115,7 +115,7 @@ final readonly class ContextExplainProjector
                 why: $why,
                 how: 'agent-map EditContextPlan' . ($roles === [] ? '' : ' role(s): ' . implode(', ', $roles)),
                 authority: 'repository_source_via_agent_map',
-                use: $this->mapUse($roles),
+                use: $unknownRoles === [] ? $this->mapUse($roles) : 'context_only_until_verified',
                 state: $state,
                 selected: true,
                 sourceRef: $sourceRef,
@@ -451,10 +451,13 @@ final readonly class ContextExplainProjector
         if (!is_array($value)) {
             return [];
         }
-        $values = array_values(array_filter(array_map(
-            static fn (mixed $item): ?string => is_string($item) && trim($item) !== '' ? trim($item) : null,
-            $value,
-        )));
+        $values = array_values(array_filter(
+            array_map(
+                static fn (mixed $item): ?string => is_string($item) && trim($item) !== '' ? trim($item) : null,
+                $value,
+            ),
+            static fn (?string $item): bool => $item !== null,
+        ));
 
         return array_values(array_unique($values));
     }
