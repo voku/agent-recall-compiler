@@ -490,6 +490,9 @@ final readonly class ContextExplainProjector
     {
         $id = 'guidance:' . $evaluated->guidanceId;
         if ($evaluated->selected) {
+            if ($evaluated->selectionReason === null) {
+                throw new \LogicException('Selected evaluated guidance requires a selection reason: ' . $evaluated->guidanceId);
+            }
             $reason = $evaluated->selectionReason->value;
             $items[$id] = $this->item(
                 id: $id,
@@ -508,6 +511,9 @@ final readonly class ContextExplainProjector
             return;
         }
 
+        if ($evaluated->exclusionReason === null) {
+            throw new \LogicException('Excluded evaluated guidance requires an exclusion reason: ' . $evaluated->guidanceId);
+        }
         $reason = $evaluated->exclusionReason->value;
         $items[$id] = $this->item(
             id: $id,
