@@ -84,6 +84,9 @@ jobs:
           coverage: none
           tools: composer:v2
 
+      - name: Install candidate package development dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
       - name: Configure coordinated candidate dependencies
         run: |
           php -r '
@@ -114,6 +117,7 @@ jobs:
           if-no-files-found: warn
           path: |
             build/context-explain-dogfood
+            build/context-explain-targeted
             infra/doc/agent-learning/recall-output/ARC-17
             session_plan
             .agent-loop/runs/ARC-17
