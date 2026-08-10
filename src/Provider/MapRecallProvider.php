@@ -8,7 +8,6 @@ use RuntimeException;
 use voku\AgentMap\Context\EditContextPlanner;
 use voku\AgentMap\Context\EditContextPolicy;
 use voku\AgentMap\Discovery\ArchitectureDiscovery;
-use voku\AgentMap\Discovery\RankedNode;
 use voku\AgentMap\Index\AgentMapIndex;
 use voku\AgentMap\Index\FileEntry;
 use voku\AgentMap\Index\IndexReader;
@@ -152,9 +151,7 @@ final readonly class MapRecallProvider implements RecallProvider
             $report->typeHubs,
         ] as $ranking) {
             foreach ($ranking as $row) {
-                if ($row instanceof RankedNode) {
-                    $scope[$row->node->file] = true;
-                }
+                $scope[$row->node->file] = true;
             }
         }
         $paths = array_keys($scope);
