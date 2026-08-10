@@ -75,7 +75,7 @@ final readonly class ContextExplainProjector
     {
         $payload = $this->payload($fact);
         $sourceRef = $this->string($fact['source_ref'] ?? null);
-        $authority = $this->string($fact['authority'] ?? null) ?? 'derived_navigation';
+        $navigationAuthority = $this->string($fact['authority'] ?? null) ?? 'derived_navigation';
         $slices = $payload['slices'] ?? [];
         if (is_array($slices)) {
             foreach ($slices as $index => $slice) {
@@ -117,7 +117,7 @@ final readonly class ContextExplainProjector
                     what: $what,
                     why: $why,
                     how: $how,
-                    authority: $authority,
+                    authority: 'repository_source_via_agent_map',
                     use: $use,
                     state: $state,
                     selected: true,
@@ -148,7 +148,7 @@ final readonly class ContextExplainProjector
                     what: $what,
                     why: $message,
                     how: 'agent-map reported a static-analysis blind spot while constructing EditContextPlan.',
-                    authority: $authority,
+                    authority: $navigationAuthority,
                     use: 'investigate_before_claiming_complete',
                     state: 'unknown',
                     selected: true,
@@ -174,7 +174,7 @@ final readonly class ContextExplainProjector
                     what: $symbol,
                     why: 'The candidate was considered while constructing bounded edit context.',
                     how: 'agent-map EditContextPlan omission for role ' . $role . '.',
-                    authority: $authority,
+                    authority: $navigationAuthority,
                     use: 'investigate_if_relevant',
                     state: 'unknown',
                     selected: false,
