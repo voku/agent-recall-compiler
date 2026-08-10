@@ -114,6 +114,6 @@ jobs:
           if-no-files-found: warn
           path: |
             build/context-explain-dogfood
-            infra/doc/agent-learning/recall-output/CTX-EXPLAIN-DOGFOOD
+            infra/doc/agent-learning/recall-output/ARC-17
             session_plan
-            .agent-loop/runs/CTX-EXPLAIN-DOGFOOD
+            .agent-loop/runs/ARC-17
