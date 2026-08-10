@@ -50,7 +50,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: voku/agent-loop
-          ref: 704b4e2298d8c672e19274be2747ae8764e0d887
+          ref: 5d95414d93ecb27be0aeefaa4a2b314d894e75bd
           path: build/agent-loop
           persist-credentials: false
 
