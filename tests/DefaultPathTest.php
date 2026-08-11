@@ -12,11 +12,10 @@ use voku\AgentRecallCompiler\RecallRootResolver;
 
 final class DefaultPathTest extends TestCase
 {
-    public function testCompactLearningRootWinsDiscovery(): void
+    public function testDiscoversCompactLearningRoot(): void
     {
         $project = $this->tempDir();
         mkdir($project . '/.agent-loop/learning/findings', 0o775, true);
-        mkdir($project . '/infra/doc/agent-learning/findings', 0o775, true);
         $previous = getcwd();
 
         try {
@@ -29,6 +28,40 @@ final class DefaultPathTest extends TestCase
             if (is_string($previous)) {
                 chdir($previous);
             }
+            $this->remove($project);
+        }
+    }
+
+    public function testHistoricalLearningRootIsNotAutoDiscovered(): void
+    {
+        $project = $this->tempDir();
+        mkdir($project . '/infra/doc/agent-learning/findings', 0o775, true);
+        $previous = getcwd();
+
+        try {
+            chdir($project);
+
+            self::assertSame($project . '/.agent-loop/learning', (new PathResolver())->resolve());
+        } finally {
+            if (is_string($previous)) {
+                chdir($previous);
+            }
+            $this->remove($project);
+        }
+    }
+
+    public function testExplicitHistoricalLearningRootRemainsExplicit(): void
+    {
+        $project = $this->tempDir();
+        $root = $project . '/infra/doc/agent-learning';
+        mkdir($root . '/findings', 0o775, true);
+
+        try {
+            $config = (new RecallRootResolver())->resolve($root);
+
+            self::assertSame($root, $config->root);
+            self::assertSame($root, $config->projectRoot);
+        } finally {
             $this->remove($project);
         }
     }
