@@ -12,6 +12,7 @@ final class PathResolver
      * @var list<string>
      */
     private const array LEARNING_ROOT_CANDIDATES = [
+        '.agent-loop/learning',
         'infra/doc/agent-learning',
         '.agent-learning',
         'docs/agent-learning',
@@ -26,13 +27,11 @@ final class PathResolver
         if ($path !== null && trim($path) !== '') {
             $real = realpath($path);
             if ($real === false) {
-                // Check if directory can be created or if it just doesn't exist
                 return rtrim(str_replace('\\', '/', $path), '/');
             }
             return str_replace('\\', '/', $real);
         }
 
-        // Auto-discovery: search upwards from current working directory
         $cwd = getcwd();
         if ($cwd === false) {
             throw new InvalidArgumentException('cannot resolve current working directory');
@@ -56,6 +55,6 @@ final class PathResolver
             $dir = str_replace('\\', '/', $parent);
         }
 
-        return str_replace('\\', '/', $cwd);
+        return str_replace('\\', '/', $cwd . '/.agent-loop/learning');
     }
 }
