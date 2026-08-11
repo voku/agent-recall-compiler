@@ -46,28 +46,44 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Checkout qualified agent-loop workflow engine
+      - name: Checkout coordinated agent-loop workflow engine
         uses: actions/checkout@v4
         with:
           repository: voku/agent-loop
-          ref: 5d95414d93ecb27be0aeefaa4a2b314d894e75bd
+          ref: agent/workspace-root
           path: build/agent-loop
           persist-credentials: false
 
-      - name: Checkout candidate agent-learning
+      - name: Checkout agent-learning main
         uses: actions/checkout@v4
         with:
           repository: voku/agent-learning
-          ref: 221a9cc893ddf6b350cd87ba615ad003443662d9
+          ref: main
           path: build/agent-learning
           persist-credentials: false
 
-      - name: Checkout candidate agent-session
+      - name: Checkout agent-session main
         uses: actions/checkout@v4
         with:
           repository: voku/agent-session
-          ref: 8b8700522c28e2650b8c6cd11b3317127fbb8649
+          ref: main
           path: build/agent-session
+          persist-credentials: false
+
+      - name: Checkout agent-kanban main
+        uses: actions/checkout@v4
+        with:
+          repository: voku/agent-kanban
+          ref: main
+          path: build/agent-kanban
+          persist-credentials: false
+
+      - name: Checkout agent-map main
+        uses: actions/checkout@v4
+        with:
+          repository: voku/agent-map
+          ref: main
+          path: build/agent-map
           persist-credentials: false
 
       - name: Checkout first-party operating prompt catalog
@@ -94,17 +110,17 @@ jobs:
           php -r '
           $path = "build/agent-loop/composer.json";
           $data = json_decode(file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
-          $data["require"]["voku/agent-learning"] = "0.9.*";
-          $data["require"]["voku/agent-session"] = "0.4.*";
           $data["repositories"] = [
               ["type" => "path", "url" => getcwd(), "options" => ["symlink" => false, "versions" => ["voku/agent-recall-compiler" => "0.10.999"]]],
-              ["type" => "path", "url" => getcwd() . "/build/agent-learning", "options" => ["symlink" => false, "versions" => ["voku/agent-learning" => "0.9.999"]]],
-              ["type" => "path", "url" => getcwd() . "/build/agent-session", "options" => ["symlink" => false, "versions" => ["voku/agent-session" => "0.4.999"]]],
+              ["type" => "path", "url" => getcwd() . "/build/agent-learning", "options" => ["symlink" => false, "versions" => ["voku/agent-learning" => "0.8.999"]]],
+              ["type" => "path", "url" => getcwd() . "/build/agent-session", "options" => ["symlink" => false, "versions" => ["voku/agent-session" => "0.3.999"]]],
+              ["type" => "path", "url" => getcwd() . "/build/agent-kanban", "options" => ["symlink" => false, "versions" => ["voku/agent-kanban" => "0.2.999"]]],
+              ["type" => "path", "url" => getcwd() . "/build/agent-map", "options" => ["symlink" => false, "versions" => ["voku/agent-map" => "0.5.999"]]],
           ];
           file_put_contents($path, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . PHP_EOL);
           '
 
-      - name: Install qualified agent-loop with this recall compiler
+      - name: Install coordinated agent-loop with this recall compiler
         run: composer update --working-dir=build/agent-loop --no-interaction --prefer-dist --no-progress
 
       - name: Lint dogfood runner
@@ -122,6 +138,6 @@ jobs:
           path: |
             build/context-explain-dogfood
             build/context-explain-targeted
-            infra/doc/agent-learning/recall-output/ARC-17
-            session_plan
+            .agent-loop/recall/ARC-17
+            .agent-loop/sessions
             .agent-loop/runs/ARC-17
