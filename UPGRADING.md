@@ -25,10 +25,11 @@ infra/doc/agent-learning/ -> .agent-loop/learning/
 recall/                    -> .agent-loop/recall/
 ```
 
-Learning-root discovery prefers `.agent-loop/learning/` when both the compact
-and a historical root exist. `compile` writes to
-`.agent-loop/recall/<task-id>/` when `--output-dir` is not supplied.
+Automatic learning-root discovery now considers only `.agent-loop/learning/`.
+Historical or custom roots remain usable only when selected explicitly with
+`--root`. `compile` writes to `.agent-loop/recall/<task-id>/` when
+`--output-dir` is not supplied.
 
 Explicit `--root` and `--output-dir` values remain authoritative. There is no
-automatic copy, symlink, fallback merge, or dual-write between historical and
+automatic copy, symlink, fallback, merge, or dual-write between historical and
 new roots.
