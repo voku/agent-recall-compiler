@@ -108,13 +108,10 @@ final class Cli
             return $tokens;
         }
 
-        $taskId = $this->optionValue($tokens, 'task');
-        if ($taskId === null) {
-            $taskBrief = $this->optionValue($tokens, 'task-brief');
-            if ($taskBrief !== null) {
-                $taskId = (new JsonTaskBriefResolver())->resolveFile($taskBrief)->id;
-            }
-        }
+        $taskBrief = $this->optionValue($tokens, 'task-brief');
+        $taskId = $taskBrief !== null
+            ? (new JsonTaskBriefResolver())->resolveFile($taskBrief)->id
+            : $this->optionValue($tokens, 'task');
 
         if ($taskId === null || trim($taskId) === '') {
             return $tokens;
