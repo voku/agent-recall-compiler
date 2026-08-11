@@ -8,19 +8,10 @@ use InvalidArgumentException;
 
 final class PathResolver
 {
-    /**
-     * @var list<string>
-     */
-    private const array LEARNING_ROOT_CANDIDATES = [
-        '.agent-loop/learning',
-        'infra/doc/agent-learning',
-        '.agent-learning',
-        'docs/agent-learning',
-        'agent-learning',
-    ];
+    private const string DEFAULT_LEARNING_ROOT = '.agent-loop/learning';
 
     /**
-     * Resolve a path. If null, auto-discovers by searching up from CWD.
+     * Resolve a path. If null, auto-discovers the canonical learning root by searching up from CWD.
      */
     public function resolve(?string $path = null): string
     {
@@ -29,6 +20,7 @@ final class PathResolver
             if ($real === false) {
                 return rtrim(str_replace('\\', '/', $path), '/');
             }
+
             return str_replace('\\', '/', $real);
         }
 
@@ -39,13 +31,9 @@ final class PathResolver
 
         $dir = str_replace('\\', '/', $cwd);
         while (true) {
-            foreach (self::LEARNING_ROOT_CANDIDATES as $candidate) {
-                if (is_dir($dir . '/' . $candidate)) {
-                    return $dir . '/' . $candidate;
-                }
-            }
-            if (is_dir($dir . '/findings') && is_dir($dir . '/proposals')) {
-                return $dir;
+            $candidate = $dir . '/' . self::DEFAULT_LEARNING_ROOT;
+            if (is_dir($candidate)) {
+                return $candidate;
             }
 
             $parent = dirname($dir);
@@ -55,6 +43,6 @@ final class PathResolver
             $dir = str_replace('\\', '/', $parent);
         }
 
-        return str_replace('\\', '/', $cwd . '/.agent-loop/learning');
+        return str_replace('\\', '/', $cwd . '/' . self::DEFAULT_LEARNING_ROOT);
     }
 }
