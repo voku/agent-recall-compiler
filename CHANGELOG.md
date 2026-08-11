@@ -4,6 +4,20 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.10.2] - 2026-08-11
+
+### Changed
+
+- Allow `voku/agent-map` `^0.7.0` in addition to the existing 0.5 and 0.6 lines.
+  This is a compatibility-only release: recall semantics, provider contracts, facts,
+  bundle digests, and rendered prompts are unchanged.
+
+### Validation
+
+- Release remains gated on PHPUnit and PHPStan across PHP 8.3, 8.4, and 8.5.
+- The package's normal Composer install resolves against the published `agent-map 0.7.0`
+  line, proving the new constraint rather than testing an unreleased path dependency.
+
 ## [0.10.0] - 2026-08-09
 
 ### Added
