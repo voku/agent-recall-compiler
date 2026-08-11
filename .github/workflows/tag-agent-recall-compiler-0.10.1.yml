@@ -1,0 +1,31 @@
+name: Tag agent-recall-compiler 0.10.1
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/tag-agent-recall-compiler-0.10.1.yml
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Create 0.10.1 tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git rev-parse --verify --quiet refs/tags/0.10.1 >/dev/null; then
+            echo 'Tag 0.10.1 already exists; refusing to move it.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git tag -a 0.10.1 e0a84fde68c3e96bb28be4305a8cd110dce9d66d -m 'agent-recall-compiler 0.10.1'
+          git push origin refs/tags/0.10.1
