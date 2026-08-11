@@ -8,14 +8,7 @@ use RuntimeException;
 
 final readonly class RecallRootResolver
 {
-    /** @var list<string> */
-    private const array LEARNING_ROOT_SUFFIXES = [
-        '.agent-loop/learning',
-        'infra/doc/agent-learning',
-        '.agent-learning',
-        'docs/agent-learning',
-        'agent-learning',
-    ];
+    private const string DEFAULT_LEARNING_ROOT_SUFFIX = '.agent-loop/learning';
 
     public function __construct(private PathResolver $pathResolver = new PathResolver())
     {
@@ -60,11 +53,9 @@ final readonly class RecallRootResolver
     private function defaultProjectRoot(string $root): string
     {
         $normalized = $this->normalize($root);
-        foreach (self::LEARNING_ROOT_SUFFIXES as $suffix) {
-            $needle = '/' . $suffix;
-            if (str_ends_with($normalized, $needle)) {
-                return substr($normalized, 0, -strlen($needle));
-            }
+        $needle = '/' . self::DEFAULT_LEARNING_ROOT_SUFFIX;
+        if (str_ends_with($normalized, $needle)) {
+            return substr($normalized, 0, -strlen($needle));
         }
 
         return $normalized;
