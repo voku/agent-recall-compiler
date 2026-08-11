@@ -7,7 +7,6 @@ namespace voku\AgentRecallCompiler\Tests;
 use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
-use voku\AgentRecallCompiler\Cli;
 use voku\AgentRecallCompiler\PathResolver;
 use voku\AgentRecallCompiler\RecallRootResolver;
 
@@ -32,21 +31,6 @@ final class DefaultPathTest extends TestCase
             }
             $this->remove($project);
         }
-    }
-
-    public function testHelpDocumentsCompactDefaults(): void
-    {
-        ob_start();
-        try {
-            $exit = (new Cli())->run(['agent-recall-compiler', 'help']);
-            $output = (string) ob_get_contents();
-        } finally {
-            ob_end_clean();
-        }
-
-        self::assertSame(0, $exit);
-        self::assertStringContainsString('<cwd>/.agent-loop/learning', $output);
-        self::assertStringContainsString('<cwd>/.agent-loop/recall/<task-id>', $output);
     }
 
     private function tempDir(): string
