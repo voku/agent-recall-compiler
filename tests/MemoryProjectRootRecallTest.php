@@ -19,6 +19,7 @@ final class MemoryProjectRootRecallTest extends TestCase
     {
         $this->repositoryRoot = sys_get_temp_dir() . '/recall-project-memory-' . bin2hex(random_bytes(8));
         mkdir($this->repositoryRoot . '/infra/doc/agent-learning', 0777, true);
+        mkdir($this->repositoryRoot . '/.agent-loop/learning', 0777, true);
     }
 
     protected function tearDown(): void
@@ -79,13 +80,13 @@ final class MemoryProjectRootRecallTest extends TestCase
     public function testConfiguredProjectRootCannotEscapeKnownRepositoryBoundary(): void
     {
         $projectRoot = $this->repositoryRoot . '/project';
-        $learningRoot = $projectRoot . '/infra/doc/agent-learning';
+        $learningRoot = $projectRoot . '/.agent-loop/learning';
         $outsideRoot = $this->repositoryRoot . '/outside';
         mkdir($learningRoot, 0777, true);
         mkdir($outsideRoot, 0777, true);
         file_put_contents($outsideRoot . '/MEMORY.md', 'External memory must not be ingested.');
         file_put_contents($learningRoot . '/config.json', json_encode([
-            'project_root' => '../../../../outside',
+            'project_root' => '../../../outside',
         ], JSON_THROW_ON_ERROR));
 
         $this->expectException(RuntimeException::class);
@@ -93,9 +94,9 @@ final class MemoryProjectRootRecallTest extends TestCase
         (new RecallRootResolver())->resolve($learningRoot);
     }
 
-    public function testKnownLearningRootSuffixResolvesProjectRootWithoutConfig(): void
+    public function testCanonicalLearningRootSuffixResolvesProjectRootWithoutConfig(): void
     {
-        $learningRoot = $this->repositoryRoot . '/infra/doc/agent-learning';
+        $learningRoot = $this->repositoryRoot . '/.agent-loop/learning';
         file_put_contents($this->repositoryRoot . '/MEMORY.md', 'Convention-based project memory.');
 
         $config = (new RecallRootResolver())->resolve($learningRoot);
