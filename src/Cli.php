@@ -94,7 +94,7 @@ final class Cli
     private function compileTokensWithDefaultPaths(array $tokens): array
     {
         $cwd = getcwd();
-        if ($cwd === false || $cwd === '') {
+        if ($cwd === false) {
             throw new RuntimeException('Unable to determine current working directory.');
         }
         $cwd = rtrim(str_replace('\\', '/', $cwd), '/');
