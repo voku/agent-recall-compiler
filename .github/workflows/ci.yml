@@ -94,6 +94,8 @@ jobs:
           php -r '
           $path = "build/agent-loop/composer.json";
           $data = json_decode(file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+          $data["require"]["voku/agent-learning"] = "0.9.*";
+          $data["require"]["voku/agent-session"] = "0.4.*";
           $data["repositories"] = [
               ["type" => "path", "url" => getcwd(), "options" => ["symlink" => false, "versions" => ["voku/agent-recall-compiler" => "0.10.999"]]],
               ["type" => "path", "url" => getcwd() . "/build/agent-learning", "options" => ["symlink" => false, "versions" => ["voku/agent-learning" => "0.9.999"]]],
