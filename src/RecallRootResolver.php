@@ -10,6 +10,7 @@ final readonly class RecallRootResolver
 {
     /** @var list<string> */
     private const array LEARNING_ROOT_SUFFIXES = [
+        '.agent-loop/learning',
         'infra/doc/agent-learning',
         '.agent-learning',
         'docs/agent-learning',
@@ -84,10 +85,6 @@ final readonly class RecallRootResolver
         $normalizedLearningRoot = $this->normalize($root);
         $inferredProjectRoot = $this->defaultProjectRoot($normalizedLearningRoot);
 
-        // For a known repository layout we have a trustworthy project boundary.
-        // Do not let repository-controlled config make Recall ingest MEMORY.md from
-        // an arbitrary parent/home directory. Non-standard standalone roots retain
-        // the existing explicit-root freedom because there is no inferred boundary.
         if ($inferredProjectRoot !== $normalizedLearningRoot) {
             $allowedPrefix = rtrim($inferredProjectRoot, '/') . '/';
             if ($projectRoot !== $inferredProjectRoot && !str_starts_with($projectRoot, $allowedPrefix)) {
