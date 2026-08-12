@@ -93,21 +93,21 @@ final class ReviewTest extends TestCase
         self::assertStringNotContainsString('### ../secret', $promptWithMalformedMeta);
     }
 
-    public function testPromptIncludesBoardAndRelatedSessionArtifacts(): void
+    public function testPromptIncludesCompactBoardAndRelatedSessionArtifacts(): void
     {
         $this->write('.agent-recall/current/meta.json', '{"task_id":"ABC-123","task_files":[]}');
         $this->write('.agent-recall/current/validation-plan.md', 'Run composer test.');
-        $this->write('todo/cards/ABC-123.md', '# Board card');
-        $this->write('session_plan/2026-06-28-work/session.json', '{"task_id":"ABC-123"}');
-        $this->write('session_plan/2026-06-28-work/checkpoints/001-validation.md', 'ABC-123 PHPUnit passed review blindspots checked');
+        $this->write('.agent-loop/todo/cards/ABC-123.md', '# Board card');
+        $this->write('.agent-loop/sessions/2026-06-28-work/session.json', '{"task_id":"ABC-123"}');
+        $this->write('.agent-loop/sessions/2026-06-28-work/checkpoints/001-validation.md', 'ABC-123 PHPUnit passed review blindspots checked');
 
         $prompt = (new ReviewPromptBuilder($this->root))->buildBlindSpotPrompt(
             (new BlindSpotReviewer($this->root))->review('ABC-123', '.agent-recall/current'),
             '.agent-recall/current',
         );
 
-        self::assertStringContainsString('todo/cards/ABC-123.md', $prompt);
-        self::assertStringContainsString('session_plan/2026-06-28-work/checkpoints/001-validation.md', $prompt);
+        self::assertStringContainsString('.agent-loop/todo/cards/ABC-123.md', $prompt);
+        self::assertStringContainsString('.agent-loop/sessions/2026-06-28-work/checkpoints/001-validation.md', $prompt);
     }
 
     public function testReviewCliHelpAndCodeCommand(): void
@@ -137,12 +137,12 @@ final class ReviewTest extends TestCase
         self::assertFileExists($this->root . '/.agent-recall/current/reviews/ABC-123.blindspots.prompt.md');
     }
 
-    public function testSessionNotesCanSatisfyValidationAndReviewMarkers(): void
+    public function testCompactSessionNotesCanSatisfyValidationAndReviewMarkers(): void
     {
         $this->write('.agent-recall/current/meta.json', '{"task_id":"ABC-123","task_files":[]}');
         $this->write('.agent-recall/current/validation-plan.md', 'Required validation');
         $this->write('.agent-recall/current/recall-log.draft.json', '{"guidance_outcomes":[{"outcome":"unknown"}]}');
-        $this->write('session_plan/ABC-123.md', 'ABC-123 PHPUnit passed and review blindspots checked.');
+        $this->write('.agent-loop/sessions/ABC-123.md', 'ABC-123 PHPUnit passed and review blindspots checked.');
 
         $report = (new BlindSpotReviewer($this->root))->review('ABC-123', '.agent-recall/current');
 
@@ -151,12 +151,26 @@ final class ReviewTest extends TestCase
         self::assertNotContains('missing_review_checkpoint', array_map(static fn ($finding): string => $finding->id, $report->findings));
     }
 
+    public function testHistoricalSessionPlanIsNotAutoDiscovered(): void
+    {
+        $this->write('.agent-recall/current/meta.json', '{"task_id":"ABC-123","task_files":[]}');
+        $this->write('.agent-recall/current/validation-plan.md', 'Required validation');
+        $this->write('.agent-recall/current/recall-log.draft.json', '{"guidance_outcomes":[{"outcome":"unknown"}]}');
+        $this->write('session_plan/ABC-123.md', 'ABC-123 PHPUnit passed and review blindspots checked.');
+
+        $report = (new BlindSpotReviewer($this->root))->review('ABC-123', '.agent-recall/current');
+        $findingIds = array_map(static fn ($finding): string => $finding->id, $report->findings);
+
+        self::assertContains('missing_validation_evidence', $findingIds);
+        self::assertContains('missing_review_checkpoint', $findingIds);
+    }
+
     public function testSessionMatchingIsBoundaryAware(): void
     {
         $this->write('.agent-recall/current/meta.json', '{"task_id":"ABC-123","task_files":[]}');
         $this->write('.agent-recall/current/validation-plan.md', 'Required validation');
         $this->write('.agent-recall/current/recall-log.draft.json', '{"guidance_outcomes":[{"outcome":"unknown"}]}');
-        $this->write('session_plan/ABC-1234.md', 'ABC-1234 PHPUnit passed and review blindspots checked.');
+        $this->write('.agent-loop/sessions/ABC-1234.md', 'ABC-1234 PHPUnit passed and review blindspots checked.');
 
         $report = (new BlindSpotReviewer($this->root))->review('ABC-123', '.agent-recall/current');
         $findingIds = array_map(static fn ($finding): string => $finding->id, $report->findings);
@@ -174,7 +188,6 @@ final class ReviewTest extends TestCase
 
         self::assertStringContainsString('````text', $prompt);
     }
-
 
     /**
      * @param list<string> $argv

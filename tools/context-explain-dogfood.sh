@@ -7,16 +7,20 @@ AGENT_LOOP_BIN="${AGENT_LOOP_BIN:-build/agent-loop/bin/agent-loop}"
 AGENT_MAP_BIN="${AGENT_MAP_BIN:-build/agent-loop/vendor/bin/agent-map}"
 AGENT_RECALL_BIN="${AGENT_RECALL_BIN:-build/agent-loop/vendor/bin/agent-recall-compiler}"
 PROMPT_MANIFEST="${PROMPT_MANIFEST:-build/agent-skills/skills/operational-prompting/operating-prompts.json}"
-LEARNING_ROOT="infra/doc/agent-learning"
+STATE_ROOT=".agent-loop"
+LEARNING_ROOT="${STATE_ROOT}/learning"
+RECALL_ROOT="${STATE_ROOT}/recall"
+TASKS_ROOT="${STATE_ROOT}/tasks"
+MAP_INDEX="${STATE_ROOT}/map/php-symbols.json"
 REPORT_DIR="build/context-explain-dogfood"
 TARGET_DIR="build/context-explain-targeted"
 
-rm -rf session_plan .agent-loop .agent-map todo tasks "${LEARNING_ROOT}" "${REPORT_DIR}" "${TARGET_DIR}"
+rm -rf "${STATE_ROOT}" "${REPORT_DIR}" "${TARGET_DIR}"
 mkdir -p "${REPORT_DIR}"
 
 php "${AGENT_LOOP_BIN}" init scaffold
-mkdir -p tasks
-printf '# %s\n\nGovern context-explain implementation through the real agent-loop workflow.\n' "${TASK_ID}" > "tasks/${TASK_ID}.md"
+mkdir -p "${TASKS_ROOT}" "${LEARNING_ROOT}"
+printf '# %s\n\nGovern context-explain implementation through the real agent-loop workflow.\n' "${TASK_ID}" > "${TASKS_ROOT}/${TASK_ID}.md"
 php "${AGENT_LOOP_BIN}" board card create "${TASK_ID}" \
   --title="Explain why and how recall context was selected" \
   --lane=READY \
@@ -29,7 +33,7 @@ cat > "${LEARNING_ROOT}/recall-documents.json" <<'JSON'
     {
       "id": "project.operating-prompts",
       "type": "adr",
-      "source": "../../../docs/operating-prompts.md",
+      "source": "../../docs/operating-prompts.md",
       "scope": ["src/"],
       "tags": ["recall", "prompting"],
       "max_chars": 2400
@@ -38,11 +42,10 @@ cat > "${LEARNING_ROOT}/recall-documents.json" <<'JSON'
 }
 JSON
 
-mkdir -p .agent-map
 "${AGENT_MAP_BIN}" build \
   --root=. \
   --paths=src,tests \
-  --out=.agent-map/php-symbols.json \
+  --out="${MAP_INDEX}" \
   --phpstan-config=phpstan.neon.dist
 
 php "${AGENT_LOOP_BIN}" workflow plan "${TASK_ID}" \
@@ -61,7 +64,7 @@ php "${AGENT_LOOP_BIN}" workflow plan "${TASK_ID}" \
 php "${AGENT_LOOP_BIN}" workflow approve "${TASK_ID}" --by "${ACTOR}"
 php "${AGENT_LOOP_BIN}" workflow context "${TASK_ID}" > "${REPORT_DIR}/workflow-context.txt"
 
-selection_report="$(find "${LEARNING_ROOT}" -type f -path "*/${TASK_ID}/selection-report.json" -print -quit)"
+selection_report="$(find "${RECALL_ROOT}" -type f -path "*/${TASK_ID}/selection-report.json" -print -quit)"
 if [[ -z "${selection_report}" ]]; then
   echo "[FAIL] context explain dogfood: selection-report.json not found" >&2
   exit 1
@@ -136,7 +139,7 @@ php "${AGENT_RECALL_BIN}" compile \
   --task ARC-17-TARGET \
   --description "Explain the context selected for ContextExplainProjector::project." \
   --target 'voku\AgentRecallCompiler\Context\ContextExplainProjector::project' \
-  --map-index .agent-map/php-symbols.json \
+  --map-index "${MAP_INDEX}" \
   --map-root . \
   --output-dir "${TARGET_DIR}" \
   --compilation-id compilation.ARC-17-TARGET.dogfood

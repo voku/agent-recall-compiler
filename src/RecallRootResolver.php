@@ -8,13 +8,7 @@ use RuntimeException;
 
 final readonly class RecallRootResolver
 {
-    /** @var list<string> */
-    private const array LEARNING_ROOT_SUFFIXES = [
-        'infra/doc/agent-learning',
-        '.agent-learning',
-        'docs/agent-learning',
-        'agent-learning',
-    ];
+    private const string DEFAULT_LEARNING_ROOT_SUFFIX = '.agent-loop/learning';
 
     public function __construct(private PathResolver $pathResolver = new PathResolver())
     {
@@ -59,11 +53,9 @@ final readonly class RecallRootResolver
     private function defaultProjectRoot(string $root): string
     {
         $normalized = $this->normalize($root);
-        foreach (self::LEARNING_ROOT_SUFFIXES as $suffix) {
-            $needle = '/' . $suffix;
-            if (str_ends_with($normalized, $needle)) {
-                return substr($normalized, 0, -strlen($needle));
-            }
+        $needle = '/' . self::DEFAULT_LEARNING_ROOT_SUFFIX;
+        if (str_ends_with($normalized, $needle)) {
+            return substr($normalized, 0, -strlen($needle));
         }
 
         return $normalized;
@@ -84,10 +76,6 @@ final readonly class RecallRootResolver
         $normalizedLearningRoot = $this->normalize($root);
         $inferredProjectRoot = $this->defaultProjectRoot($normalizedLearningRoot);
 
-        // For a known repository layout we have a trustworthy project boundary.
-        // Do not let repository-controlled config make Recall ingest MEMORY.md from
-        // an arbitrary parent/home directory. Non-standard standalone roots retain
-        // the existing explicit-root freedom because there is no inferred boundary.
         if ($inferredProjectRoot !== $normalizedLearningRoot) {
             $allowedPrefix = rtrim($inferredProjectRoot, '/') . '/';
             if ($projectRoot !== $inferredProjectRoot && !str_starts_with($projectRoot, $allowedPrefix)) {

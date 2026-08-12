@@ -87,20 +87,16 @@ final class ReviewPromptBuilder
     private function taskIdSpecificArtifacts(string $taskId): array
     {
         return [
-            'tasks/' . $taskId . '.md',
-            'todo/cards/' . $taskId . '.md',
-            'todo/jira/' . $taskId . '.md',
-            '.agent-loop/reviews/' . $taskId . '.blindspots.md',
-            '.agent-loop/reviews/' . $taskId . '.blindspots.json',
-            '.agent-recall/reviews/' . $taskId . '.blindspots.md',
-            '.agent-recall/reviews/' . $taskId . '.blindspots.json',
+            '.agent-loop/tasks/' . $taskId . '.md',
+            '.agent-loop/todo/cards/' . $taskId . '.md',
+            '.agent-loop/todo/jira/' . $taskId . '.md',
         ];
     }
 
     /** @return list<string> */
     private function relatedSessionFiles(string $taskId): array
     {
-        $root = $this->path('session_plan');
+        $root = $this->path('.agent-loop/sessions');
         if (!is_dir($root)) {
             return [];
         }
@@ -151,7 +147,7 @@ final class ReviewPromptBuilder
 
     private function sessionGroupKey(string $relative): string
     {
-        $prefix = 'session_plan/';
+        $prefix = '.agent-loop/sessions/';
         $withoutRoot = str_starts_with($relative, $prefix) ? substr($relative, strlen($prefix)) : $relative;
         $separator = strpos($withoutRoot, '/');
 

@@ -95,7 +95,7 @@ final class BlindSpotReviewer
 
     private function collectRelatedSessionText(string $taskId): string
     {
-        $root = $this->path('session_plan');
+        $root = $this->path('.agent-loop/sessions');
         if (!is_dir($root)) {
             return '';
         }

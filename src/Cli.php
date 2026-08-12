@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace voku\AgentRecallCompiler;
 
+use InvalidArgumentException;
+use RuntimeException;
 use Throwable;
 use voku\AgentRecallCompiler\Command\CompileCommand;
 use voku\AgentRecallCompiler\Command\LogOutcomeCommand;
@@ -22,7 +24,7 @@ final class Cli
 
         try {
             return match ($command) {
-                'compile' => (new CompileCommand())->run($tokens),
+                'compile' => (new CompileCommand())->run($this->compileTokensWithDefaultPaths($tokens)),
                 'log-outcome' => (new LogOutcomeCommand())->run($tokens),
                 'review' => $this->reviewCommand($tokens),
                 'help', '--help', '-h' => $this->helpCommand(),
@@ -46,9 +48,9 @@ final class Cli
         fwrite(STDOUT, "  log-outcome         Log a session's outcome feedback back into learning history.\n");
         fwrite(STDOUT, "  review              Generate deterministic blind-spot reports and L2 review prompts.\n\n");
         fwrite(STDOUT, "Options:\n");
-        fwrite(STDOUT, "  --root PATH              Learning repository root directory.\n");
+        fwrite(STDOUT, "  --root PATH              Learning root (default: <cwd>/.agent-loop/learning).\n");
         fwrite(STDOUT, "  --task-brief PATH        Path to JSON task brief file.\n");
-        fwrite(STDOUT, "  --output-dir PATH        Where to write output files (defaults to current directory).\n");
+        fwrite(STDOUT, "  --output-dir PATH        Compile output (default: <cwd>/.agent-loop/recall/<task-id>).\n");
         fwrite(STDOUT, "  --task ID                Inline task ID selector.\n");
         fwrite(STDOUT, "  --description DESC       Inline task description text.\n");
         fwrite(STDOUT, "  --file PATH              Inline changed file path. Repeatable.\n");
@@ -82,14 +84,67 @@ final class Cli
     /** @param list<string> $tokens */
     private function rootOption(array $tokens): ?string
     {
+        return $this->optionValue($tokens, 'root');
+    }
+
+    /**
+     * @param list<string> $tokens
+     * @return list<string>
+     */
+    private function compileTokensWithDefaultPaths(array $tokens): array
+    {
+        $cwd = getcwd();
+        if ($cwd === false) {
+            throw new RuntimeException('Unable to determine current working directory.');
+        }
+        $cwd = rtrim(str_replace('\\', '/', $cwd), '/');
+
+        if ($this->optionValue($tokens, 'root') === null) {
+            $tokens[] = '--root';
+            $tokens[] = $cwd . '/.agent-loop/learning';
+        }
+
+        if ($this->optionValue($tokens, 'output-dir') !== null) {
+            return $tokens;
+        }
+
+        $taskBrief = $this->optionValue($tokens, 'task-brief');
+        $taskId = $taskBrief !== null
+            ? (new JsonTaskBriefResolver())->resolveFile($taskBrief)->id
+            : $this->optionValue($tokens, 'task');
+
+        if ($taskId === null || trim($taskId) === '') {
+            return $tokens;
+        }
+        if (preg_match('/\A[A-Za-z0-9][A-Za-z0-9._-]*\z/', $taskId) !== 1 || str_contains($taskId, '..')) {
+            throw new InvalidArgumentException('Task id cannot be used as the default recall output directory: ' . $taskId);
+        }
+
+        $tokens[] = '--output-dir';
+        $tokens[] = $cwd . '/.agent-loop/recall/' . $taskId;
+
+        return $tokens;
+    }
+
+    /** @param list<string> $tokens */
+    private function optionValue(array $tokens, string $name): ?string
+    {
+        $prefix = '--' . $name . '=';
         $count = count($tokens);
         for ($i = 0; $i < $count; ++$i) {
-            if ($tokens[$i] !== '--root') {
+            if (str_starts_with($tokens[$i], $prefix)) {
+                $value = substr($tokens[$i], strlen($prefix));
+                if ($value === '') {
+                    throw new InvalidArgumentException('Option --' . $name . ' requires a value.');
+                }
+
+                return $value;
+            }
+            if ($tokens[$i] !== '--' . $name) {
                 continue;
             }
-
             if ($i + 1 >= $count || str_starts_with($tokens[$i + 1], '--')) {
-                throw new \InvalidArgumentException('Option --root requires a value.');
+                throw new InvalidArgumentException('Option --' . $name . ' requires a value.');
             }
 
             return $tokens[$i + 1];
@@ -106,7 +161,7 @@ final class Cli
             ? (new RecallRootResolver())->resolve($rootOption)->root
             : getcwd();
         if ($workspacePath === false) {
-            throw new \RuntimeException('Unable to determine current working directory.');
+            throw new RuntimeException('Unable to determine current working directory.');
         }
 
         return (new ReviewCli($workspacePath))->run(array_merge(['agent-recall-compiler review'], $tokens));
