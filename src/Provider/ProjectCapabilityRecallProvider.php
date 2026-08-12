@@ -48,7 +48,7 @@ final readonly class ProjectCapabilityRecallProvider implements RecallProvider
 
     public function collect(TaskBrief $task, RecallRootConfig $rootConfig): RecallProviderResult
     {
-        unset($task, $rootConfig);
+        unset($rootConfig);
 
         $root = $this->normalizedRoot();
         $composerPath = $root . '/composer.json';
@@ -63,6 +63,7 @@ final readonly class ProjectCapabilityRecallProvider implements RecallProvider
             'runtime_constraint' => $this->composerPhpConstraint($composer),
             'composer_scripts' => $this->composerScripts($composer),
             'tool_packages' => $this->toolPackages($composer),
+            'mentioned_direct_dependencies' => $this->mentionedDirectDependencies($composer, $task),
             'config_files' => $configs,
             'ci_workflows' => $workflows,
         ];
@@ -221,6 +222,48 @@ final readonly class ProjectCapabilityRecallProvider implements RecallProvider
         ksort($packages);
 
         return $packages;
+    }
+
+    /**
+     * Expose only direct Composer dependencies that the task text names explicitly.
+     *
+     * This keeps dependency evidence bounded while still giving an L2 prompt the exact
+     * project constraint behind a reported Composer/package conflict. Package-name
+     * matching is deterministic and deliberately does not attempt semantic expansion.
+     *
+     * @param array<string, mixed>|null $composer
+     * @return array<string, array{section: 'require'|'require-dev', constraint: string}>
+     */
+    private function mentionedDirectDependencies(?array $composer, TaskBrief $task): array
+    {
+        if ($composer === null || trim($task->description) === '') {
+            return [];
+        }
+
+        $description = strtolower($task->description);
+        $matches = [];
+        foreach (['require', 'require-dev'] as $section) {
+            $values = $composer[$section] ?? null;
+            if (!is_array($values)) {
+                continue;
+            }
+            foreach ($values as $name => $constraint) {
+                if (!is_string($name) || !is_string($constraint) || $name === 'php') {
+                    continue;
+                }
+                if (!str_contains($description, strtolower($name))) {
+                    continue;
+                }
+
+                $matches[$name] = [
+                    'section' => $section,
+                    'constraint' => $constraint,
+                ];
+            }
+        }
+        ksort($matches);
+
+        return $matches;
     }
 
     private function isKnownToolPackage(string $name): bool
