@@ -4,6 +4,20 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.11.0] - 2026-08-12
+
+### Added
+
+- **Breaking:** governed Recall input now requires a non-empty `run_id` and the
+  exact Contract revision, source reference and SHA-256 it was compiled for.
+  `GovernedRunBinding` carries that lineage into the compiled briefing, so a
+  bundle can be tied to the one Run and Contract revision it was built from
+  instead of being attributed by filename and timestamp.
+
+  Consumers that passed an ungoverned task brief are unaffected; a brief that
+  declares itself governed must now prove which Run it belongs to rather than
+  leaving the binding implicit.
+
 ## [0.10.2] - 2026-08-11
 
 ### Changed
