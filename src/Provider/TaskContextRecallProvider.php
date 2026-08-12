@@ -9,7 +9,7 @@ use voku\AgentRecallCompiler\OperatingPromptRequest;
 use voku\AgentRecallCompiler\RecallRootConfig;
 use voku\AgentRecallCompiler\TaskBrief;
 
-/** Converts the sealed task brief into structured facts for every renderer. */
+/** Converts the sealed task input into structured facts for every renderer. */
 final class TaskContextRecallProvider implements RecallProvider
 {
     public function manifest(): RecallProviderManifest
@@ -32,6 +32,7 @@ final class TaskContextRecallProvider implements RecallProvider
             'status' => $task->status,
             'revision' => $task->revision,
             'source_path' => $task->sourcePath,
+            'governed_run' => $task->governedRun?->toArray(),
         ];
         if ($task->operatingPrompts !== []) {
             $payload['operating_prompts'] = array_map(
@@ -45,7 +46,9 @@ final class TaskContextRecallProvider implements RecallProvider
             [new RecallFact(
                 'task.' . $task->id,
                 'task_context',
-                $task->status === 'approved' ? 'approved_session_brief' : 'task_input',
+                $task->governedRun !== null
+                    ? 'approved_contract_bound_to_governed_run'
+                    : ($task->status === 'approved' ? 'approved_task_input' : 'task_input'),
                 $task->sourcePath ?? 'inline',
                 $task->scopes === [] ? $task->files : $task->scopes,
                 $payload,
