@@ -215,8 +215,19 @@ validation_started="$(date +%s%3N)"
 composer ci | tee "${REPORT_DIR}/composer-ci.log"
 validation_finished="$(date +%s%3N)"
 validation_duration="$((validation_finished - validation_started))"
+run_path="${STATE_ROOT}/runs/${TASK_ID}/run.json"
+contract_revision="$(php -r '
+$path = $argv[1];
+$data = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+$revision = $data["contract_revision"] ?? null;
+if (!is_int($revision) || $revision < 1) {
+    fwrite(STDERR, "[FAIL] context explain dogfood: governed Run has no positive contract_revision\n");
+    exit(46);
+}
+fwrite(STDOUT, (string) $revision);
+' "${run_path}")"
 php "${AGENT_LOOP_BIN}" session validation record "${TASK_ID}" \
-  --brief-revision 1 \
+  --contract-revision "${contract_revision}" \
   --command "composer ci" \
   --status passed \
   --exit-code 0 \
