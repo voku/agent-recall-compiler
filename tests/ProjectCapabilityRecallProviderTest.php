@@ -58,6 +58,7 @@ final class ProjectCapabilityRecallProviderTest extends TestCase
         self::assertSame('phpunit', $payload['composer_scripts']['test']);
         self::assertSame(['@test', '@phpstan'], $payload['composer_scripts']['ci']);
         self::assertSame('^0.29', $payload['tool_packages']['infection/infection']);
+        self::assertSame([], $payload['mentioned_direct_dependencies']);
         self::assertContains('phpstan.neon.dist', $payload['config_files']);
         self::assertContains('infection.json', $payload['config_files']);
         self::assertSame(['.github/workflows/ci.yml'], $payload['ci_workflows']);
@@ -77,6 +78,38 @@ final class ProjectCapabilityRecallProviderTest extends TestCase
 
         self::assertSame([], $result->facts[0]->payload['composer_scripts']);
         self::assertSame('^11.5', $result->facts[0]->payload['tool_packages']['phpunit/phpunit']);
+    }
+
+    public function testProviderExposesOnlyDirectComposerDependenciesNamedByTheTask(): void
+    {
+        file_put_contents($this->root . '/composer.json', json_encode([
+            'require' => [
+                'php' => '>=8.1',
+                'react/async' => '~4.3.0',
+                'react/filesystem' => '^0.2@dev',
+                'voku/simple-cache' => '~5.0',
+            ],
+            'require-dev' => [
+                'phpunit/phpunit' => '^11.5',
+                'phpstan/phpstan' => '^2.1',
+            ],
+        ], JSON_THROW_ON_ERROR));
+
+        $result = (new ProjectCapabilityRecallProvider($this->root))->collect(
+            new TaskBrief(
+                'CAP-3',
+                'Composer cannot install because react/filesystem ^0.2@dev conflicts with minimum stability; filesystem alone is not a package name.',
+                [],
+            ),
+            new RecallRootConfig($this->root, $this->root . '/constraints'),
+        );
+
+        self::assertSame([
+            'react/filesystem' => [
+                'section' => 'require',
+                'constraint' => '^0.2@dev',
+            ],
+        ], $result->facts[0]->payload['mentioned_direct_dependencies']);
     }
 
     private function removeDirectory(string $path): void
