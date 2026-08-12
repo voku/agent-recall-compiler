@@ -46,11 +46,11 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Checkout pinned agent-loop workflow engine
+      - name: Checkout released-set-verified agent-loop baseline
         uses: actions/checkout@v4
         with:
           repository: voku/agent-loop
-          ref: 9db5683b79996928553e13dcdb976037615d5742
+          ref: 206cfdb3199740d85f342699e34a19744c554ef5
           path: build/agent-loop
           persist-credentials: false
 
@@ -73,23 +73,23 @@ jobs:
       - name: Install candidate package development dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
-      - name: Configure pinned coordinated dependency set
+      - name: Configure pinned released dependency set with this Recall candidate
         run: |
           php -r '
           $path = "build/agent-loop/composer.json";
           $data = json_decode(file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
           $data["repositories"] = [
-              ["type" => "path", "url" => getcwd(), "options" => ["symlink" => false, "versions" => ["voku/agent-recall-compiler" => "0.10.999"]]],
+              ["type" => "path", "url" => getcwd(), "options" => ["symlink" => false, "versions" => ["voku/agent-recall-compiler" => "0.11.999"]]],
           ];
           $data["require"]["voku/agent-kanban"] = "0.2.1";
-          $data["require"]["voku/agent-learning"] = "0.8.12";
+          $data["require"]["voku/agent-learning"] = "0.10.0";
           $data["require"]["voku/agent-map"] = "0.7.0";
-          $data["require"]["voku/agent-recall-compiler"] = "0.10.999";
-          $data["require"]["voku/agent-session"] = "0.3.0";
+          $data["require"]["voku/agent-recall-compiler"] = "0.11.999";
+          $data["require"]["voku/agent-session"] = "0.5.0";
           file_put_contents($path, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . PHP_EOL);
           '
 
-      - name: Install pinned agent-loop with this recall compiler
+      - name: Install pinned agent-loop with this Recall candidate
         run: composer update --working-dir=build/agent-loop --no-interaction --prefer-dist --no-progress
 
       - name: Lint dogfood runner
