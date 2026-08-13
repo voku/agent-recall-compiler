@@ -26,6 +26,7 @@ final class TaskContextRecallProvider implements RecallProvider
             'scope' => $task->scopes,
             'non_goals' => $task->nonGoals,
             'validation' => $task->validation,
+            'acceptance_criteria' => $task->acceptanceCriteria,
             'behavior_anchors' => $task->behaviorAnchors,
             'tags' => $task->tags,
             'targets' => $task->targets,
