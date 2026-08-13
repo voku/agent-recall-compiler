@@ -7,12 +7,12 @@ namespace voku\AgentRecallCompiler\Tests;
 use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
-use voku\AgentMap\IndexedClass;
-use voku\AgentMap\IndexedMethod;
 use voku\AgentMap\Index\AgentMapIndex;
+use voku\AgentMap\Index\AnalysisFingerprint;
+use voku\AgentMap\Index\FileEntry;
 use voku\AgentMap\Index\IndexWriter;
-use voku\AgentMap\Index\PathSnapshot;
-use voku\AgentMap\Index\SourceRange;
+use voku\AgentMap\Index\MethodEntry;
+use voku\AgentMap\Index\SymbolEntry;
 use voku\AgentRecallCompiler\Cli;
 
 final class TaskBriefAugmentationTest extends TestCase
@@ -27,7 +27,7 @@ final class TaskBriefAugmentationTest extends TestCase
         }
         file_put_contents(
             $this->root . '/src/Foo.php',
-            "<?php\nnamespace Demo;\nfinal class Foo { public function bar(): string { return 'ok'; } }\n",
+            "<?php\nnamespace Demo;\nfinal class Foo\n{\n    public function bar(): string { return 'ok'; }\n}\n",
         );
     }
 
@@ -144,37 +144,38 @@ final class TaskBriefAugmentationTest extends TestCase
     private function writeMap(): string
     {
         $source = $this->root . '/src/Foo.php';
-        $checksum = hash_file('sha1', $source);
-        self::assertIsString($checksum);
+        $hash = hash_file('sha256', $source);
+        self::assertIsString($hash);
 
-        $index = new AgentMapIndex(
-            '0.2',
-            'src',
-            '2026-08-13T08:00:00+00:00',
-            ['src/Foo.php' => new PathSnapshot($checksum, 4, [])],
-            [],
-            [],
-            [new IndexedClass(
-                'Demo\\Foo',
-                'src/Foo.php',
-                'final class Foo',
-                [],
-                [],
-                [],
-                [new IndexedMethod(
-                    'Demo\\Foo',
-                    'bar',
-                    'src/Foo.php',
-                    'public function bar(): string',
-                    false,
-                    new SourceRange(3, 3),
-                )],
-                new SourceRange(3, 3),
+        $symbol = new SymbolEntry(
+            kind: 'class',
+            name: 'Foo',
+            fqn: 'Demo\\Foo',
+            lineStart: 3,
+            lineEnd: 6,
+            methods: [new MethodEntry(
+                'bar',
+                'public',
+                5,
+                5,
+                nativeReturnType: 'string',
+                resolvedReturnType: 'string',
+                reconciliationStatus: 'confirmed',
             )],
-            [],
-            [],
-            [],
-            ['php_version' => PHP_VERSION],
+            reconciliationStatus: 'confirmed',
+        );
+        $index = new AgentMapIndex(
+            schemaVersion: '2.0',
+            root: $this->root,
+            backend: 'phpstan+simple-parser',
+            files: [new FileEntry('src/Foo.php', 'sha256:' . $hash, 'Demo', [$symbol], 'analysed')],
+            relations: [],
+            fingerprint: new AnalysisFingerprint(
+                phpStanVersion: '2.1.0',
+                phpStanConfigSha256: 'sha256:config',
+                composerLockSha256: 'sha256:lock',
+                sourceDigest: 'sha256:source',
+            ),
         );
         $path = $this->root . '/map.json';
         (new IndexWriter())->write($index, $path);
