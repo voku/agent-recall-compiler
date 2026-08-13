@@ -9,6 +9,8 @@ use RuntimeException;
 use Throwable;
 use voku\AgentRecallCompiler\Command\CompileCommand;
 use voku\AgentRecallCompiler\Command\LogOutcomeCommand;
+use voku\AgentRecallCompiler\Reflection\FutureWorkPromptBuilder;
+use voku\AgentRecallCompiler\Reflection\FutureWorkScope;
 use voku\AgentRecallCompiler\Review\ReviewCli;
 
 final class Cli
@@ -26,6 +28,7 @@ final class Cli
             return match ($command) {
                 'compile' => (new CompileCommand())->run($this->compileTokensWithDefaultPaths($tokens)),
                 'log-outcome' => (new LogOutcomeCommand())->run($tokens),
+                'prompt' => $this->promptCommand($tokens),
                 'review' => $this->reviewCommand($tokens),
                 'help', '--help', '-h' => $this->helpCommand(),
                 default => $this->unknownCommand($command),
@@ -46,7 +49,10 @@ final class Cli
         fwrite(STDOUT, "Commands:\n");
         fwrite(STDOUT, "  compile             Compile briefing prompts for a given task.\n");
         fwrite(STDOUT, "  log-outcome         Log a session's outcome feedback back into learning history.\n");
+        fwrite(STDOUT, "  prompt              Render context-light prompt helpers such as future-work reflection.\n");
         fwrite(STDOUT, "  review              Generate deterministic blind-spot reports and L2 review prompts.\n\n");
+        fwrite(STDOUT, "Prompt usage:\n");
+        fwrite(STDOUT, "  prompt future-work [--scope project|task]\n\n");
         fwrite(STDOUT, "Options:\n");
         fwrite(STDOUT, "  --root PATH              Learning root (default: <cwd>/.agent-loop/learning).\n");
         fwrite(STDOUT, "  --task-brief PATH        Path to JSON task brief file.\n");
@@ -151,6 +157,20 @@ final class Cli
         }
 
         return null;
+    }
+
+    /** @param list<string> $tokens */
+    private function promptCommand(array $tokens): int
+    {
+        $promptName = array_shift($tokens) ?? '';
+        if ($promptName !== 'future-work') {
+            throw new InvalidArgumentException('Unknown prompt: ' . ($promptName !== '' ? $promptName : '<missing>'));
+        }
+
+        $scope = $this->optionValue($tokens, 'scope') ?? FutureWorkScope::PROJECT->value;
+        fwrite(STDOUT, (new FutureWorkPromptBuilder())->buildFromString($scope) . "\n");
+
+        return 0;
     }
 
     /** @param list<string> $tokens */
