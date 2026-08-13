@@ -46,9 +46,10 @@ final class TaskBriefAugmentationTest extends TestCase
         rmdir($this->root);
     }
 
-    public function testAdditionalTargetPreservesAcceptanceCriteriaAndGovernedRunBinding(): void
+    public function testAdditionalTargetPreservesEveryOtherTaskContextField(): void
     {
         $input = $this->writeGovernedInput();
+        $basePayload = $this->compileBaseTask($input, $this->root . '/out-base-target');
         $mapPath = $this->writeMap();
         $output = $this->root . '/out-target';
 
@@ -63,13 +64,20 @@ final class TaskBriefAugmentationTest extends TestCase
             '--output-dir', $output,
         ]));
 
-        $this->assertTaskContext($output . '/facts.json');
+        $augmentedPayload = $this->taskContextPayload($output . '/facts.json');
+        $this->assertKnownSemanticFields($augmentedPayload);
+        self::assertSame(['Demo\\Foo::bar'], $augmentedPayload['targets'] ?? null);
+
+        $normalized = $augmentedPayload;
+        $normalized['targets'] = $basePayload['targets'];
+        self::assertSame($basePayload, $normalized);
         self::assertStringContainsString('## Acceptance Criteria', (string) file_get_contents($output . '/system.md'));
     }
 
-    public function testAdditionalOperatingPromptPreservesAcceptanceCriteriaAndGovernedRunBinding(): void
+    public function testAdditionalOperatingPromptPreservesEveryOtherTaskContextField(): void
     {
         $input = $this->writeGovernedInput();
+        $basePayload = $this->compileBaseTask($input, $this->root . '/out-base-prompt');
         $manifest = $this->root . '/operating-prompts.json';
         file_put_contents($manifest, json_encode([
             'schema_version' => '1.0',
@@ -91,8 +99,31 @@ final class TaskBriefAugmentationTest extends TestCase
             '--output-dir', $output,
         ]));
 
-        $this->assertTaskContext($output . '/facts.json');
+        $augmentedPayload = $this->taskContextPayload($output . '/facts.json');
+        $this->assertKnownSemanticFields($augmentedPayload);
+        self::assertSame('evidence-report', $augmentedPayload['operating_prompts'][0]['id'] ?? null);
+
+        $normalized = $augmentedPayload;
+        unset($normalized['operating_prompts']);
+        self::assertSame($basePayload, $normalized);
         self::assertStringContainsString('## Acceptance Criteria', (string) file_get_contents($output . '/system.md'));
+    }
+
+    /** @return array<string, mixed> */
+    private function compileBaseTask(string $input, string $output): array
+    {
+        self::assertSame(0, (new Cli())->run([
+            'agent-recall-compiler',
+            'compile',
+            '--root', $this->root,
+            '--task-brief', $input,
+            '--output-dir', $output,
+        ]));
+
+        $payload = $this->taskContextPayload($output . '/facts.json');
+        $this->assertKnownSemanticFields($payload);
+
+        return $payload;
     }
 
     private function writeGovernedInput(): string
@@ -183,7 +214,8 @@ final class TaskBriefAugmentationTest extends TestCase
         return $path;
     }
 
-    private function assertTaskContext(string $factsPath): void
+    /** @return array<string, mixed> */
+    private function taskContextPayload(string $factsPath): array
     {
         $document = json_decode((string) file_get_contents($factsPath), true, 512, JSON_THROW_ON_ERROR);
         self::assertIsArray($document);
@@ -199,6 +231,13 @@ final class TaskBriefAugmentationTest extends TestCase
         self::assertCount(1, $matches);
         $payload = $matches[0]['payload'] ?? null;
         self::assertIsArray($payload);
+
+        return $payload;
+    }
+
+    /** @param array<string, mixed> $payload */
+    private function assertKnownSemanticFields(array $payload): void
+    {
         self::assertSame([
             'Acceptance intent survives task augmentation.',
             'Governed Run lineage survives task augmentation.',
