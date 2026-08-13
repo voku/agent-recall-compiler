@@ -447,7 +447,7 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 ### Changed
 
 - improve suffix validation (without 'ext-ctype')
-- simplify regex for secret assignment detection
+- simplify regex in secret assignment detection
 
 ## [0.3.1] - 2026-06-18
 
