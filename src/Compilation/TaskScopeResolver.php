@@ -74,7 +74,6 @@ final readonly class TaskScopeResolver
                 behaviorAnchors: $task->behaviorAnchors,
                 targets: $task->targets,
                 operatingPrompts: $task->operatingPrompts,
-                governedRun: $task->governedRun,
                 acceptanceCriteria: $task->acceptanceCriteria,
             ),
             explicitFiles: $explicitFiles,
