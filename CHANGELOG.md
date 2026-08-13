@@ -4,6 +4,23 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.11.3] - 2026-08-13
+
+### Fixed
+
+- Compile-time `TaskBrief` augmentation now preserves the complete governed task
+  semantics when CLI targets or inline operating prompts are added. In particular,
+  the governed Run binding and approved acceptance criteria no longer disappear
+  while the requested target/prompt collection is extended.
+
+### Validation
+
+- Added public `compile` CLI regressions for both `--target` augmentation and
+  inline operating-prompt augmentation from a governed Contract, asserting the
+  canonical task-context fact retains exact acceptance criteria and Run lineage.
+- PHPUnit and PHPStan passed on PHP 8.3, 8.4, and 8.5, together with the governed
+  agent-loop context-explain dogfood, on the exact fix candidate before merge.
+
 ## [0.11.2] - 2026-08-13
 
 ### Added
