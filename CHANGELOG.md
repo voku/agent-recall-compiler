@@ -447,7 +447,7 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 ### Changed
 
 - improve suffix validation (without 'ext-ctype')
-- simplify regex in secret assignment detection
+- simplify regex for secret assignment detection
 
 ## [0.3.1] - 2026-06-18
 
@@ -532,6 +532,6 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 - Initial release of L2 Meta-Prompt Compiler and Briefing Manager for coding agents.
 - Deterministic scope matching for MEMORY.md and specific active skills/constraints.
 - Rejection warnings to notify the agent of previously proposed and rejected designs.
-- Outcome-driven warnings to notify the agent of rules marked as `HARMFUL` or `IRRELEVANT` in past sessions.
+- Outcome-driven warnings to flag rules marked as `HARMFUL` or `IRRELEVANT` in past sessions.
 - Dynamic validation plan compiler that lists verification tests for loaded active rules.
 - Draft outcome log generation to close the feedback loop.
