@@ -393,6 +393,8 @@ final class CompileCommand
             behaviorAnchors: $task->behaviorAnchors,
             targets: $merged,
             operatingPrompts: $task->operatingPrompts,
+            governedRun: $task->governedRun,
+            acceptanceCriteria: $task->acceptanceCriteria,
         );
     }
 
@@ -430,6 +432,8 @@ final class CompileCommand
             behaviorAnchors: $task->behaviorAnchors,
             targets: $task->targets,
             operatingPrompts: $merged,
+            governedRun: $task->governedRun,
+            acceptanceCriteria: $task->acceptanceCriteria,
         );
     }
 
