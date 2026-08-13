@@ -4,6 +4,27 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.11.1] - 2026-08-13
+
+### Added
+
+- Added context-light future-work reflection prompts through
+  `prompt future-work --scope project|task`. Project scope asks for one
+  highest-leverage future investment without manufacturing backlog work; task
+  scope asks what additional depth may have been missed and emits
+  `RETURN_TO_REVIEW` when deeper scrutiny reveals that the task was not actually
+  complete.
+- Added deterministic library support via `FutureWorkPromptBuilder` and
+  `FutureWorkScope`. Reflection deliberately does not inject Recall artifacts or
+  reuse the operational L2 `Goal / Context / Constraints / Verification / Done
+  When` execution-contract shape.
+
+### Validation
+
+- Added focused PHPUnit coverage for both scopes, context-light rendering,
+  invalid-scope failure, and the public CLI path. The release candidate passed
+  the repository PHPUnit/PHPStan CI matrix before merge.
+
 ## [0.11.0] - 2026-08-12
 
 ### Added
@@ -389,8 +410,8 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
   entry (e.g. a MEMORY.md-targeting proposal), even when that entry was not
   selected. `RecallDecisionEngine` projected `"file"` onto `GuidanceType::MEMORY`
   at compile time, but `OutcomeLogger::knownGuidanceTypesById()` re-derived the
-  type independently and fell back to `GuidanceType::SKILL`, disagreeing with
-  the compiled draft.
+  type independently and fell back to `GuidanceType::SKILL`, disagreeing with the
+  compiled draft.
 - Centralized guidance-type derivation in `GuidanceType::fromTargetType()` so
   `RecallDecisionEngine`, `OutcomeLogger`, and `RecallPromptBuilder` can no
   longer drift apart on this mapping.
