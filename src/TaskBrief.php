@@ -19,6 +19,8 @@ final readonly class TaskBrief
      * @param list<string> $targets Exact agent-map method targets in Class::method form.
      * @param list<OperatingPromptRequest> $operatingPrompts Versioned operating-prompt
      *        requests selected by the task. Definitions are resolved by a manifest provider.
+     * @param list<string> $acceptanceCriteria Required outcomes from the approved task contract.
+     *        Their presence is not evidence that they are satisfied.
      */
     public function __construct(
         public string $id,
@@ -35,6 +37,7 @@ final readonly class TaskBrief
         public array $targets = [],
         public array $operatingPrompts = [],
         public ?GovernedRunBinding $governedRun = null,
+        public array $acceptanceCriteria = [],
     ) {
     }
 }

@@ -32,6 +32,15 @@ final class RecallPromptBuilder
             $md[] = "";
         }
 
+        if ($task->acceptanceCriteria !== []) {
+            $md[] = "## Acceptance Criteria";
+            $md[] = "These are required outcomes from the approved task Contract, not evidence that they are satisfied.";
+            foreach ($task->acceptanceCriteria as $criterion) {
+                $md[] = "- " . $criterion;
+            }
+            $md[] = "";
+        }
+
         if ($task->behaviorAnchors !== []) {
             $md[] = "## Behavior Anchors";
             $md[] = "Inspect or verify the concrete seam that owns the requested behavior before treating an explanation as sufficient evidence:";

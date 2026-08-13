@@ -123,6 +123,11 @@ final class TaskBriefParser
             throw new RuntimeException('task non_goals and validation must be arrays');
         }
 
+        $acceptanceCriteria = $data['acceptance_criteria'] ?? [];
+        if (!is_array($acceptanceCriteria)) {
+            throw new RuntimeException('task acceptance_criteria must be an array');
+        }
+
         $status = $data['status'] ?? null;
         if ($status !== null && !is_string($status)) {
             throw new RuntimeException('task status must be a string');
@@ -173,6 +178,7 @@ final class TaskBriefParser
             $targets,
             $operatingPrompts,
             $governedRun,
+            $this->strictStringList($acceptanceCriteria, 'acceptance_criteria'),
         );
     }
 
@@ -198,6 +204,23 @@ final class TaskBriefParser
             if (is_string($value) && trim($value) !== '') {
                 $list[] = trim($value);
             }
+        }
+
+        return array_values(array_unique($list));
+    }
+
+    /**
+     * @param array<mixed> $values
+     * @return list<string>
+     */
+    private function strictStringList(array $values, string $field): array
+    {
+        $list = [];
+        foreach ($values as $value) {
+            if (!is_string($value) || trim($value) === '') {
+                throw new RuntimeException('task ' . $field . ' must contain only non-empty strings');
+            }
+            $list[] = trim($value);
         }
 
         return array_values(array_unique($list));
