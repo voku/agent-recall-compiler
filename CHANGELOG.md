@@ -4,6 +4,24 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.11.2] - 2026-08-13
+
+### Added
+
+- Added approved task `acceptance_criteria` as an optional governed task input.
+  Criteria are carried through direct and governed Contract parsing, canonical
+  task-context facts, effective task scope, and rendered `system.md` briefings.
+- Acceptance criteria are rendered explicitly as required outcomes from the
+  approved task Contract, **not** as evidence that those outcomes are satisfied.
+  Missing criteria remain backward compatible as an empty list.
+
+### Validation
+
+- Added focused regressions for direct and governed inputs, malformed criteria,
+  task-context facts, briefing rendering, and effective-scope preservation.
+- PHP 8.3, 8.4, and 8.5 CI plus the governed `agent-loop` dogfood passed on the
+  exact release candidate before merge.
+
 ## [0.11.1] - 2026-08-13
 
 ### Added
