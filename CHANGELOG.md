@@ -4,6 +4,28 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.12.3] - 2026-08-14
+
+### Changed
+
+- The opt-in `prompt guidance-gaps` diagnostic now classifies each material
+  authority failure as `AUTHORITY_MISSING`, `AUTHORITY_NOT_SURFACED`,
+  `AUTHORITY_STALE`, `AUTHORITY_CONFLICTING`, or `AUTHORITY_INCOMPLETE`.
+- `AUTHORITY_NOT_SURFACED` is evidence-bound: agents may use it only when an
+  applicable authority is proven to exist but was absent from usable context.
+  Its remediation points at manifest, scope, retrieval, installation, or
+  routing of that existing authority instead of manufacturing replacement docs.
+
+### Validation
+
+- This distinction came from real `agent-loop#113` self-shape dogfood: the
+  self-shaping lifecycle document already existed, but the consuming project's
+  Recall document manifest did not register it. Registering the existing
+  authority changed the real governed Recall bundle without rewriting the doc.
+- PR #60 passed PHPUnit and PHPStan on PHP 8.3, 8.4, and 8.5 plus the governed
+  `agent-loop` consumer, AccessLint and CodeRabbit. The exact merged commit
+  passed main-branch PHP/PHPStan CI before this release candidate was prepared.
+
 ## [0.12.2] - 2026-08-14
 
 ### Added
