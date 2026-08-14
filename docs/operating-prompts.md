@@ -11,6 +11,8 @@ Most reusable engineering advice belongs at L2. The reusable part is the method 
 
 The caller selects prompt requests. The compiler validates and resolves the selected recipe, substitutes explicit parameters, records provenance, and renders the result beside the task-specific context in `system.md`. The manifest owns the reusable prompt semantics.
 
+Recall ships its first-party tool-coupled recipe catalog beside the consumer skill at `skills/agent-recall-consumer/operating-prompts.json`. Installed Composer consumers can reference `vendor/voku/agent-recall-compiler/skills/agent-recall-consumer/operating-prompts.json`. Bundling that catalog does not make selection implicit: callers still select recipe IDs and supply every required argument explicitly.
+
 ## The target shape
 
 A project-specific L1 operational prompt should have exactly five parts:
@@ -192,5 +194,5 @@ Future compilations expose aggregate counts for the selected recipe. Those count
 - No automatic assumption that an L2 recipe is executable task work. L2 constructs L1; L1 executes.
 - No universal repository crawler; capability discovery is bounded and evidence-backed.
 - No automatic recipe self-modification from outcome statistics.
-- No duplicated first-party engineering guidance in this package. Keep reusable semantics in the repository that owns them, such as `voku/agent-skills`, and pass its manifest explicitly.
+- Tool-neutral engineering principles stay with their generic owner; Recall-specific commands, review primitives, manifest schema, and first-party recipe assets consumed by this compiler live with Recall so code and coding instructions are reviewed, tested, and released together. Consumers may install or reference those owned assets but must not maintain a second canonical copy.
 - Changing a selected recipe, level, template, argument, relevant project capability evidence, or prior recipe outcome history changes replayable compilation evidence.

@@ -4,6 +4,29 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.11.5] - 2026-08-14
+
+### Changed
+
+- Recall-specific coding instructions and reusable operating-prompt assets now
+  live with `agent-recall-compiler`: the first-party catalog ships beside
+  `skills/agent-recall-consumer/SKILL.md` instead of requiring a separately
+  versioned generic skill repository. Callers still select every recipe and
+  provide its arguments explicitly; bundling the catalog adds no hidden prompt
+  selection or defaults.
+- `docs/operating-prompts.md` now makes the ownership boundary explicit:
+  tool-neutral engineering principles may stay with their generic owner, while
+  Recall commands, review primitives, manifest schema, and Recall-consumed
+  first-party recipe assets are reviewed, tested, and released with this tool.
+
+### Validation
+
+- Added `BundledOperatingPromptCatalogTest`, which compiles the shipped
+  `adversarial-review` recipe through the real CLI and proves the falsification
+  contract still permits `CLEAN` after evidence-backed probes find no defect.
+- PR #44 passed the repository CI matrix before merge; the 0.11.5 release
+  candidate reruns the same package gates with the ownership documentation.
+
 ## [0.11.4] - 2026-08-14
 
 ### Added
@@ -456,8 +479,7 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
   test locking in that `RecallRepository::loadActiveGuidance()` only ever scans `proposals/approved/`
   and `proposals/applied/`. `voku/agent-learning` 0.7.0 added a `retired` `ProposalStatus` for
   proposals whose durable change is already fully captured in its target skill/doc/memory home; this
-  package needed no behavior change to support it (a retired proposal already lived in a directory
-  this package never reads), but the invariant was previously only documented, not tested.
+  package needed no behavior change to support it (a retired proposal already lived in a directory this package never reads), but the invariant was previously only documented, not tested.
 
 ## [0.5.0] - 2026-06-20
 
