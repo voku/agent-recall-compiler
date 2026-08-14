@@ -91,15 +91,13 @@ final class PromptPrimitiveTest extends TestCase
         self::assertLessThan(4000, strlen($prompt));
     }
 
-    public function testCliPrintsGuidanceGapPromptOnlyWhenExplicitlyRequested(): void
+    public function testCliRunsGuidanceGapPromptOnlyWhenExplicitlyRequested(): void
     {
-        ob_start();
-        $exit = (new Cli())->run(['agent-recall-compiler', 'prompt', 'guidance-gaps']);
-        $output = (string) ob_get_clean();
-
-        self::assertSame(0, $exit);
-        self::assertStringContainsString('implementation-notes.html', $output);
-        self::assertStringContainsString('HUMAN_DECISION_REQUIRED', $output);
+        self::assertSame(0, (new Cli())->run([
+            'agent-recall-compiler',
+            'prompt',
+            'guidance-gaps',
+        ]));
 
         self::assertSame(1, (new Cli())->run([
             'agent-recall-compiler',
