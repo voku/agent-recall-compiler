@@ -9,6 +9,7 @@ use RuntimeException;
 use Throwable;
 use voku\AgentRecallCompiler\Command\CompileCommand;
 use voku\AgentRecallCompiler\Command\LogOutcomeCommand;
+use voku\AgentRecallCompiler\Reflection\ApprovalQueuePromptBuilder;
 use voku\AgentRecallCompiler\Reflection\FutureWorkPromptBuilder;
 use voku\AgentRecallCompiler\Reflection\FutureWorkScope;
 use voku\AgentRecallCompiler\Review\ReviewCli;
@@ -52,7 +53,7 @@ final class Cli
         fwrite(STDOUT, "  prompt              Render context-light prompt helpers such as future-work reflection.\n");
         fwrite(STDOUT, "  review              Generate deterministic blind-spot reports and L2 review prompts.\n\n");
         fwrite(STDOUT, "Prompt usage:\n");
-        fwrite(STDOUT, "  prompt future-work [--scope project|task]\n\n");
+        fwrite(STDOUT, "  prompt future-work [--scope project|task]\n  prompt approval-queue --root <learning-root> [--memory PATH]\n\n");
         fwrite(STDOUT, "Options:\n");
         fwrite(STDOUT, "  --root PATH              Learning root (default: <cwd>/.agent-loop/learning).\n");
         fwrite(STDOUT, "  --task-brief PATH        Path to JSON task brief file.\n");
@@ -163,6 +164,20 @@ final class Cli
     private function promptCommand(array $tokens): int
     {
         $promptName = array_shift($tokens) ?? '';
+
+        if ($promptName === 'approval-queue') {
+            $rootOption = $this->rootOption($tokens);
+            $learningRoot = $rootOption !== null
+                ? (new RecallRootResolver())->resolve($rootOption)->root
+                : throw new InvalidArgumentException('prompt approval-queue requires --root <learning-root>.');
+            fwrite(STDOUT, (new ApprovalQueuePromptBuilder())->build(
+                $learningRoot,
+                $this->optionValue($tokens, 'memory'),
+            ));
+
+            return 0;
+        }
+
         if ($promptName !== 'future-work') {
             throw new InvalidArgumentException('Unknown prompt: ' . ($promptName !== '' ? $promptName : '<missing>'));
         }
