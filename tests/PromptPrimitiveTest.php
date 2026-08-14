@@ -25,7 +25,7 @@ final class PromptPrimitiveTest extends TestCase
         self::assertLessThan(1500, strlen($prompt));
     }
 
-    public function testReviewCliPrintsFirstDraftPromptWithoutTaskState(): void
+    public function testReviewCliPrintsFirstDraftPromptWithoutTaskStateAndRejectsExtraInput(): void
     {
         $workspace = sys_get_temp_dir() . '/agent-recall-first-draft-' . bin2hex(random_bytes(6));
         mkdir($workspace, 0o775, true);
@@ -39,11 +39,18 @@ final class PromptPrimitiveTest extends TestCase
             rmdir($workspace);
             throw $throwable;
         }
-        rmdir($workspace);
 
         self::assertSame(0, $exit);
         self::assertStringContainsString('falsification rather than confirmation', $output);
         self::assertStringContainsString('Prior reasoning, model confidence', $output);
+
+        self::assertSame(1, (new ReviewCli($workspace))->run([
+            'agent-recall-compiler review',
+            'first-draft',
+            'unexpected',
+        ]));
+
+        rmdir($workspace);
     }
 
     public function testArtifactCodeReviewInheritsFirstDraftFalsificationLens(): void
