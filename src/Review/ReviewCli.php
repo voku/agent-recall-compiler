@@ -22,8 +22,13 @@ final class ReviewCli
             return 0;
         }
 
-        if (!in_array($command, ['blindspots', 'code'], true)) {
+        if (!in_array($command, ['blindspots', 'code', 'first-draft'], true)) {
             return $this->unknownCommand($command);
+        }
+
+        if ($command === 'first-draft') {
+            echo (new FirstDraftReviewPromptBuilder())->build() . "\n";
+            return 0;
         }
 
         $parsed = $this->parseOptions($tokens);
@@ -97,11 +102,13 @@ agent-recall-compiler review - deterministic recall review helpers.
 
 Usage:
   agent-recall-compiler review help
+  agent-recall-compiler review first-draft
   agent-recall-compiler review blindspots <task-id> [--output-dir PATH]
   agent-recall-compiler review code <task-id> [--output-dir PATH]
 
 Commands:
   help                  Show review help.
+  first-draft           Print a compact context-light falsification lens for manual or automated review.
   blindspots <task-id>  Write deterministic blind-spot Markdown/JSON reports and an L2 prompt.
   code <task-id>        Generate an L2 code-review prompt from recall artifacts and task files.
 
