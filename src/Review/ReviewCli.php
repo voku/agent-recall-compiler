@@ -27,6 +27,11 @@ final class ReviewCli
         }
 
         if ($command === 'first-draft') {
+            if ($tokens !== []) {
+                fwrite(\STDERR, "[ERROR] review first-draft accepts no arguments or options.\n");
+                return 1;
+            }
+
             echo (new FirstDraftReviewPromptBuilder())->build() . "\n";
             return 0;
         }
