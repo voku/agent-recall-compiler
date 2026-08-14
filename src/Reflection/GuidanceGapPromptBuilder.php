@@ -9,7 +9,7 @@ final class GuidanceGapPromptBuilder
     public function build(): string
     {
         return <<<'PROMPT'
-Create a project-specific implementation prompt for the current approved task or specification. Its purpose is to make interpretation visible when the governing evidence is missing, stale, conflicting, or too vague for the coding agent to follow the intended process directly.
+Create a project-specific implementation prompt for the current approved task or specification. Its purpose is to make interpretation visible when the governing evidence is missing, stale, conflicting, or too vague for the coding agent to follow the intended process directly. This is an opt-in diagnostic technique, not a default workflow stage.
 
 The generated prompt must tell the coding agent to implement the approved work and, while working, maintain `implementation-notes.html` as a running human-review artifact. Treat that file as task-local working evidence and do not commit it unless the approved task or harness explicitly requires the artifact. Record only decision points that were not already determined by repository evidence. Keep distinct sections for:
 
