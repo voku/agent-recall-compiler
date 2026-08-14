@@ -7,6 +7,7 @@ namespace voku\AgentRecallCompiler\Tests;
 use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
+use ReflectionClass;
 use voku\AgentRecallCompiler\Cli;
 
 final class BundledOperatingPromptCatalogTest extends TestCase
@@ -92,12 +93,12 @@ final class BundledOperatingPromptCatalogTest extends TestCase
         self::assertStringContainsString('<cwd>/.agent-loop/learning', $skill);
         self::assertStringContainsString('<cwd>/.agent-loop/recall/<task-id>', $skill);
 
-        ob_start();
-        self::assertSame(0, (new Cli())->run(['agent-recall-compiler', 'help']));
-        $help = (string) ob_get_clean();
+        $cliFile = (new ReflectionClass(Cli::class))->getFileName();
+        self::assertIsString($cliFile);
+        $cliSource = (string) file_get_contents($cliFile);
 
         foreach (['compile', 'log-outcome', 'prompt', 'review'] as $command) {
-            self::assertStringContainsString($command, $help);
+            self::assertStringContainsString("'{$command}' =>", $cliSource);
             self::assertStringContainsString('agent-recall-compiler ' . $command, $skill);
         }
         self::assertStringContainsString('prompt future-work --scope project', $skill);
