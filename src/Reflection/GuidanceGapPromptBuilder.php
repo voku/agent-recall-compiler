@@ -17,7 +17,7 @@ The generated prompt must tell the coding agent to implement the approved work a
 - Deviations: intentional departures from the stated specification or expected process, with the reason and evidence that made the departure necessary.
 - Tradeoffs: plausible alternatives considered and why one was chosen.
 - Open questions: unresolved questions that a human may need to confirm or revise.
-- Guidance gaps: places where the agent had to infer or guess because the expected authority was absent from usable context, missing, stale, conflicting, misleading, or incomplete.
+- Guidance gaps: places where the agent had to infer or guess because the expected authority was absent from usable context, missing, stale, conflicting, or incomplete.
 
 For every guidance gap, require an exact task, file, symbol, command, workflow, or contract anchor; the authority that should have answered the question (`SPEC`, `DOC`, `SKILL`, `WORKFLOW`, `TOOL_CONTRACT`, or repository code/tests); what evidence was actually checked; one evidence-backed failure mode; the interpretation used for the current work; the impact if that interpretation is wrong; and the smallest human decision or source-of-truth improvement that would remove the guess for a future agent.
 
