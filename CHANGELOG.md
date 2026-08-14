@@ -4,6 +4,35 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.11.4] - 2026-08-14
+
+### Added
+
+- Added a context-light `review first-draft` primitive for manual or automated
+  falsification-oriented review without requiring task/run state. The library and
+  CLI surface deliberately allows `CLEAN` only after concrete attempts to break
+  the implementation find no evidence-backed defect, and rejects unexpected CLI
+  arguments instead of silently ignoring them.
+- Artifact-backed `review code <task-id>` prompts now inherit the same first-draft
+  falsification lens while keeping their existing project evidence and dominant
+  installed review-lens routing.
+
+### Changed
+
+- L2 operational prompt construction now preserves approved acceptance criteria,
+  non-goals, and scope explicitly; selected context never grants edit permission.
+- Missing required verification remains `UNKNOWN` or `BLOCKED`. Model confidence,
+  prior rationale, reviewer consensus, prompt construction, and unexecuted commands
+  are not verification, and changing an approved contract requires a separate
+  approved re-plan rather than weakening requirements inside the generated L1.
+
+### Validation
+
+- PHPUnit and PHPStan passed on PHP 8.3, 8.4, and 8.5 on the exact feature head.
+- The governed `agent-loop` context-explain dogfood passed with the candidate, and
+  external review found and closed the unapproved contract-change escape hatch
+  before merge.
+
 ## [0.11.3] - 2026-08-13
 
 ### Fixed
