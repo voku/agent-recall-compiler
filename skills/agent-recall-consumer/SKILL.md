@@ -94,6 +94,20 @@ vendor/bin/agent-recall-compiler prompt future-work --scope task
 
 It does not mutate workflow state or imply that follow-up work must be created.
 
+## Guidance-gap Technique
+
+To expose where an implementation had to guess because a usable source of truth was absent, run the opt-in L2 helper explicitly:
+
+```bash
+vendor/bin/agent-recall-compiler prompt guidance-gaps
+```
+
+Give the returned L2 prompt to an agent that already has the current task/spec and repository context. It asks that agent to create a project-specific implementation prompt that maintains `implementation-notes.html` while work proceeds. The journal separates normal design decisions, deviations, tradeoffs, open questions, and actual guidance gaps.
+
+A guidance gap means the expected authority, such as the specification, repository docs, this or another installed skill, workflow guidance, CLI/tool contract, code, or tests, did not determine the action because it was missing, stale, conflicting, misleading, or too vague. Record the exact anchor and evidence checked instead of merely saying that the agent was uncertain.
+
+This technique is intentionally not a default workflow stage. Do not automatically edit docs or skills, create backlog, or promote journal entries to durable learning. If an interpretation would change approved Goal, acceptance criteria, scope/non-goals, a public contract, security/safety boundaries, or destructive/irreversible behavior, return `HUMAN_DECISION_REQUIRED` / `BLOCKED` instead of guessing.
+
 ## Outcomes
 
 After actual implementation and validation, complete the generated `recall-log.draft.json` honestly, then append it to learning history:
