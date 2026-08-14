@@ -242,11 +242,27 @@ final class OutcomeLogger
             $seenOutcomes[$guidanceId] = true;
         }
 
-        foreach (array_keys($selected) as $guidanceId) {
-            if (!isset($seenOutcomes[$guidanceId])) {
-                throw new RuntimeException(sprintf("selected guidance '%s' is missing from guidance_outcomes", $guidanceId));
+        $withheldReason = null;
+        $unjudged = array_values(array_diff(array_keys($selected), array_keys($seenOutcomes)));
+        if ($unjudged !== []) {
+            // Selecting guidance does not oblige the session to judge it, and a
+            // forced row is worse than an absent one: `not_used` and `irrelevant`
+            // both push a rule towards retirement, so a caller with nothing to
+            // say was previously made to invent a signal that moves a gate.
+            // Absence is already modelled - DreamMetrics reports selected versus
+            // judged as outcome completeness - so the honest state just has to be
+            // sayable. It has to be deliberate, though, or a harness that drops
+            // outcomes by accident looks the same as one that withheld them.
+            $reason = $data['guidance_outcomes_withheld_reason'] ?? null;
+            if (!is_string($reason) || trim($reason) === '') {
+                throw new RuntimeException(sprintf(
+                    'selected guidance %s has no outcome; judge it, or state guidance_outcomes_withheld_reason to record the absence deliberately',
+                    implode(', ', array_map(static fn (string $id): string => "'" . $id . "'", $unjudged)),
+                ));
             }
+            $withheldReason = $reason;
         }
+        $unjudgedIds = array_fill_keys($unjudged, true);
 
         $recordedAt = (new DateTimeImmutable('now'))->format(DateTimeInterface::ATOM);
         $selectionIds = $this->nextEventIds($root, 'recall-selections.jsonl', 'recall-selection', count($evaluatedGuidance));
@@ -272,6 +288,9 @@ final class OutcomeLogger
                 $eventDraft->exclusionReason,
                 $eventDraft->taskFiles === [] ? $taskFiles : $eventDraft->taskFiles,
                 $recordedAt,
+                // Only on the selections that actually went unjudged, so a reader
+                // can see which absence the reason explains.
+                isset($unjudgedIds[$eventDraft->guidanceId]) ? $withheldReason : null,
             );
         }
 
@@ -389,11 +408,37 @@ final class OutcomeLogger
             if ($comment !== null && !is_string($comment)) {
                 throw new RuntimeException(sprintf("guidance outcome '%s' comment must be string or null", $guidanceId));
             }
+            $applied = $this->requiredBool($item, 'applied', $file);
+            $justified = is_string($comment) && trim($comment) !== '';
+
+            // The same coherence rules operating-prompt outcomes already carry.
+            // They were never applied to guidance outcomes, so a judgement that
+            // contradicts itself was recorded as usable evidence.
+            if (in_array($outcome, [OutcomeValue::HELPFUL, OutcomeValue::IRRELEVANT, OutcomeValue::HARMFUL], true) && !$justified) {
+                throw new RuntimeException(sprintf("guidance outcome '%s' requires a comment justifying %s", $guidanceId, $outcome->value));
+            }
+            if (in_array($outcome, [OutcomeValue::HELPFUL, OutcomeValue::HARMFUL], true) && !$applied) {
+                throw new RuntimeException(sprintf("guidance outcome '%s' cannot be %s when applied=false", $guidanceId, $outcome->value));
+            }
+
+            // Stricter than the operating-prompt sibling, and only for `unknown`,
+            // because `unknown` with no comment is exactly what the compiler
+            // pre-fills into every draft row. Without this, an untouched draft
+            // logs the compiler's own placeholder as though a session had judged
+            // it, which is how eight of these records came to exist. Say why the
+            // guidance could not be judged, or withhold the row entirely.
+            if ($outcome === OutcomeValue::UNKNOWN && !$justified) {
+                throw new RuntimeException(sprintf(
+                    "guidance outcome '%s' is still the compiled placeholder: record why it cannot be judged, or omit it and set guidance_outcomes_withheld_reason",
+                    $guidanceId,
+                ));
+            }
+
             $items[] = [
                 'guidance_id' => $guidanceId,
                 'guidance_type' => $this->guidanceType($this->requiredString($item, 'guidance_type', $file), $guidanceId),
                 'selected' => $this->requiredBool($item, 'selected', $file),
-                'applied' => $this->requiredBool($item, 'applied', $file),
+                'applied' => $applied,
                 'outcome' => $outcome,
                 'comment' => $comment,
             ];
