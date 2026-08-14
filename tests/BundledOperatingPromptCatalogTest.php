@@ -11,6 +11,7 @@ use ReflectionClass;
 use voku\AgentRecallCompiler\Cli;
 use voku\AgentRecallCompiler\OutcomeLogger;
 use voku\AgentRecallCompiler\RecallSelectionEvent;
+use voku\AgentRecallCompiler\Reflection\GuidanceGapPromptBuilder;
 
 final class BundledOperatingPromptCatalogTest extends TestCase
 {
@@ -104,7 +105,26 @@ final class BundledOperatingPromptCatalogTest extends TestCase
             self::assertStringContainsString('agent-recall-compiler ' . $command, $skill);
         }
         self::assertStringContainsString('prompt future-work --scope project', $skill);
+        self::assertStringContainsString('prompt guidance-gaps', $skill);
         self::assertStringContainsString('review first-draft', $skill);
+    }
+
+    public function testConsumerSkillMatchesGuidanceGapPromptContract(): void
+    {
+        $skill = (string) file_get_contents(dirname(__DIR__) . '/skills/agent-recall-consumer/SKILL.md');
+        $prompt = (new GuidanceGapPromptBuilder())->build();
+
+        foreach (['implementation-notes.html', 'HUMAN_DECISION_REQUIRED'] as $needle) {
+            self::assertStringContainsString($needle, $prompt);
+            self::assertStringContainsString($needle, $skill);
+        }
+
+        self::assertStringContainsString('not a default workflow stage', $prompt);
+        self::assertStringContainsString('not a default workflow stage', $skill);
+        self::assertStringContainsString('do not commit it unless', $prompt);
+        self::assertStringContainsString('do not commit it unless', $skill);
+        self::assertStringContainsString('Do not automatically edit documentation or skills', $prompt);
+        self::assertStringContainsString('Do not automatically edit docs or skills', $skill);
     }
 
     public function testConsumerSkillMatchesOutcomeHonestyContract(): void
