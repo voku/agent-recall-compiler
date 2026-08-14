@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace voku\AgentRecallCompiler\Tests;
 
 use PHPUnit\Framework\TestCase;
+use voku\AgentRecallCompiler\Cli;
+use voku\AgentRecallCompiler\Reflection\GuidanceGapPromptBuilder;
 use voku\AgentRecallCompiler\Rendering\OperatingPromptRenderer;
 use voku\AgentRecallCompiler\Review\CodeReviewPromptBuilder;
 use voku\AgentRecallCompiler\Review\FirstDraftReviewPromptBuilder;
@@ -68,6 +70,42 @@ final class PromptPrimitiveTest extends TestCase
         self::assertStringContainsString('## First-draft falsification lens', $prompt);
         self::assertStringContainsString('CLEAN is valid only after concrete attempts to falsify', $prompt);
         self::assertStringContainsString('Select one dominant installed `code-review-*` engineering lens', $prompt);
+    }
+
+    public function testGuidanceGapPromptIsExplicitL2HumanInLoopTechnique(): void
+    {
+        $prompt = (new GuidanceGapPromptBuilder())->build();
+
+        self::assertStringStartsWith('Create a project-specific implementation prompt', $prompt);
+        self::assertStringContainsString('opt-in diagnostic technique, not a default workflow stage', $prompt);
+        self::assertStringContainsString('implementation-notes.html', $prompt);
+        self::assertStringContainsString('do not commit it unless the approved task or harness explicitly requires the artifact', $prompt);
+        self::assertStringContainsString('Design decisions', $prompt);
+        self::assertStringContainsString('Deviations', $prompt);
+        self::assertStringContainsString('Tradeoffs', $prompt);
+        self::assertStringContainsString('Open questions', $prompt);
+        self::assertStringContainsString('Guidance gaps', $prompt);
+        self::assertStringContainsString('`SPEC`, `DOC`, `SKILL`, `WORKFLOW`, `TOOL_CONTRACT`', $prompt);
+        self::assertStringContainsString('HUMAN_DECISION_REQUIRED', $prompt);
+        self::assertStringContainsString('Do not automatically edit documentation or skills', $prompt);
+        self::assertStringContainsString('do not promote these notes to durable learning automatically', $prompt);
+        self::assertLessThan(4000, strlen($prompt));
+    }
+
+    public function testCliRunsGuidanceGapPromptOnlyWhenExplicitlyRequested(): void
+    {
+        self::assertSame(0, (new Cli())->run([
+            'agent-recall-compiler',
+            'prompt',
+            'guidance-gaps',
+        ]));
+
+        self::assertSame(1, (new Cli())->run([
+            'agent-recall-compiler',
+            'prompt',
+            'guidance-gaps',
+            '--unexpected',
+        ]));
     }
 
     public function testL2ConstructionPreservesAcceptanceScopeAndBlockedEvidenceBoundaries(): void

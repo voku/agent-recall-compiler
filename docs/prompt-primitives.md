@@ -36,6 +36,20 @@ agent-recall-compiler prompt future-work --scope task
 
 Reflection intentionally stays small and uses the agent's fresh work context. It does not get forced through `Goal / Context / Constraints / Verification / Done When`. Task reflection may return `RETURN_TO_REVIEW` when deeper scrutiny proves the task was not actually complete.
 
+## Opt-in guidance-gap journal
+
+Use the guidance-gap technique when you want the implementation itself to expose where a coding agent had to interpret or guess instead of following a usable source of truth:
+
+```bash
+agent-recall-compiler prompt guidance-gaps
+```
+
+This returns an L2 prompt. Give it to an agent that has the current task/spec and repository context. The generated project-specific implementation prompt tells that agent to maintain `implementation-notes.html` while it works and to separate ordinary design decisions, intentional deviations, tradeoffs, open questions, and actual guidance gaps. The journal is task-local working evidence and is not committed unless the approved task or harness explicitly requires that artifact.
+
+A guidance gap is not merely "the agent made a choice." It is a point where the expected authority, such as the spec, documentation, installed skill, workflow guidance, CLI/tool contract, code, or tests, did not determine the action because it was missing, stale, conflicting, misleading, or too vague. Each gap must name the concrete anchor, authority checked, evidence found, interpretation used, risk if wrong, and the smallest human/source-of-truth improvement that would remove the guess next time.
+
+This is deliberately **not** a default workflow stage. It does not mutate docs or skills, does not create backlog automatically, and does not promote notes into durable learning. If interpretation would change the approved Goal, acceptance criteria, scope/non-goals, public contracts, security/safety boundaries, or destructive/irreversible behavior, the technique requires `HUMAN_DECISION_REQUIRED` / `BLOCKED` rather than letting the agent quietly choose.
+
 ## L1 vs L2 operating prompts
 
 Use **L2** when a reusable engineering method needs project-specific facts before it becomes executable:
@@ -82,6 +96,9 @@ Need to attack a completed/current implementation?
 
 Need to ask what the work revealed after completion?
     -> prompt future-work --scope project|task
+
+Need to expose where implementation had to guess because process guidance was missing?
+    -> prompt guidance-gaps
 ```
 
-The important part is the boundary, not the command spelling: execution contracts, control rules, adversarial review, and reflection are different reasoning jobs and should not be collapsed into one universal monster prompt.
+The important part is the boundary, not the command spelling: execution contracts, control rules, adversarial review, reflection, and opt-in guidance-gap journaling are different reasoning jobs and should not be collapsed into one universal monster prompt.
