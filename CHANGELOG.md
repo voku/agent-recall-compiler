@@ -4,6 +4,38 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.12.2] - 2026-08-14
+
+### Added
+
+- Added the explicit `prompt guidance-gaps` L2 diagnostic for spec-driven,
+  human-in-the-loop implementation sessions. The generated project-specific
+  prompt keeps a running `implementation-notes.html` journal that separates
+  design decisions, deviations, tradeoffs and open questions from actual
+  guidance gaps where the expected spec, docs, skill, workflow, tool contract,
+  code or tests did not provide usable authority.
+- Material ambiguity that would change approved goals, acceptance criteria,
+  scope/non-goals, public contracts, security/safety boundaries or destructive
+  behavior now has an explicit `HUMAN_DECISION_REQUIRED` / `BLOCKED` boundary
+  instead of inviting the coding agent to guess.
+
+### Changed
+
+- The journal is task-local working evidence and is not committed unless the
+  approved task or harness explicitly requires it. The technique remains opt-in:
+  it does not add a workflow stage, mutate docs or skills, manufacture backlog,
+  or promote notes to durable Learning automatically.
+
+### Validation
+
+- Dogfooding the new technique against its own implementation exposed two real
+  guidance gaps before release: the journal lifetime was initially unspecified,
+  then the builder, documentation and installed skill disagreed about that rule
+  and the opt-in boundary. Regressions now bind those agent-facing surfaces.
+- PR #57 passed PHPUnit and PHPStan on PHP 8.3, 8.4 and 8.5 plus the governed
+  agent-loop consumer dogfood, AccessLint and CodeRabbit; the exact merged commit
+  passed main-branch CI before this release candidate was prepared.
+
 ## [0.12.1] - 2026-08-14
 
 ### Changed
