@@ -7,6 +7,7 @@ namespace voku\AgentRecallCompiler\Tests;
 use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
+use ReflectionClass;
 use voku\AgentRecallCompiler\Cli;
 
 final class BundledOperatingPromptCatalogTest extends TestCase
@@ -81,5 +82,26 @@ final class BundledOperatingPromptCatalogTest extends TestCase
         self::assertStringContainsString('distinct plausible failure-mode hypotheses or attack scenarios', $system);
         self::assertStringContainsString('Do not manufacture defects merely to satisfy the numeric floor', $system);
         self::assertStringContainsString('CLEAN remains valid', $system);
+    }
+
+    public function testConsumerSkillMatchesCurrentCliDefaultsAndCommands(): void
+    {
+        $skill = (string) file_get_contents(dirname(__DIR__) . '/skills/agent-recall-consumer/SKILL.md');
+
+        self::assertStringNotContainsString('infra/doc/agent-learning', $skill);
+        self::assertStringNotContainsString('.agent-recall-output', $skill);
+        self::assertStringContainsString('<cwd>/.agent-loop/learning', $skill);
+        self::assertStringContainsString('<cwd>/.agent-loop/recall/<task-id>', $skill);
+
+        $cliFile = (new ReflectionClass(Cli::class))->getFileName();
+        self::assertIsString($cliFile);
+        $cliSource = (string) file_get_contents($cliFile);
+
+        foreach (['compile', 'log-outcome', 'prompt', 'review'] as $command) {
+            self::assertStringContainsString("'{$command}' =>", $cliSource);
+            self::assertStringContainsString('agent-recall-compiler ' . $command, $skill);
+        }
+        self::assertStringContainsString('prompt future-work --scope project', $skill);
+        self::assertStringContainsString('review first-draft', $skill);
     }
 }
