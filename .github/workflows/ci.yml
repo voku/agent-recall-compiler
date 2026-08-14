@@ -54,14 +54,6 @@ jobs:
           path: build/agent-loop
           persist-credentials: false
 
-      - name: Checkout pinned first-party operating prompt catalog
-        uses: actions/checkout@v4
-        with:
-          repository: voku/agent-skills
-          ref: c7e9d8bdda59d957600bca8dc9f787f03286b277
-          path: build/agent-skills
-          persist-credentials: false
-
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
