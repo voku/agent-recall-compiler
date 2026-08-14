@@ -10,6 +10,7 @@ use RecursiveIteratorIterator;
 use ReflectionClass;
 use voku\AgentRecallCompiler\Cli;
 use voku\AgentRecallCompiler\OutcomeLogger;
+use voku\AgentRecallCompiler\RecallSelectionEvent;
 
 final class BundledOperatingPromptCatalogTest extends TestCase
 {
@@ -109,12 +110,22 @@ final class BundledOperatingPromptCatalogTest extends TestCase
     public function testConsumerSkillMatchesOutcomeHonestyContract(): void
     {
         $skill = (string) file_get_contents(dirname(__DIR__) . '/skills/agent-recall-consumer/SKILL.md');
+
         $loggerFile = (new ReflectionClass(OutcomeLogger::class))->getFileName();
         self::assertIsString($loggerFile);
-        $loggerSource = (string) file_get_contents($loggerFile);
+        self::assertStringContainsString(
+            'guidance_outcomes_withheld_reason',
+            (string) file_get_contents($loggerFile),
+        );
+
+        $selectionFile = (new ReflectionClass(RecallSelectionEvent::class))->getFileName();
+        self::assertIsString($selectionFile);
+        self::assertStringContainsString(
+            'outcome_withheld_reason',
+            (string) file_get_contents($selectionFile),
+        );
 
         foreach (['guidance_outcomes_withheld_reason', 'outcome_withheld_reason'] as $field) {
-            self::assertStringContainsString($field, $loggerSource);
             self::assertStringContainsString($field, $skill);
         }
 
