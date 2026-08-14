@@ -77,6 +77,7 @@ final class PromptPrimitiveTest extends TestCase
         $prompt = (new GuidanceGapPromptBuilder())->build();
 
         self::assertStringStartsWith('Create a project-specific implementation prompt', $prompt);
+        self::assertStringContainsString('opt-in diagnostic technique, not a default workflow stage', $prompt);
         self::assertStringContainsString('implementation-notes.html', $prompt);
         self::assertStringContainsString('do not commit it unless the approved task or harness explicitly requires the artifact', $prompt);
         self::assertStringContainsString('Design decisions', $prompt);
