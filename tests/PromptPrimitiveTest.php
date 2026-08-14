@@ -86,7 +86,8 @@ final class PromptPrimitiveTest extends TestCase
         self::assertStringContainsString('acceptance criteria as required outcomes, never as evidence', $markdown);
         self::assertStringContainsString('does not grant edit permission', $markdown);
         self::assertStringContainsString('keep the result `UNKNOWN` or `BLOCKED`', $markdown);
-        self::assertStringContainsString('Do not weaken the requirement to manufacture success', $markdown);
+        self::assertStringContainsString('Do not weaken acceptance criteria, scope, or non-goals', $markdown);
+        self::assertStringContainsString('requires a separate approved re-plan', $markdown);
         self::assertStringContainsString('prompt construction, or an unexecuted command as verification', $markdown);
     }
 }
