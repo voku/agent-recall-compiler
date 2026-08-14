@@ -1,0 +1,50 @@
+name: Prepare 0.11.6 changelog
+
+on:
+  push:
+    branches: [agent/release-0.11.6]
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Prepare changelog-only release diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('CHANGELOG.md')
+          text = p.read_text()
+          anchor = '## [0.11.5] - 2026-08-14'
+          section = '''## [0.11.6] - 2026-08-14
+
+### Changed
+
+- Align the canonical `agent-recall-consumer` skill with the live Recall CLI: compact `.agent-loop` defaults, current compile/outcome/review/reflection commands, and the `agent-loop` project-layout boundary are now documented from the owning package.
+- Retired project-specific Learning/Recall paths are no longer taught by the shipped skill.
+
+### Validation
+
+- The bundled skill regression now checks its documented top-level commands against the real `Cli` dispatch table and rejects retired roots.
+- PR #48 passed PHPUnit and PHPStan on PHP 8.3, 8.4, and 8.5 plus the governed `agent-loop` context-explain dogfood before merge.
+
+'''
+          if '## [0.11.6] - ' in text:
+              raise SystemExit('0.11.6 changelog section already exists')
+          if anchor not in text:
+              raise SystemExit('0.11.5 changelog anchor missing')
+          p.write_text(text.replace(anchor, section + anchor, 1))
+          PY
+          rm .github/workflows/prepare-release-0.11.6.yml
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add CHANGELOG.md .github/workflows/prepare-release-0.11.6.yml
+          git commit -m 'Document 0.11.6'
+          git push origin HEAD:agent/release-0.11.6
