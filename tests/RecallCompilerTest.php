@@ -1179,6 +1179,8 @@ final class RecallCompilerTest extends TestCase
         self::assertSame('memory', $evaluatedTypesById['proposal.2026-06-12.001']);
 
         $draft['guidance_outcomes'][0]['outcome'] = 'helpful';
+        $draft['guidance_outcomes'][0]['applied'] = true;
+        $draft['guidance_outcomes'][0]['comment'] = 'Named the session boundary this change had to respect.';
         file_put_contents($draftPath, json_encode($draft, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
 
         $result = (new OutcomeLogger())->log($this->root, $draftPath, 'lars', 'commit_1');
@@ -1223,6 +1225,7 @@ final class RecallCompilerTest extends TestCase
         $this->writeProposal('proposal.2026-06-18.002', 'skill', ['src/Other']);
         $draftPath = $this->buildEventDraft('compilation.PROJECT-123.2026-06-18.001');
         $draft = json_decode((string)file_get_contents($draftPath), true);
+        $draft['guidance_outcomes'][0]['outcome'] = 'not_used';
         $draft['guidance_outcomes'][] = [
             'guidance_id' => 'proposal.2026-06-18.002',
             'guidance_type' => 'skill',
@@ -1237,6 +1240,85 @@ final class RecallCompilerTest extends TestCase
         $this->expectExceptionMessage("outcome guidance 'proposal.2026-06-18.002' was not selected");
         (new OutcomeLogger())->log($this->root, $draftPath, 'lars', 'commit_1');
         self::assertFileDoesNotExist($this->root . '/history/recall-selections.jsonl');
+    }
+
+    public function testUneditedCompiledDraftCannotBeLoggedAsGuidanceFeedback(): void
+    {
+        // The defect this covers shipped: the compiler writes every selected row
+        // as outcome=unknown with no comment, log-outcome accepted it verbatim,
+        // and the result was a usefulness signal produced by the same component
+        // that chose the guidance. Eight such records exist in this project's own
+        // history, and guidance-evaluate can gate on none of them.
+        $this->writeProposal('proposal.2026-06-18.001', 'skill', ['src/Auth']);
+        $draftPath = $this->buildEventDraft('compilation.PROJECT-123.2026-06-18.010');
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage("guidance outcome 'proposal.2026-06-18.001' is still the compiled placeholder");
+        try {
+            (new OutcomeLogger())->log($this->root, $draftPath, 'lars', 'commit_1');
+        } finally {
+            self::assertFileDoesNotExist($this->root . '/history/outcomes.jsonl');
+            self::assertFileDoesNotExist($this->root . '/history/recall-selections.jsonl');
+        }
+    }
+
+    public function testSelectedGuidanceMayBeLeftUnjudgedWhenTheAbsenceIsDeclared(): void
+    {
+        // Selection is a fact about the compiler; usefulness is a fact about the
+        // session. A caller that never read the guidance has nothing truthful to
+        // say, and every available bucket lies: `not_used` and `irrelevant` both
+        // count towards retirement in agent-learning's staleness policies. So the
+        // selection is recorded and the judgement is withheld on the record.
+        $this->writeProposal('proposal.2026-06-18.001', 'skill', ['src/Auth']);
+        $draftPath = $this->buildEventDraft('compilation.PROJECT-123.2026-06-18.011');
+        $draft = json_decode((string)file_get_contents($draftPath), true);
+        $draft['guidance_outcomes'] = [];
+        $draft['guidance_outcomes_withheld_reason'] = 'This harness compiles Recall but never reads system.md.';
+        file_put_contents($draftPath, json_encode($draft, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+
+        $result = (new OutcomeLogger())->log($this->root, $draftPath, 'lars', 'commit_1');
+
+        self::assertSame('compilation.PROJECT-123.2026-06-18.011', $result);
+        $selectionEvents = $this->jsonlRecords($this->root . '/history/recall-selections.jsonl');
+        self::assertCount(1, $selectionEvents);
+        self::assertTrue($selectionEvents[0]['selected']);
+        // The reason is durable: a downstream gate has to be able to tell a
+        // declared absence from a dropped one long after the draft is pruned.
+        self::assertSame(
+            'This harness compiles Recall but never reads system.md.',
+            $selectionEvents[0]['outcome_withheld_reason'],
+        );
+        // Nothing is written where nothing was judged: outcome completeness is
+        // what makes that visible, so it must not be papered over here.
+        self::assertFileDoesNotExist($this->root . '/history/outcomes.jsonl');
+    }
+
+    public function testSilentlyDroppedGuidanceOutcomesAreStillRejected(): void
+    {
+        $this->writeProposal('proposal.2026-06-18.001', 'skill', ['src/Auth']);
+        $draftPath = $this->buildEventDraft('compilation.PROJECT-123.2026-06-18.012');
+        $draft = json_decode((string)file_get_contents($draftPath), true);
+        $draft['guidance_outcomes'] = [];
+        file_put_contents($draftPath, json_encode($draft, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage("selected guidance 'proposal.2026-06-18.001' has no outcome");
+        (new OutcomeLogger())->log($this->root, $draftPath, 'lars', 'commit_1');
+    }
+
+    public function testHelpfulGuidanceOutcomeCannotContradictItsOwnAppliedFlag(): void
+    {
+        $this->writeProposal('proposal.2026-06-18.001', 'skill', ['src/Auth']);
+        $draftPath = $this->buildEventDraft('compilation.PROJECT-123.2026-06-18.013');
+        $draft = json_decode((string)file_get_contents($draftPath), true);
+        $draft['guidance_outcomes'][0]['outcome'] = 'helpful';
+        $draft['guidance_outcomes'][0]['comment'] = 'Told me where the decision belonged.';
+        $draft['guidance_outcomes'][0]['applied'] = false;
+        file_put_contents($draftPath, json_encode($draft, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage("guidance outcome 'proposal.2026-06-18.001' cannot be helpful when applied=false");
+        (new OutcomeLogger())->log($this->root, $draftPath, 'lars', 'commit_1');
     }
 
     public function testOutcomeLoggerRejectsUnknownSchemaWithoutWritingEvents(): void

@@ -527,7 +527,7 @@ final class RecallPromptBuilder
             'irrelevant' => [],
             'harmful' => [],
             'result' => 'successful',
-            'comment' => 'Complete guidance_outcomes after the session. Selection alone is not proof of usefulness.',
+            'comment' => 'Complete guidance_outcomes after the session. Selection alone is not proof of usefulness, so every row below is a placeholder that log-outcome refuses to record: judge each one with an outcome and a comment, or delete the rows you cannot judge and set guidance_outcomes_withheld_reason.',
         ];
 
         return json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
