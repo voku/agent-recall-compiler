@@ -10,6 +10,15 @@ final class CodeReviewPromptBuilder
 
     public function build(string $taskId, string $outputDir = '.agent-recall/current'): string
     {
-        return (new ReviewPromptBuilder($this->workspacePath))->buildCodeReviewPrompt($taskId, $outputDir);
+        $prompt = (new ReviewPromptBuilder($this->workspacePath))->buildCodeReviewPrompt($taskId, $outputDir);
+        $parts = explode("\n", $prompt, 2);
+        $heading = $parts[0];
+        $body = $parts[1] ?? '';
+
+        return $heading
+            . "\n\n## First-draft falsification lens\n\n"
+            . trim((new FirstDraftReviewPromptBuilder())->build())
+            . "\n\n"
+            . ltrim($body);
     }
 }
