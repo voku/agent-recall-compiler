@@ -63,7 +63,11 @@ final readonly class OperatingPromptRenderer
             '- Prefer repository-specific facts over generic advice. If recall already knows an exact path, symbol, command, or contract, name it.',
             '- Do not leave generic placeholders such as `<file>`, `<test command>`, or "follow best practices" when the compiled context contains a concrete replacement.',
             '- Preserve numeric floors and explicit stop conditions from the selected recipe. Do not weaken them into suggestions.',
+            '- Preserve approved acceptance criteria as required outcomes, never as evidence that they are satisfied. The generated contract must account for them without manufacturing a pass verdict from their presence.',
+            '- Preserve explicit non-goals and approved scope. Context selected for understanding, dependency analysis, or verification does not grant edit permission and must not silently widen the task.',
             '- Keep Verification and Done When distinct: Verification names how reality is measured; Done When names the acceptable observed result.',
+            '- If required verification cannot be performed or observed under the current constraints, keep the result `UNKNOWN` or `BLOCKED` and name the missing evidence. Do not weaken acceptance criteria, scope, or non-goals to manufacture success; changing the approved contract requires a separate approved re-plan.',
+            '- Never treat prior model reasoning, model confidence, reviewer consensus, prompt construction, or an unexecuted command as verification.',
             '- Never invent repository commands, tools, APIs, or architectural rules. Mark missing evidence as `UNKNOWN` or make evidence discovery part of the generated Context section.',
             '- Use imperative language. Remove hedges such as "maybe", "try to", "consider", "if possible", and "should probably".',
         ];
