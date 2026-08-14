@@ -4,6 +4,23 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.12.0] - 2026-08-14
+
+### Changed
+
+- **Breaking:** `log-outcome` no longer accepts an unedited `recall-log.draft.json` as guidance feedback. `compile` pre-fills every selected row with `outcome: unknown` and no comment for a session to complete afterwards; logging that verbatim meant the component that selected the guidance also graded it. An `unknown` outcome now requires a comment saying why the guidance could not be judged.
+- Guidance outcomes carry the coherence rules operating-prompt outcomes already enforced: `helpful`, `irrelevant` and `harmful` require a justifying comment, and `helpful` and `harmful` cannot be recorded with `applied: false`.
+- A selected guidance may be left unjudged when the draft states `guidance_outcomes_withheld_reason`. Selection is a fact about the compiler and usefulness is a fact about the session; a caller with no evidence was previously forced to invent a bucket, and both `not_used` and `irrelevant` push a rule towards retirement in `agent-learning`'s staleness policies. Silent omission is still refused, so an accidental drop does not look like a deliberate one.
+
+### Added
+
+- Recall selection events record `outcome_withheld_reason` for the selections a declared withholding explains, so a downstream gate can distinguish a declared absence from a dropped one after the draft is pruned. The field is additive and absent on existing records.
+
+### Validation
+
+- PHPUnit 170 tests / 978 assertions and PHPStan clean on PHP 8.3, 8.4 and 8.5, plus the governed `agent-loop` context-explain dogfood, before merging PR #50.
+- Exercised end to end through a governed `agent-loop` run, which is where the consuming `workflow close` gate was found to demand a judgement per selection and had to learn to accept a declared withholding.
+
 ## [0.11.6] - 2026-08-14
 
 ### Changed
