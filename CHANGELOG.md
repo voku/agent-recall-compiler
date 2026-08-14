@@ -4,6 +4,22 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.12.1] - 2026-08-14
+
+### Changed
+
+- The canonical `agent-recall-consumer` skill now teaches the released 0.12
+  outcome-honesty contract: unedited `unknown` rows are placeholders, explicit
+  `unknown` requires a reason, and a caller without evidence must declare
+  `guidance_outcomes_withheld_reason` rather than fabricating `not_used` or `
+  irrelevant`. Selection events retain `outcome_withheld_reason`.
+
+### Validation
+
+- The bundled-skill regression binds each serialized field to its runtime owner
+  and pins the honesty rules; PHP 8.3/8.4/8.5 CI and the governed agent-loop
+  consumer dogfood are green.
+
 ## [0.12.0] - 2026-08-14
 
 ### Changed
