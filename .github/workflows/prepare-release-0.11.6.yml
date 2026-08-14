@@ -1,20 +1,16 @@
 name: Prepare 0.11.6 changelog
 
-on:
-  push:
-    branches: [agent/release-0.11.6]
+on: push
 
 permissions:
   contents: write
 
 jobs:
   prepare:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Prepare changelog-only release diff
-        shell: bash
+      - shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
