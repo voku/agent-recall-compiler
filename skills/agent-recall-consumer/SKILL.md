@@ -34,7 +34,7 @@ learning root: <cwd>/.agent-loop/learning
 recall output: <cwd>/.agent-loop/recall/<task-id>
 ```
 
-Do not hardcode retired project-specific roots such as `infra/doc/agent-learning` or an ad-hoc `.agent-recall-output` directory merely because an older example used them. Override `--root` or `--output-dir` only when the consuming project intentionally uses a different location.
+Do not copy historical project-specific roots or ad-hoc output directories into new automation. Override `--root` or `--output-dir` only when the consuming project intentionally uses a different location.
 
 When `agent-loop` is installed, prefer its wrapper for project-owned path resolution:
 
