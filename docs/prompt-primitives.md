@@ -44,7 +44,7 @@ Use the guidance-gap technique when you want the implementation itself to expose
 agent-recall-compiler prompt guidance-gaps
 ```
 
-This returns an L2 prompt. Give it to an agent that has the current task/spec and repository context. The generated project-specific implementation prompt tells that agent to maintain `implementation-notes.html` while it works and to separate ordinary design decisions, intentional deviations, tradeoffs, open questions, and actual guidance gaps.
+This returns an L2 prompt. Give it to an agent that has the current task/spec and repository context. The generated project-specific implementation prompt tells that agent to maintain `implementation-notes.html` while it works and to separate ordinary design decisions, intentional deviations, tradeoffs, open questions, and actual guidance gaps. The journal is task-local working evidence and is not committed unless the approved task or harness explicitly requires that artifact.
 
 A guidance gap is not merely "the agent made a choice." It is a point where the expected authority, such as the spec, documentation, installed skill, workflow guidance, CLI/tool contract, code, or tests, did not determine the action because it was missing, stale, conflicting, misleading, or too vague. Each gap must name the concrete anchor, authority checked, evidence found, interpretation used, risk if wrong, and the smallest human/source-of-truth improvement that would remove the guess next time.
 
