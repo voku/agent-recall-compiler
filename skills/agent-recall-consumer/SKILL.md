@@ -116,6 +116,12 @@ vendor/bin/agent-loop recall log-outcome \
 
 Treat `selected` as exposure only. Set `applied=true` only when guidance affected the work, and classify outcomes from evidence as `helpful`, `irrelevant`, `harmful`, `not_used`, or `unknown`.
 
+An untouched compiler draft is not feedback: its pre-filled `outcome: unknown`, `applied: false`, `comment: null` rows are placeholders for the later session to complete. An explicit `unknown` outcome requires a non-empty comment explaining why the selected guidance cannot be judged.
+
+When the caller has no evidence to judge selected guidance, do not manufacture `not_used` or `irrelevant` merely to satisfy completeness. Remove the placeholder outcome rows and set `guidance_outcomes_withheld_reason` to a bounded reason. Silent omission without that declared withholding fails. The resulting selection events retain `outcome_withheld_reason`, so downstream Learning can distinguish deliberate absence from dropped feedback.
+
+`not_used` and `irrelevant` are real negative signals used by staleness/retirement policy. A harness that did not read or apply the guidance must not emit either as a convenient empty bucket.
+
 ## Output Expectations
 
 A normal compile writes task artifacts below the selected Recall output directory, including:

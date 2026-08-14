@@ -9,6 +9,8 @@ use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use ReflectionClass;
 use voku\AgentRecallCompiler\Cli;
+use voku\AgentRecallCompiler\OutcomeLogger;
+use voku\AgentRecallCompiler\RecallSelectionEvent;
 
 final class BundledOperatingPromptCatalogTest extends TestCase
 {
@@ -103,5 +105,33 @@ final class BundledOperatingPromptCatalogTest extends TestCase
         }
         self::assertStringContainsString('prompt future-work --scope project', $skill);
         self::assertStringContainsString('review first-draft', $skill);
+    }
+
+    public function testConsumerSkillMatchesOutcomeHonestyContract(): void
+    {
+        $skill = (string) file_get_contents(dirname(__DIR__) . '/skills/agent-recall-consumer/SKILL.md');
+
+        $loggerFile = (new ReflectionClass(OutcomeLogger::class))->getFileName();
+        self::assertIsString($loggerFile);
+        self::assertStringContainsString(
+            'guidance_outcomes_withheld_reason',
+            (string) file_get_contents($loggerFile),
+        );
+
+        $selectionFile = (new ReflectionClass(RecallSelectionEvent::class))->getFileName();
+        self::assertIsString($selectionFile);
+        self::assertStringContainsString(
+            'outcome_withheld_reason',
+            (string) file_get_contents($selectionFile),
+        );
+
+        foreach (['guidance_outcomes_withheld_reason', 'outcome_withheld_reason'] as $field) {
+            self::assertStringContainsString($field, $skill);
+        }
+
+        self::assertStringContainsString('An untouched compiler draft is not feedback', $skill);
+        self::assertStringContainsString('An explicit `unknown` outcome requires a non-empty comment', $skill);
+        self::assertStringContainsString('do not manufacture `not_used` or `irrelevant`', $skill);
+        self::assertStringContainsString('Silent omission without that declared withholding fails', $skill);
     }
 }
