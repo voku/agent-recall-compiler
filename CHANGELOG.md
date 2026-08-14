@@ -4,6 +4,17 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.11.6] - 2026-08-14
+
+### Changed
+
+- Align the canonical `agent-recall-consumer` skill with the live Recall CLI: compact `.agent-loop` defaults, current compile/outcome/review/reflection commands, and the `agent-loop` project-layout boundary are now documented from the owning package.
+- Retired project-specific Learning/Recall paths are no longer taught by the shipped skill.
+
+### Validation
+
+- The bundled skill regression now checks its documented top-level commands against the real `Cli` dispatch table and rejects retired roots.
+- PR #48 passed PHPUnit and PHPStan on PHP 8.3, 8.4, and 8.5 plus the governed `agent-loop` context-explain dogfood before merge.
 ## [0.11.5] - 2026-08-14
 
 ### Changed
