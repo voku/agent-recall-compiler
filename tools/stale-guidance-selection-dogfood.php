@@ -21,11 +21,9 @@ file_put_contents(
     ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . PHP_EOL,
 );
 
+$taskBrief = 'Use the real proposal.2026-08-14.004 and .011 regressions to reject obviously stale selected guidance without rewriting proposal history.';
 $taskBriefPath = '.agent-loop/tasks/' . TASK_ID . '.md';
-file_put_contents(
-    $taskBriefPath,
-    "# ARC-55\n\nUse the real proposal.2026-08-14.004 and .011 regressions to reject obviously stale selected guidance without rewriting proposal history.\n",
-);
+file_put_contents($taskBriefPath, "# ARC-55\n\n" . $taskBrief . "\n");
 
 run([
     PHP_BINARY, AGENT_LOOP_BIN, 'board', 'card', 'create', TASK_ID,
@@ -37,7 +35,7 @@ run([
 run([
     PHP_BINARY, AGENT_LOOP_BIN, 'board', 'card', 'update', TASK_ID,
     '--status=Selected',
-    '--brief=' . $taskBriefPath,
+    '--brief=' . $taskBrief,
 ]);
 run([
     PHP_BINARY, AGENT_LOOP_BIN, 'board', 'card', 'move', TASK_ID,
@@ -116,8 +114,8 @@ if (!is_file($reviewPath) || !copy($reviewPath, REPORT_DIR . '/blindspots.json')
 }
 run([
     PHP_BINARY, AGENT_LOOP_BIN, 'session', 'checkpoint', TASK_ID,
-    '--title=Review',
-    '--body=review blindspots ARC-55 was generated and inspected by the stale-guidance dogfood run.',
+    '--title', 'Review',
+    '--body', 'review blindspots ARC-55 was generated and inspected by the stale-guidance dogfood run.',
 ]);
 
 run([
