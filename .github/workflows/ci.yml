@@ -85,10 +85,10 @@ jobs:
         run: composer update --working-dir=build/agent-loop --no-interaction --prefer-dist --no-progress
 
       - name: Lint dogfood runner
-        run: bash -n tools/context-explain-dogfood.sh
+        run: php -l tools/context-explain-dogfood.php
 
       - name: Run governed context-explain dogfood
-        run: bash tools/context-explain-dogfood.sh
+        run: php tools/context-explain-dogfood.php
 
       - name: Upload dogfood evidence
         if: always()
