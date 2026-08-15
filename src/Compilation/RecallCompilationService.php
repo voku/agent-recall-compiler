@@ -14,6 +14,7 @@ use voku\AgentRecallCompiler\OperatingPromptRequest;
 use voku\AgentRecallCompiler\Provider\RecallFact;
 use voku\AgentRecallCompiler\Provider\RecallProvider;
 use voku\AgentRecallCompiler\Provider\RecallProviderResult;
+use voku\AgentRecallCompiler\RecallCompilationBlockedException;
 use voku\AgentRecallCompiler\RecallDecisionEngine;
 use voku\AgentRecallCompiler\RecallGuidance;
 use voku\AgentRecallCompiler\RecallRejection;
@@ -89,6 +90,7 @@ final class RecallCompilationService
             $retiredProposals,
         );
         $selection = $this->preferLoadedCanonicalHomes($selection, $activeGuidance, $factResolution->facts);
+        $this->assertSelectedGuidanceValidationEntryPointsAreLive($selection, $rootConfig->projectRoot);
 
         $snapshot = new CompilationSnapshot(CanonicalJson::digest($this->taskArray($task)), $snapshotProviders);
         $bundle = [
@@ -161,6 +163,63 @@ final class RecallCompilationService
         array_push($constraints, ...$result->constraints);
         array_push($retiredProposals, ...$result->retiredProposals);
         array_push($factCandidates, ...$result->facts);
+    }
+
+    private function assertSelectedGuidanceValidationEntryPointsAreLive(RecallResult $selection, ?string $projectRoot): void
+    {
+        if ($projectRoot === null || trim($projectRoot) === '') {
+            return;
+        }
+
+        foreach ($selection->selectedGuidance as $guidance) {
+            foreach ($guidance->validation as $command) {
+                $entryPoint = $this->projectLocalValidationEntryPoint($command);
+                if ($entryPoint === null) {
+                    continue;
+                }
+                if (is_file(rtrim($projectRoot, '/\\') . '/' . $entryPoint)) {
+                    continue;
+                }
+
+                throw new RecallCompilationBlockedException(sprintf(
+                    "Compilation blocked: selected guidance '%s' validation references missing project-local entry point '%s'.",
+                    $guidance->id,
+                    $entryPoint,
+                ));
+            }
+        }
+    }
+
+    private function projectLocalValidationEntryPoint(string $command): ?string
+    {
+        if (preg_match('/^(?:php|bash|sh)\s+(\S+)(?:\s|$)/', trim($command), $matches) !== 1) {
+            return null;
+        }
+
+        $entryPoint = $matches[1];
+        if (
+            str_starts_with($entryPoint, '-')
+            || preg_match('/^(?:\.\/)?[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*$/D', $entryPoint) !== 1
+        ) {
+            return null;
+        }
+
+        if (str_starts_with($entryPoint, './')) {
+            $entryPoint = substr($entryPoint, 2);
+        }
+        if ($entryPoint === '' || str_starts_with($entryPoint, 'vendor/')) {
+            return null;
+        }
+        foreach (explode('/', $entryPoint) as $segment) {
+            if ($segment === '..') {
+                return null;
+            }
+        }
+        if (!str_contains($entryPoint, '/') && !str_ends_with($entryPoint, '.php') && !str_ends_with($entryPoint, '.sh')) {
+            return null;
+        }
+
+        return $entryPoint;
     }
 
     /**
