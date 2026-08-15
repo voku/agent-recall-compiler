@@ -4,6 +4,18 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.13.0] - 2026-08-15
+
+### Changed
+
+- **Breaking:** blind-spot review reports may carry the exact Contract revision
+  and implementation snapshot they reviewed, so governed consumers can reject
+  a review after relevant implementation content changes without inventing a
+  second review-evidence format.
+- `review blindspots` accepts paired `--contract-revision` and
+  `--implementation-snapshot sha256:<digest>` options. Standalone unbound review
+  remains supported; repository snapshot semantics stay with the orchestrator.
+
 ## [0.12.4] - 2026-08-14
 
 ### Changed
@@ -114,7 +126,7 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ### Validation
 
-- The bundled skill regression now checks its documented top-level commands against the real `Cli` dispatch table and rejects retired roots.
+- The bundled-skill regression now checks its documented top-level commands against the real `Cli` dispatch table and rejects retired roots.
 - PR #48 passed PHPUnit and PHPStan on PHP 8.3, 8.4, and 8.5 plus the governed `agent-loop` context-explain dogfood before merge.
 ## [0.11.5] - 2026-08-14
 
@@ -231,7 +243,7 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 - **Breaking:** governed Recall input now requires a non-empty `run_id` and the
   exact Contract revision, source reference and SHA-256 it was compiled for.
   `GovernedRunBinding` carries that lineage into the compiled briefing, so a
-  bundle can be tied to the one Run and Contract revision it was built from
+  bundle can be tied to the one Run and Contract revision it was built for
   instead of being attributed by filename and timestamp.
 
   Consumers that passed an ungoverned task brief are unaffected; a brief that
@@ -427,9 +439,9 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 - Added deterministic rendering of primary methods, contracts, direct callers,
   tests, dependencies, type definitions, blind spots, omissions, exact source
   ranges, and source hashes into the compiled briefing.
-- Added explicit map-derived effective scope so path-scoped guidance and project
-  documents can match primary/contract/caller/test files while dependency-only
-  context does not silently become an intended edit.
+- Added explicit map-derived effective scope so path-scoped guidance and
+  project documents can match primary/contract/caller/test files while
+  dependency-only context does not silently become an intended edit.
 
 ### Changed
 
@@ -550,7 +562,6 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 ### Added
 
 - Added a deterministic `review` CLI workflow with `blindspots` and `code` subcommands. The workflow writes audit-ready Markdown/JSON review reports plus L2 blind-spot and code-review prompts under `.agent-recall/reviews/` without invoking an LLM.
-- Added review domain objects and prompt builders for blind-spot findings, severity/status projection, report writing, bounded artifact collection, safe task-file inclusion from `meta.json`, boundary-aware session artifact matching, and Markdown fence-safe prompt rendering.
 - Added `docs/agent-loop-review-follow-up-prompt.md` to carry the dogfooded review workflow and safety corrections into `voku/agent-loop`.
 - Added command-level PHPUnit coverage for option parsing and review workflow coverage for task-id validation, report contents, CLI dispatch, malformed meta handling, session matching, and generated prompt formatting.
 
@@ -587,11 +598,11 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ### Added
 
-- Added `RecallCompilerTest::testLoadActiveGuidanceNeverReturnsRetiredProposals()`, a regression
-  test locking in that `RecallRepository::loadActiveGuidance()` only ever scans `proposals/approved/`
-  and `proposals/applied/`. `voku/agent-learning` 0.7.0 added a `retired` `ProposalStatus` for
-  proposals whose durable change is already fully captured in its target skill/doc/memory home; this
-  package needed no behavior change to support it (a retired proposal already lived in a directory this package never reads), but the invariant was previously only documented, not tested.
+- Added `RecallRepository::loadRetiredProposalIds()` (reads `proposals/retired/*.json`, IDs only) and
+  a new `decide(..., array $retiredProposalIds = [])` parameter so retired IDs stay known to the
+  conflict check without ever being selectable as guidance. `Cli.php`'s `compile` command now loads
+  and passes them through. Default value keeps the signature change backward compatible for direct
+  `RecallDecisionEngine::decide()` callers that omit the new argument.
 
 ## [0.5.0] - 2026-06-20
 
@@ -645,16 +656,15 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 - Add transactional event history appends to `history/recall-selections.jsonl` and `history/outcomes.jsonl` during governed `log-outcome` close-out.
 - Add duplicate protection for event IDs and `compilation_id + guidance_id` pairs.
 - Add redaction checks for generated event records.
-- Add `meta.json` fields for schema version, compilation ID, task files, evaluated guidance, selection/exclusion reasons, selected constraint reasons, and output hashes.
-- Add one editable `guidance_outcomes` row per selected guidance item in `recall-log.draft.json`, defaulting to `applied=false` and `outcome=unknown`.
-- Add schema documentation and an end-to-end fixture for compile, selected guidance, completed feedback, and immutable event histories.
-- Add regression coverage for supplied and generated compilation IDs, evaluated-guidance ordering, selected guidance draft rows, event appends, duplicate retry safety, unknown schemas, non-selected applied guidance rejection, and secret-like value redaction.
+- Add `meta.json` fields with schema version, compilation ID, task files, evaluated guidance, selection/exclusion reasons, selected constraint reasons, and output hashes.
+- Add `recall-log.draft.json` editable guidance outcome rows and schema documentation.
+- Add regression coverage for supplied/generated compilation IDs, evaluated-guidance ordering, event appends, duplicate retry safety, invalid outcome references, and redaction.
 
 ### Changed
 
 - Extend legacy outcome-stat handling so new per-guidance outcome events and older aggregate outcome records can coexist.
 - Treat legacy proposal `target_type=file` records as memory guidance when projecting evaluated guidance events.
-- Update README and bundled skills to distinguish eligible, selected, applied, and helpful signals and to document close-out event writing.
+- Update consumer guidance to distinguish eligible, selected, applied, and helpful signals.
 
 ## [0.2.0] - 2026-06-18
 
@@ -703,7 +713,6 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
   - Outcome records referencing unknown rule IDs.
 - Add `schema_version` validation check (`"1.0"`) to task briefs, guidance files, and outcome logs.
 - Add `selected` and `applied` rule fields in generated outcome logs to separate prompt selection from actual rule utilization.
-- Add GitHub Actions CI workflow configuration (`.github/workflows/ci.yml`) to run PHPUnit and PHPStan analysis automatically on pushes or pull requests.
 
 ## [0.0.1] - 2026-06-12
 
