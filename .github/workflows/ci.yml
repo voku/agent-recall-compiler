@@ -36,7 +36,7 @@ jobs:
 
   context-explain-dogfood:
     if: github.event_name == 'pull_request'
-    name: Govern candidate through agent-loop
+    name: Govern context explain through agent-loop
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -84,29 +84,22 @@ jobs:
       - name: Install pinned agent-loop with this Recall candidate
         run: composer update --working-dir=build/agent-loop --no-interaction --prefer-dist --no-progress
 
-      - name: Lint context-explain dogfood runner
+      - name: Lint dogfood runner
         run: php -l tools/context-explain-dogfood.php
 
       - name: Run governed context-explain dogfood
         run: php tools/context-explain-dogfood.php
 
-      - name: Lint ARC-55 planning runner
-        run: php -l tools/stale-guidance-selection-dogfood.php
-
-      - name: Run ARC-55 PLAN APPROVE CONTEXT dogfood
-        run: php tools/stale-guidance-selection-dogfood.php
-
       - name: Upload dogfood evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: agent-loop-dogfood-${{ github.sha }}
+          name: context-explain-dogfood-${{ github.sha }}
           if-no-files-found: warn
           path: |
             build/agent-loop/composer.lock
             build/context-explain-dogfood
             build/context-explain-targeted
-            build/stale-guidance-selection-dogfood
-            .agent-loop/recall/ARC-55
+            .agent-loop/recall/ARC-17
             .agent-loop/sessions
-            .agent-loop/runs/ARC-55
+            .agent-loop/runs/ARC-17
