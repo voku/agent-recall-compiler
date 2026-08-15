@@ -120,10 +120,10 @@ run([
     '--body', 'review blindspots ARC-55 was generated and inspected by the stale-guidance dogfood run.',
 ]);
 
-$findingId = trim(capture([AGENT_LEARNING_BIN, 'finding-id']));
-if ($findingId === '') {
-    fail('agent-learning did not allocate a finding id');
-}
+// agent-learning 0.10.0 validates the historical finding.YYYY-MM-DD.NNN format but does not yet
+// expose the later finding-id allocator. This run owns an empty ephemeral learning root, so .001 is
+// deterministic and collision-free while keeping the dogfood release set pinned.
+$findingId = 'finding.' . (new DateTimeImmutable('now'))->format('Y-m-d') . '.001';
 ensureDirectory('.agent-loop/learning/findings/validated');
 file_put_contents(
     '.agent-loop/learning/findings/validated/' . $findingId . '.json',
@@ -205,29 +205,6 @@ function run(array $command, ?string $outputPath = null): int
     }
 
     return $exitCode;
-}
-
-/** @param non-empty-list<string> $command */
-function capture(array $command): string
-{
-    $process = proc_open($command, [
-        0 => ['file', 'php://stdin', 'r'],
-        1 => ['pipe', 'w'],
-        2 => ['pipe', 'w'],
-    ], $pipes);
-    if (!is_resource($process)) {
-        fail('cannot start command: ' . implode(' ', $command));
-    }
-    $stdout = stream_get_contents($pipes[1]);
-    $stderr = stream_get_contents($pipes[2]);
-    fclose($pipes[1]);
-    fclose($pipes[2]);
-    $exitCode = proc_close($process);
-    if ($exitCode !== 0) {
-        fail(sprintf('command failed with exit %d: %s; %s', $exitCode, implode(' ', $command), trim((string) $stderr)));
-    }
-
-    return (string) $stdout;
 }
 
 /** @return array<string, mixed> */
