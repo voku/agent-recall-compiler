@@ -5,13 +5,19 @@ declare(strict_types=1);
 namespace voku\AgentRecallCompiler\Tests;
 
 use PHPUnit\Framework\TestCase;
+use voku\AgentRecallCompiler\Compilation\RecallCompilation;
+use voku\AgentRecallCompiler\Compilation\RecallCompilationService;
 use voku\AgentRecallCompiler\FeedbackAssessmentRenderer;
 use voku\AgentRecallCompiler\FeedbackParser;
+use voku\AgentRecallCompiler\Provider\RecallProvider;
+use voku\AgentRecallCompiler\Provider\RecallProviderManifest;
+use voku\AgentRecallCompiler\Provider\RecallProviderResult;
 use voku\AgentRecallCompiler\RecallCompilationBlockedException;
 use voku\AgentRecallCompiler\RecallDecisionEngine;
 use voku\AgentRecallCompiler\RecallGuidance;
 use voku\AgentRecallCompiler\RecallPromptBuilder;
 use voku\AgentRecallCompiler\RecallResult;
+use voku\AgentRecallCompiler\RecallRootConfig;
 use voku\AgentRecallCompiler\TaskBrief;
 
 final class FeedbackAndBlockTest extends TestCase
@@ -139,6 +145,120 @@ final class FeedbackAndBlockTest extends TestCase
             $activeGuidance,
             [],
             [],
+        );
+    }
+
+    public function testProposal004BlocksWhenSelectedValidationRunnerNoLongerExists(): void
+    {
+        $root = $this->projectRoot();
+        file_put_contents($root . '/tools/project-phpstan-rules.php', "<?php\n");
+        $guidance = new RecallGuidance(
+            'proposal.2026-08-14.004',
+            'REPLACE',
+            'memory',
+            'Tooling test isolation',
+            ['phpstan/Rules/NoInProcessPhpstanRuleTestCaseRule.php', 'tools/project-phpstan-rules.sh', 'phpstan/project-rule-test.neon'],
+            'tools/project-phpstan-rules.sh and phpstan/project-rule-test.neon',
+            'phpstan/Rules/NoInProcessPhpstanRuleTestCaseRule.php and tools/project-phpstan-rules.sh',
+            'Regression fixture from the approved .004 record.',
+            'The rule governs where fixtures execute.',
+            ['bash tools/project-phpstan-rules.sh'],
+            'approved',
+        );
+
+        $this->expectException(RecallCompilationBlockedException::class);
+        $this->expectExceptionMessage("missing project-local entry point 'tools/project-phpstan-rules.sh'");
+        $this->compile($guidance, ['tools'], $root);
+    }
+
+    public function testProposal011BlocksWhenSelectedValidationRunnerNoLongerExists(): void
+    {
+        $root = $this->projectRoot();
+        $currentRunner = 'tools/' . 'self-' . 'shape-dogfood.php';
+        $staleRunner = 'tools/' . 'self-' . 'shape-dogfood.sh';
+        file_put_contents($root . '/' . $currentRunner, "<?php\n");
+        $guidance = new RecallGuidance(
+            'proposal.2026-08-14.011',
+            'ADD',
+            'memory',
+            'Learning evidence detection',
+            [$staleRunner],
+            null,
+            'Detect learning evidence by finding identity across every findings state directory, not by the directory a finding currently occupies.',
+            'Regression fixture from the approved .011 record.',
+            'Applies to gates that infer what a change recorded.',
+            ['bash ' . $staleRunner],
+            'approved',
+        );
+
+        $this->expectException(RecallCompilationBlockedException::class);
+        $this->expectExceptionMessage("missing project-local entry point '" . $staleRunner . "'");
+        $this->compile($guidance, ['tools'], $root);
+    }
+
+    public function testCurrentPhpValidationRunnerCompilesNormally(): void
+    {
+        $root = $this->projectRoot();
+        file_put_contents($root . '/tools/current-runner.php', "<?php\n");
+        $guidance = new RecallGuidance(
+            'guidance.current-runner', 'ADD', 'memory', 'Current runner', ['tools/current-runner.php'], null,
+            'Use the current PHP runner.', 'Current fixture.', null, ['php tools/current-runner.php'], 'approved',
+        );
+
+        $compilation = $this->compile($guidance, ['tools'], $root);
+
+        self::assertSame('guidance.current-runner', $compilation->result->selectedGuidance[0]->id);
+    }
+
+    public function testMissingScopePathWithoutLiteralValidationEntryPointDoesNotBlock(): void
+    {
+        $root = $this->projectRoot();
+        $guidance = new RecallGuidance(
+            'guidance.future-scope', 'ADD', 'memory', 'Future scope', ['tools/future-runner.php'], null,
+            'Keep the rule available for a future-facing target.', 'Missing scope alone is not liveness evidence.', null,
+            ['composer ci'], 'approved',
+        );
+
+        $compilation = $this->compile($guidance, ['tools'], $root);
+
+        self::assertCount(1, $compilation->result->selectedGuidance);
+    }
+
+    private function projectRoot(): string
+    {
+        $root = sys_get_temp_dir() . '/agent-recall-stale-' . bin2hex(random_bytes(6));
+        if (!mkdir($root . '/tools', 0o775, true) && !is_dir($root . '/tools')) {
+            self::fail('Unable to create stale-guidance fixture root.');
+        }
+
+        return $root;
+    }
+
+    /** @param list<string> $taskFiles */
+    private function compile(RecallGuidance $guidance, array $taskFiles, string $root): RecallCompilation
+    {
+        $provider = new class($guidance) implements RecallProvider {
+            public function __construct(private readonly RecallGuidance $guidance)
+            {
+            }
+
+            public function manifest(): RecallProviderManifest
+            {
+                return new RecallProviderManifest('stale-guidance-fixture', '1.0', []);
+            }
+
+            public function collect(TaskBrief $task, RecallRootConfig $rootConfig): RecallProviderResult
+            {
+                return new RecallProviderResult(
+                    sourceDigest: hash('sha256', $this->guidance->id),
+                    activeGuidance: [$this->guidance],
+                );
+            }
+        };
+
+        return (new RecallCompilationService([$provider]))->compile(
+            new TaskBrief('ARC-55', 'stale guidance regression', $taskFiles),
+            new RecallRootConfig($root . '/learning', $root . '/learning/constraints/active', $root),
         );
     }
 }
