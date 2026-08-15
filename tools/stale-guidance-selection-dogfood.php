@@ -7,6 +7,7 @@ const ACTOR = 'chatgpt-dogfood';
 const REPORT_DIR = 'build/stale-guidance-selection-dogfood';
 const AGENT_LOOP_BIN = 'build/agent-loop/bin/agent-loop';
 const AGENT_MAP_BIN = 'build/agent-loop/vendor/bin/agent-map';
+const AGENT_LEARNING_BIN = 'build/agent-loop/vendor/bin/agent-learning';
 
 run(['rm', '-rf', '.agent-loop', REPORT_DIR]);
 ensureDirectory(REPORT_DIR);
@@ -75,8 +76,9 @@ if (!is_file($systemPath) || !copy($systemPath, REPORT_DIR . '/system.md')) {
 
 $runData = readJson('.agent-loop/runs/' . TASK_ID . '/run.json');
 $contractRevision = $runData['contract_revision'] ?? null;
-if (!is_int($contractRevision) || $contractRevision < 1) {
-    fail('governed Run has no positive contract_revision');
+$sessionId = $runData['session_id'] ?? null;
+if (!is_int($contractRevision) || $contractRevision < 1 || !is_string($sessionId) || $sessionId === '') {
+    fail('governed Run has no positive contract_revision or session_id');
 }
 
 $validations = [
@@ -118,12 +120,43 @@ run([
     '--body', 'review blindspots ARC-55 was generated and inspected by the stale-guidance dogfood run.',
 ]);
 
+$findingId = trim(capture([AGENT_LEARNING_BIN, 'finding-id']));
+if ($findingId === '') {
+    fail('agent-learning did not allocate a finding id');
+}
+ensureDirectory('.agent-loop/learning/findings/validated');
+file_put_contents(
+    '.agent-loop/learning/findings/validated/' . $findingId . '.json',
+    json_encode([
+        'id' => $findingId,
+        'task_id' => TASK_ID,
+        'session' => $sessionId,
+        'created_at' => (new DateTimeImmutable('now'))->format(DateTimeInterface::ATOM),
+        'created_by' => ACTOR,
+        'scope' => ['agent-kanban/card-create', 'agent-loop/init-scaffold'],
+        'observation' => 'The first full ARC-55 dogfood run created a READY card successfully, but agent-loop verify later rejected the same card because READY requires taskBrief. The card create CLI cannot accept the brief field, so direct READY creation can produce a board state that the verifier rejects.',
+        'evidence' => [[
+            'type' => 'test_result',
+            'command' => 'agent-loop verify --task-id=ARC-55',
+            'summary' => 'The initial dogfood close-out failed with missing-task-brief for ARC-55 after card create had accepted lane READY. The harness became verify-clean only after creating in BACKLOG, setting taskBrief through card update --brief, and moving the card to READY.',
+        ]],
+        'hypothesis' => 'Board mutation commands do not enforce requiredFieldsByLane atomically when creating a card, and the create command cannot supply every default READY-required field.',
+        'validated_conclusion' => 'A caller that needs a READY card must currently create it in a less restrictive lane, populate taskBrief, then transition to READY. The owner API should eventually make invalid direct READY creation impossible or allow required READY fields to be provided atomically.',
+        'confidence' => 'high',
+        'validation_status' => 'validated',
+        'status' => 'validated',
+        'sensitivity' => 'public',
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . PHP_EOL,
+);
+run([AGENT_LEARNING_BIN, 'validate'], REPORT_DIR . '/learning-validate.txt');
 run([
     PHP_BINARY, AGENT_LOOP_BIN, 'workflow', 'learn', TASK_ID,
-    '--status', 'no_durable_learning',
+    '--status', 'findings_recorded',
     '--by', ACTOR,
-    '--reason', 'The task implements already-validated .004/.011 regression evidence; this bounded run exposed no additional reusable finding.',
+    '--reason', 'Full lifecycle dogfood exposed a reproducible board mutation/verifier mismatch while preparing ARC-55.',
+    '--finding', $findingId,
 ]);
+
 run([PHP_BINARY, AGENT_LOOP_BIN, 'verify', '--task-id=' . TASK_ID], REPORT_DIR . '/verify.txt');
 run([
     PHP_BINARY, AGENT_LOOP_BIN, 'workflow', 'report', TASK_ID,
@@ -144,7 +177,8 @@ file_put_contents(REPORT_DIR . '/result.json', json_encode([
     'approved_by' => 'voku',
     'validation_commands' => array_column($validations, 'command'),
     'review' => 'blindspots_recorded',
-    'learning' => 'no_durable_learning',
+    'learning' => 'findings_recorded',
+    'finding_id' => $findingId,
     'verification' => 'passed',
     'state' => 'complete',
     'result' => 'passed',
@@ -171,6 +205,29 @@ function run(array $command, ?string $outputPath = null): int
     }
 
     return $exitCode;
+}
+
+/** @param non-empty-list<string> $command */
+function capture(array $command): string
+{
+    $process = proc_open($command, [
+        0 => ['file', 'php://stdin', 'r'],
+        1 => ['pipe', 'w'],
+        2 => ['pipe', 'w'],
+    ], $pipes);
+    if (!is_resource($process)) {
+        fail('cannot start command: ' . implode(' ', $command));
+    }
+    $stdout = stream_get_contents($pipes[1]);
+    $stderr = stream_get_contents($pipes[2]);
+    fclose($pipes[1]);
+    fclose($pipes[2]);
+    $exitCode = proc_close($process);
+    if ($exitCode !== 0) {
+        fail(sprintf('command failed with exit %d: %s; %s', $exitCode, implode(' ', $command), trim((string) $stderr)));
+    }
+
+    return (string) $stdout;
 }
 
 /** @return array<string, mixed> */
