@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace voku\AgentRecallCompiler\Review;
 
+use RuntimeException;
+
 final readonly class ReviewReport
 {
     public const int VERSION = 2;
@@ -15,6 +17,18 @@ final readonly class ReviewReport
         public ?int $contractRevision = null,
         public ?string $implementationSnapshot = null,
     ) {
+        if (($this->contractRevision === null) !== ($this->implementationSnapshot === null)) {
+            throw new RuntimeException('Review evidence binding requires Contract revision and implementation snapshot together.');
+        }
+        if ($this->contractRevision !== null && $this->contractRevision < 1) {
+            throw new RuntimeException('Review Contract revision must be positive.');
+        }
+        if (
+            $this->implementationSnapshot !== null
+            && preg_match('/^sha256:[a-f0-9]{64}$/', $this->implementationSnapshot) !== 1
+        ) {
+            throw new RuntimeException('Review implementation snapshot must be a sha256:<64 lowercase hex> digest.');
+        }
     }
 
     public function status(): string
