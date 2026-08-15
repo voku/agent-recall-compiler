@@ -21,6 +21,10 @@ file_put_contents(
         'projectPrefix' => 'ARC',
     ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . PHP_EOL,
 );
+file_put_contents(
+    '.agent-loop/todo/board.md',
+    "# Board Metadata\n\n- **Source:** `todo/cards/*.md`\n- **Project prefix:** ARC\n- **Done count:** 0\n",
+);
 
 $taskBrief = 'Use the real proposal.2026-08-14.004 and .011 regressions to reject obviously stale selected guidance without rewriting proposal history.';
 $taskBriefPath = '.agent-loop/tasks/' . TASK_ID . '.md';
@@ -134,14 +138,14 @@ file_put_contents(
         'created_at' => (new DateTimeImmutable('now'))->format(DateTimeInterface::ATOM),
         'created_by' => ACTOR,
         'scope' => ['agent-kanban/card-create', 'agent-loop/init-scaffold'],
-        'observation' => 'The first full ARC-55 dogfood run created a READY card successfully, but agent-loop verify later rejected the same card because READY requires taskBrief. The card create CLI cannot accept the brief field, so direct READY creation can produce a board state that the verifier rejects.',
+        'observation' => 'Full ARC-55 lifecycle dogfood exposed two setup states accepted before verify but rejected by the final verifier: direct READY card creation lacked required taskBrief, and changing kanban.config projectPrefix after init scaffold left board.md declaring DEMO while the board was configured for ARC.',
         'evidence' => [[
             'type' => 'test_result',
             'command' => 'agent-loop verify --task-id=ARC-55',
-            'summary' => 'The initial dogfood close-out failed with missing-task-brief for ARC-55 after card create had accepted lane READY. The harness became verify-clean only after creating in BACKLOG, setting taskBrief through card update --brief, and moving the card to READY.',
+            'summary' => 'The first close-out failed for missing-task-brief and project-prefix drift. Creating in BACKLOG, setting taskBrief through card update --brief, and moving to READY removed the field failure; verify then isolated board-metadata-inconsistency until board.md metadata matched the configured ARC prefix.',
         ]],
-        'hypothesis' => 'Board mutation commands do not enforce requiredFieldsByLane atomically when creating a card, and the create command cannot supply every default READY-required field.',
-        'validated_conclusion' => 'A caller that needs a READY card must currently create it in a less restrictive lane, populate taskBrief, then transition to READY. The owner API should eventually make invalid direct READY creation impossible or allow required READY fields to be provided atomically.',
+        'hypothesis' => 'Workflow setup and board mutation paths do not atomically enforce or project the same lane and board metadata invariants that verify later checks.',
+        'validated_conclusion' => 'Consumers repurposing init scaffold must currently keep kanban config and board metadata synchronized and populate required lane fields before transitions. Owner APIs should eventually make these verify-invalid intermediate states impossible or provide one atomic setup path.',
         'confidence' => 'high',
         'validation_status' => 'validated',
         'status' => 'validated',
@@ -153,7 +157,7 @@ run([
     PHP_BINARY, AGENT_LOOP_BIN, 'workflow', 'learn', TASK_ID,
     '--status', 'findings_recorded',
     '--by', ACTOR,
-    '--reason', 'Full lifecycle dogfood exposed a reproducible board mutation/verifier mismatch while preparing ARC-55.',
+    '--reason', 'Full lifecycle dogfood exposed reproducible board setup/mutation states that only the final verifier rejected.',
     '--finding', $findingId,
 ]);
 
