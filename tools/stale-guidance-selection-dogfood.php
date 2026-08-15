@@ -12,18 +12,39 @@ run(['rm', '-rf', '.agent-loop', REPORT_DIR]);
 ensureDirectory(REPORT_DIR);
 
 run([PHP_BINARY, AGENT_LOOP_BIN, 'init', 'scaffold']);
-ensureDirectory('.agent-loop/tasks');
+@unlink('.agent-loop/todo/cards/DEMO-1.md');
+@unlink('.agent-loop/tasks/DEMO-1.md');
 file_put_contents(
-    '.agent-loop/tasks/' . TASK_ID . '.md',
+    '.agent-loop/todo/kanban.config.json',
+    json_encode([
+        'projectPrefix' => 'ARC',
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . PHP_EOL,
+);
+
+$taskBriefPath = '.agent-loop/tasks/' . TASK_ID . '.md';
+file_put_contents(
+    $taskBriefPath,
     "# ARC-55\n\nUse the real proposal.2026-08-14.004 and .011 regressions to reject obviously stale selected guidance without rewriting proposal history.\n",
 );
 
 run([
     PHP_BINARY, AGENT_LOOP_BIN, 'board', 'card', 'create', TASK_ID,
     '--title=Reject stale selected guidance deterministically',
-    '--lane=READY',
-    '--status=Selected',
+    '--lane=BACKLOG',
+    '--status=Backlog',
+    '--summary=Use real approved-guidance regressions to make stale validation entry points fail closed.',
 ]);
+run([
+    PHP_BINARY, AGENT_LOOP_BIN, 'board', 'card', 'update', TASK_ID,
+    '--status=Selected',
+    '--brief=' . $taskBriefPath,
+]);
+run([
+    PHP_BINARY, AGENT_LOOP_BIN, 'board', 'card', 'move', TASK_ID,
+    '--to=READY',
+    '--actor=' . ACTOR,
+]);
+
 run([
     AGENT_MAP_BIN, 'build',
     '--root=.',
@@ -93,6 +114,11 @@ $reviewPath = '.agent-loop/recall/' . TASK_ID . '/reviews/' . TASK_ID . '.blinds
 if (!is_file($reviewPath) || !copy($reviewPath, REPORT_DIR . '/blindspots.json')) {
     fail('blind-spot review artifact not found');
 }
+run([
+    PHP_BINARY, AGENT_LOOP_BIN, 'session', 'checkpoint', TASK_ID,
+    '--title=Review',
+    '--body=review blindspots ARC-55 was generated and inspected by the stale-guidance dogfood run.',
+]);
 
 run([
     PHP_BINARY, AGENT_LOOP_BIN, 'workflow', 'learn', TASK_ID,
