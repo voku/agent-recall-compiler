@@ -152,6 +152,10 @@ final class BlindSpotReviewer
     }
 
     /**
+     * Match a marker only when it is not embedded inside a larger identifier token.
+     * ASCII letters, digits and underscore are token characters; punctuation and
+     * whitespace form deterministic boundaries for both single- and multi-word markers.
+     *
      * @param list<string> $markers
      *
      * @return list<string>
@@ -159,12 +163,13 @@ final class BlindSpotReviewer
     private function matchedMarkers(string $text, array $markers): array
     {
         $matches = [];
-        $haystack = strtolower($text);
         foreach ($markers as $marker) {
-            if (str_contains($haystack, strtolower($marker))) {
+            $pattern = '~(?<![A-Za-z0-9_])' . preg_quote($marker, '~') . '(?![A-Za-z0-9_])~i';
+            if (preg_match($pattern, $text) === 1) {
                 $matches[] = $marker;
             }
         }
+
         return $matches;
     }
 
