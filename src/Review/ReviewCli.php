@@ -50,7 +50,12 @@ final class ReviewCli
 
         try {
             return match ($command) {
-                'blindspots' => $this->runBlindspots($taskId, $outputDir),
+                'blindspots' => $this->runBlindspots(
+                    $taskId,
+                    $outputDir,
+                    $this->contractRevision($parsed['options']),
+                    $this->implementationSnapshot($parsed['options']),
+                ),
                 'code' => $this->runCode($taskId, $outputDir),
             };
         } catch (RuntimeException $exception) {
@@ -59,9 +64,20 @@ final class ReviewCli
         }
     }
 
-    private function runBlindspots(string $taskId, string $outputDir): int
-    {
+    private function runBlindspots(
+        string $taskId,
+        string $outputDir,
+        ?int $contractRevision,
+        ?string $implementationSnapshot,
+    ): int {
+        if (($contractRevision === null) !== ($implementationSnapshot === null)) {
+            throw new RuntimeException('--contract-revision and --implementation-snapshot must be provided together.');
+        }
+
         $report = (new BlindSpotReviewer($this->workspacePath))->review($taskId, $outputDir);
+        if ($contractRevision !== null) {
+            $report = new ReviewReport($report->taskId, $report->findings, $contractRevision, $implementationSnapshot);
+        }
         (new ReviewReportWriter($this->workspacePath))->write($report, $outputDir);
 
         $base = rtrim($outputDir, '/') . '/reviews/' . $taskId . '.blindspots';
@@ -108,7 +124,7 @@ agent-recall-compiler review - deterministic recall review helpers.
 Usage:
   agent-recall-compiler review help
   agent-recall-compiler review first-draft
-  agent-recall-compiler review blindspots <task-id> [--output-dir PATH]
+  agent-recall-compiler review blindspots <task-id> [--output-dir PATH] [--contract-revision N --implementation-snapshot sha256:DIGEST]
   agent-recall-compiler review code <task-id> [--output-dir PATH]
 
 Commands:
@@ -147,6 +163,35 @@ TXT;
         }
 
         return ['options' => $options, 'arguments' => $arguments];
+    }
+
+    /** @param array<string, list<string>> $options */
+    private function contractRevision(array $options): ?int
+    {
+        $value = $this->stringOption($options, 'contract-revision');
+        if ($value === null) {
+            return null;
+        }
+        if (filter_var($value, FILTER_VALIDATE_INT) === false || (int) $value < 1) {
+            throw new RuntimeException('--contract-revision requires a positive integer.');
+        }
+
+        return (int) $value;
+    }
+
+    /** @param array<string, list<string>> $options */
+    private function implementationSnapshot(array $options): ?string
+    {
+        $value = $this->stringOption($options, 'implementation-snapshot');
+        if ($value === null) {
+            return null;
+        }
+        $value = trim($value);
+        if (preg_match('/^sha256:[a-f0-9]{64}$/', $value) !== 1) {
+            throw new RuntimeException('--implementation-snapshot must be a sha256:<64 lowercase hex> digest.');
+        }
+
+        return $value;
     }
 
     /** @param array<string, list<string>> $options */
