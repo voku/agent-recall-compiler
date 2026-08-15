@@ -56,7 +56,7 @@ final class BlindSpotMarkerBoundaryTest extends TestCase
         $finding = $this->finding($report->findings, 'security_sensitive_context');
 
         self::assertNotNull($finding);
-        self::assertSame('warn', $finding->severity->value);
+        self::assertSame('WARN', $finding->severity->value);
         self::assertSame(['Matched markers: auth, sql, role'], $finding->evidence);
     }
 
