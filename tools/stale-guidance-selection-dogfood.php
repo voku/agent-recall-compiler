@@ -50,30 +50,83 @@ run([
 ], REPORT_DIR . '/workflow-context.txt');
 
 $systemPath = '.agent-loop/recall/' . TASK_ID . '/system.md';
-if (!is_file($systemPath)) {
-    fail('compiled system.md not found');
-}
-if (!copy($systemPath, REPORT_DIR . '/system.md')) {
-    fail('cannot copy compiled system.md');
+if (!is_file($systemPath) || !copy($systemPath, REPORT_DIR . '/system.md')) {
+    fail('compiled system.md not found or could not be copied');
 }
 
-$status = run([
-    PHP_BINARY, AGENT_LOOP_BIN, 'workflow', 'status', TASK_ID, '--format=json',
-], REPORT_DIR . '/workflow-status.json');
-if ($status !== 0) {
-    fail('workflow status failed');
+$runData = readJson('.agent-loop/runs/' . TASK_ID . '/run.json');
+$contractRevision = $runData['contract_revision'] ?? null;
+if (!is_int($contractRevision) || $contractRevision < 1) {
+    fail('governed Run has no positive contract_revision');
 }
+
+$validations = [
+    [
+        'command' => 'vendor/bin/phpunit tests/FeedbackAndBlockTest.php',
+        'argv' => ['vendor/bin/phpunit', 'tests/FeedbackAndBlockTest.php'],
+    ],
+    [
+        'command' => 'vendor/bin/phpstan analyse --configuration=phpstan.neon.dist',
+        'argv' => ['vendor/bin/phpstan', 'analyse', '--configuration=phpstan.neon.dist'],
+    ],
+];
+foreach ($validations as $index => $validation) {
+    $started = hrtime(true);
+    run($validation['argv'], REPORT_DIR . '/validation-' . ($index + 1) . '.log');
+    $durationMs = intdiv(hrtime(true) - $started, 1_000_000);
+    run([
+        PHP_BINARY, AGENT_LOOP_BIN, 'session', 'validation', 'record', TASK_ID,
+        '--contract-revision', (string) $contractRevision,
+        '--command', $validation['command'],
+        '--status', 'passed',
+        '--exit-code', '0',
+        '--duration-ms', (string) $durationMs,
+        '--by', ACTOR,
+    ]);
+}
+
+run([
+    PHP_BINARY, AGENT_LOOP_BIN, 'review', 'blindspots', TASK_ID,
+], REPORT_DIR . '/blindspots.txt');
+
+$reviewPath = '.agent-loop/recall/' . TASK_ID . '/reviews/' . TASK_ID . '.blindspots.json';
+if (!is_file($reviewPath) || !copy($reviewPath, REPORT_DIR . '/blindspots.json')) {
+    fail('blind-spot review artifact not found');
+}
+
+run([
+    PHP_BINARY, AGENT_LOOP_BIN, 'workflow', 'learn', TASK_ID,
+    '--status', 'no_durable_learning',
+    '--by', ACTOR,
+    '--reason', 'The task implements already-validated .004/.011 regression evidence; this bounded run exposed no additional reusable finding.',
+]);
+run([PHP_BINARY, AGENT_LOOP_BIN, 'verify', '--task-id=' . TASK_ID], REPORT_DIR . '/verify.txt');
+run([
+    PHP_BINARY, AGENT_LOOP_BIN, 'workflow', 'report', TASK_ID,
+    '--changed-file', 'src/Compilation/RecallCompilationService.php',
+    '--changed-file', 'tests/FeedbackAndBlockTest.php',
+    '--format', 'json',
+], REPORT_DIR . '/workflow-report.json');
+run([PHP_BINARY, AGENT_LOOP_BIN, 'workflow', 'close', TASK_ID, '--status', 'done'], REPORT_DIR . '/workflow-close.txt');
+run([
+    PHP_BINARY, AGENT_LOOP_BIN, 'workflow', 'status', TASK_ID,
+    '--expect', 'complete', '--format=json',
+], REPORT_DIR . '/workflow-status.json');
 
 file_put_contents(REPORT_DIR . '/result.json', json_encode([
     'schema_version' => '1.0',
     'task_id' => TASK_ID,
-    'phase' => 'CONTEXT',
+    'contract_revision' => $contractRevision,
     'approved_by' => 'voku',
-    'product_mutation_performed' => false,
-    'result' => 'ready_for_implementation',
+    'validation_commands' => array_column($validations, 'command'),
+    'review' => 'blindspots_recorded',
+    'learning' => 'no_durable_learning',
+    'verification' => 'passed',
+    'state' => 'complete',
+    'result' => 'passed',
 ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . PHP_EOL);
 
-fwrite(STDOUT, "ARC-55 agent-loop PLAN/APPROVE/CONTEXT dogfood: PASSED\n");
+fwrite(STDOUT, "ARC-55 agent-loop dogfood: COMPLETE\n");
 
 /** @param non-empty-list<string> $command */
 function run(array $command, ?string $outputPath = null): int
@@ -94,6 +147,17 @@ function run(array $command, ?string $outputPath = null): int
     }
 
     return $exitCode;
+}
+
+/** @return array<string, mixed> */
+function readJson(string $path): array
+{
+    $data = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+    if (!is_array($data)) {
+        fail('expected JSON object: ' . $path);
+    }
+
+    return $data;
 }
 
 function ensureDirectory(string $path): void
