@@ -75,8 +75,12 @@ final class RecallPromptBuilder
         ));
         if ($navigationFacts !== []) {
             $md[] = "## Navigation Facts";
+            $sourceRefs = [];
             foreach ($navigationFacts as $fact) {
                 $sourceRef = is_string($fact['source_ref'] ?? null) ? $fact['source_ref'] : 'unknown';
+                $sourceRefs[$sourceRef] = true;
+            }
+            foreach (array_keys($sourceRefs) as $sourceRef) {
                 $md[] = "- " . $sourceRef;
             }
             $md[] = "";
