@@ -4,6 +4,20 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.13.1] - 2026-08-16
+
+### Fixed
+
+- `regression-hunt` now treats `minimum_findings` as a bounded probe budget
+  instead of a required defect count. Completed evidence-backed probes may
+  return `CLEAN`, missing material evidence may return `BLOCKED`, and the
+  recipe explicitly forbids manufacturing defects to satisfy the numeric floor.
+
+### Validation
+
+- PR #74 passed the package CI matrix and pins the CLEAN/BLOCKED and
+  anti-defect-quota contract in `RegressionHuntPromptContractTest`.
+
 ## [0.13.0] - 2026-08-15
 
 ### Changed
