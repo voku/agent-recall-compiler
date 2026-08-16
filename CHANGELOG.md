@@ -4,6 +4,20 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.13.2] - 2026-08-16
+
+### Fixed
+
+- Deduplicate byte-identical navigation source references in compiled `system.md` while preserving first-seen order. The regression was independently reproduced by `voku/httpful#34` and `voku/phonetic-algorithms#6`.
+
+### CI
+
+- Stage the Recall candidate outside the nested consumer checkout before installed `agent-loop` dogfood, so the candidate under test cannot be confused with consumer-local state.
+
+### Validation
+
+- PR #70 passed PHPUnit and PHPStan on PHP 8.3, 8.4, and 8.5 plus the governed installed `agent-loop` context-explain dogfood. CodeRabbit reported no actionable review findings.
+
 ## [0.13.1] - 2026-08-16
 
 ### Fixed
