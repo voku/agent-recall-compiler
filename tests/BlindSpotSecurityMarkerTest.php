@@ -47,7 +47,7 @@ final class BlindSpotSecurityMarkerTest extends TestCase
         $finding = $this->securityFinding();
         self::assertNotNull($finding);
         self::assertSame(
-            ['Matched markers: login, password, csrf, xss, sql, permission, role'],
+            ['Matched markers: auth, login, password, csrf, xss, sql, permission, role'],
             $finding->evidence,
         );
     }
