@@ -1,0 +1,73 @@
+name: Prepare 0.13.2 release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/prepare-0.13.2.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Prepare exact release metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          target='cf2ebe1ac8822eefe1062a91d979690cf0ec5613'
+          git merge-base --is-ancestor "${target}" HEAD
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('CHANGELOG.md')
+          text = path.read_text()
+          anchor = '## [0.13.1] - 2026-08-16\n'
+          if text.count(anchor) != 1:
+              raise SystemExit('0.13.1 changelog anchor is not unique')
+          if '## [0.13.2] - 2026-08-16' in text:
+              raise SystemExit('0.13.2 section already exists')
+
+          section = '''## [0.13.2] - 2026-08-16
+
+          ### Fixed
+
+          - Deduplicate byte-identical navigation source references in compiled `system.md` while preserving first-seen order. The regression was independently reproduced by `voku/httpful#34` and `voku/phonetic-algorithms#6`.
+
+          ### CI
+
+          - Stage the Recall candidate outside the nested consumer checkout before installed `agent-loop` dogfood, so the candidate under test cannot be confused with consumer-local state.
+
+          ### Validation
+
+          - PR #70 passed PHPUnit and PHPStan on PHP 8.3, 8.4, and 8.5 plus the governed installed `agent-loop` context-explain dogfood. CodeRabbit reported no actionable review findings.
+
+          '''
+          path.write_text(text.replace(anchor, section + anchor, 1))
+          PY
+
+          mkdir -p .release
+          cat > .release/0.13.2.json <<'JSON'
+          {
+            "target_sha": "cf2ebe1ac8822eefe1062a91d979690cf0ec5613",
+            "version": "0.13.2"
+          }
+          JSON
+
+          rm .github/workflows/prepare-0.13.2.yml
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add CHANGELOG.md .release/0.13.2.json .github/workflows/prepare-0.13.2.yml
+          git diff --cached --check
+          git commit -m 'release: prepare 0.13.2'
+          git tag -a '0.13.2' "${target}" -m 'agent-recall-compiler 0.13.2'
+          git push --atomic origin HEAD:main refs/tags/0.13.2
