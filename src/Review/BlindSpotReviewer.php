@@ -65,7 +65,7 @@ final class BlindSpotReviewer
             $findings[] = new BlindSpotFinding('token_noise_risk', ReviewSeverity::INFO, 'Recall artifacts mention commands that can create token noise.', ['Matched markers: ' . implode(', ', $noise)]);
         }
 
-        $security = $this->matchedMarkers($text, self::SECURITY_MARKERS);
+        $security = $this->matchedSecurityMarkers($text);
         if ($security !== []) {
             $findings[] = new BlindSpotFinding('security_sensitive_context', ReviewSeverity::WARN, 'Recall artifacts mention security-sensitive terms.', ['Matched markers: ' . implode(', ', $security)]);
         }
@@ -149,6 +149,19 @@ final class BlindSpotReviewer
         $root = rtrim($this->workspacePath, '/') . '/';
 
         return str_starts_with($path, $root) ? substr($path, strlen($root)) : $path;
+    }
+
+    /** @return list<string> */
+    private function matchedSecurityMarkers(string $text): array
+    {
+        $matches = [];
+        foreach (self::SECURITY_MARKERS as $marker) {
+            if (preg_match('/(?<![A-Za-z0-9])' . preg_quote($marker, '/') . '(?![A-Za-z0-9])/i', $text) === 1) {
+                $matches[] = $marker;
+            }
+        }
+
+        return $matches;
     }
 
     /**
