@@ -65,13 +65,22 @@ jobs:
       - name: Install candidate package development dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
+      - name: Stage Recall candidate outside nested consumer checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          candidate="${RUNNER_TEMP}/agent-recall-candidate"
+          rm -rf "${candidate}"
+          mkdir -p "${candidate}"
+          git archive HEAD | tar -x -C "${candidate}"
+
       - name: Configure pinned released dependency set with this Recall candidate
         run: |
           php -r '
           $path = "build/agent-loop/composer.json";
           $data = json_decode(file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
           $data["repositories"] = [
-              ["type" => "path", "url" => getcwd(), "options" => ["symlink" => false, "versions" => ["voku/agent-recall-compiler" => "0.11.999"]]],
+              ["type" => "path", "url" => getenv("RUNNER_TEMP") . "/agent-recall-candidate", "options" => ["symlink" => false, "versions" => ["voku/agent-recall-compiler" => "0.11.999"]]],
           ];
           $data["require"]["voku/agent-kanban"] = "0.2.1";
           $data["require"]["voku/agent-learning"] = "0.10.0";
