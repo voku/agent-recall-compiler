@@ -38,19 +38,19 @@ jobs:
 
           section = '''## [0.13.2] - 2026-08-16
 
-### Fixed
+          ### Fixed
 
-- Deduplicate byte-identical navigation source references in compiled `system.md` while preserving first-seen order. The regression was independently reproduced by `voku/httpful#34` and `voku/phonetic-algorithms#6`.
+          - Deduplicate byte-identical navigation source references in compiled `system.md` while preserving first-seen order. The regression was independently reproduced by `voku/httpful#34` and `voku/phonetic-algorithms#6`.
 
-### CI
+          ### CI
 
-- Stage the Recall candidate outside the nested consumer checkout before installed `agent-loop` dogfood, so the candidate under test cannot be confused with consumer-local state.
+          - Stage the Recall candidate outside the nested consumer checkout before installed `agent-loop` dogfood, so the candidate under test cannot be confused with consumer-local state.
 
-### Validation
+          ### Validation
 
-- PR #70 passed PHPUnit and PHPStan on PHP 8.3, 8.4, and 8.5 plus the governed installed `agent-loop` context-explain dogfood. CodeRabbit reported no actionable review findings.
+          - PR #70 passed PHPUnit and PHPStan on PHP 8.3, 8.4, and 8.5 plus the governed installed `agent-loop` context-explain dogfood. CodeRabbit reported no actionable review findings.
 
-'''
+          '''
           path.write_text(text.replace(anchor, section + anchor, 1))
           PY
 
