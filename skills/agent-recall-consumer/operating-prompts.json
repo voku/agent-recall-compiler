@@ -14,7 +14,7 @@
     {
       "id": "continue-until-done",
       "level": 1,
-      "template": "Continue from the current validated state without restarting discovery. After each step, run the cheapest meaningful validation and use passing evidence as the signal to continue. Do not stop after the first acceptable result. Stop only when {{done_condition}} is satisfied or a concrete blocker makes further safe progress impossible."
+      "template": "Continue from the current validated state without restarting discovery. Work in bounded steps. After each step, run the cheapest meaningful validation and perform an internal continuation check, not approval or external confirmation. Continue automatically only while the current authority remains valid, required evidence supports the next step, and no external decision is required. Never satisfy a human, owner, reviewer, or accepted-risk decision by confirming it yourself. If the next step requires such authority, or would change the approved Goal, acceptance criteria, scope or non-goals, stop with HUMAN_DECISION_REQUIRED / BLOCKED and name the exact decision instead of self-approving it. Do not stop after the first acceptable result. Stop successfully only when {{done_condition}} is satisfied by observed evidence; otherwise stop on a concrete blocker that makes further safe progress impossible."
     },
     {
       "id": "coverage-mutation",
