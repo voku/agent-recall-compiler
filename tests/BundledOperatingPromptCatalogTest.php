@@ -87,6 +87,46 @@ final class BundledOperatingPromptCatalogTest extends TestCase
         self::assertStringContainsString('CLEAN remains valid', $system);
     }
 
+    public function testBundledTodoCardHandoffCompilesSelfContainedHandoffContractThroughTheRealCli(): void
+    {
+        $manifest = dirname(__DIR__) . '/skills/agent-recall-consumer/operating-prompts.json';
+        self::assertFileExists($manifest);
+
+        $output = $this->root . '/handoff-output';
+        $request = json_encode([
+            'id' => 'todo-card-handoff',
+            'arguments' => [],
+        ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
+
+        self::assertSame(0, (new Cli())->run([
+            'agent-recall-compiler',
+            'compile',
+            '--root',
+            $this->root,
+            '--task',
+            'BUNDLED-PROMPT-2',
+            '--description',
+            'Prepare durable follow-up work for another coding agent.',
+            '--file',
+            'src/Example.php',
+            '--operating-prompt-manifest',
+            $manifest,
+            '--operating-prompt',
+            $request,
+            '--output-dir',
+            $output,
+            '--compilation-id',
+            'compilation.BUNDLED-PROMPT-2.fixed',
+        ]));
+
+        $system = (string) file_get_contents($output . '/system.md');
+        self::assertStringContainsString('### todo-card-handoff (L2)', $system);
+        self::assertStringContainsString('has no access to the current chat, Session-private context, hidden reasoning, or prior agent memory', $system);
+        self::assertStringContainsString('Update an existing matching card when one already owns the work', $system);
+        self::assertStringContainsString('Do not manufacture backlog, decisions, commands, paths, or architecture', $system);
+        self::assertStringContainsString('begin with bounded verification rather than rediscovering the entire history', $system);
+    }
+
     public function testConsumerSkillMatchesCurrentCliDefaultsAndCommands(): void
     {
         $skill = (string) file_get_contents(dirname(__DIR__) . '/skills/agent-recall-consumer/SKILL.md');
@@ -107,6 +147,7 @@ final class BundledOperatingPromptCatalogTest extends TestCase
         self::assertStringContainsString('prompt future-work --scope project', $skill);
         self::assertStringContainsString('prompt guidance-gaps', $skill);
         self::assertStringContainsString('review first-draft', $skill);
+        self::assertStringContainsString('"id":"todo-card-handoff","arguments":{}', $skill);
     }
 
     public function testConsumerSkillMatchesGuidanceGapPromptContract(): void
