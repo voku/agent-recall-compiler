@@ -4,6 +4,22 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.13.3] - 2026-08-17
+
+### Added
+
+- Add the bundled `todo-card-handoff` L2 recipe for self-contained durable task handoff to coding agents without chat, Session-private context, hidden reasoning, or prior-agent memory. The recipe requires repository anchors, verified/inferred separation, bounded next steps, observable acceptance, and the repository's existing task owner instead of inventing another backlog format.
+
+### Changed
+
+- Code-review and blind-spot L2 prompts now treat every LLM-produced statement as a candidate claim rather than repository truth. Material claims must be re-grounded against current authoritative artifacts or deterministic evidence before acting; detailed patches, scorecards, confident rationale, or review provenance do not prove that named classes, boundaries, bugs, or metrics exist.
+- Blind-spot prompts now inherit the existing first-draft falsification lens and require material claims to carry an epistemic status plus concrete supporting or contradicting evidence. Review findings remain investigation candidates rather than instructions to modify code.
+
+### Validation
+
+- PR #79 added a real CLI compile regression for the bundled TODO handoff recipe.
+- PR #80 first reproduced the missing model-output trust boundary with a red regression, then preserved the existing sub-1500-byte first-draft prompt budget after CI rejected an overlong draft.
+- Exact release target `5934f4ecce271d00b2229e04bea4108e5c782bc4` passed main-branch PHPUnit and PHPStan on PHP 8.3, 8.4, and 8.5. PR #80 also passed the governed installed `agent-loop` context-explain dogfood. CodeRabbit was rate-limited for #80, so no external-review claim is made.
 ## [0.13.2] - 2026-08-16
 
 ### Fixed
