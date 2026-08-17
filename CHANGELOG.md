@@ -4,6 +4,17 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.13.4] - 2026-08-17
+
+### Changed
+
+- `continue-until-done` now treats slice-by-slice self-confirmation as an internal continuation check only. Autonomous execution may continue while existing authority remains valid and evidence supports the next step, but it cannot satisfy human, owner, reviewer, accepted-risk, or approved-contract decisions by confirming itself.
+- Crossing an external authority boundary now requires `HUMAN_DECISION_REQUIRED` / `BLOCKED`, while successful completion requires the configured Done condition to be satisfied by observed evidence.
+
+### Validation
+
+- PR #82 first reproduced the missing authority boundary with a test-only red regression, then passed PHPUnit and PHPStan on PHP 8.3, 8.4, and 8.5 plus the governed installed `agent-loop` context-explain dogfood.
+- Exact release target `4c621e1e7ff511a7e1cc5c5aa70059b5aa532c5a` passed main-branch CI run #374 after merge. CodeRabbit was rate-limited for #82, so no external-review claim is made.
 ## [0.13.3] - 2026-08-17
 
 ### Added
