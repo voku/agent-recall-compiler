@@ -68,10 +68,7 @@ final class ScopedDocumentRecallProvider implements RecallProvider
             if (str_starts_with($source, '/') || preg_match('~^[A-Za-z]:[\\\\/]~', $source) === 1) {
                 throw new RuntimeException('document ' . $id . ' source must be relative to its manifest');
             }
-            $sourcePath = dirname($this->manifestPath) . '/' . $source;
-            if (!is_file($sourcePath)) {
-                throw new RuntimeException('document source not found for ' . $id . ': ' . $source);
-            }
+            $sourcePath = $this->containedSourcePath($id, $source, $rootConfig->projectRoot);
             $content = file_get_contents($sourcePath);
             if ($content === false) {
                 throw new RuntimeException('cannot read document source for ' . $id . ': ' . $source);
@@ -206,6 +203,31 @@ final class ScopedDocumentRecallProvider implements RecallProvider
         }
 
         return $tags !== [] && $task->tags !== [] && array_intersect($tags, $task->tags) !== [];
+    }
+
+    private function containedSourcePath(string $id, string $source, ?string $projectRoot): string
+    {
+        $candidate = dirname($this->manifestPath) . '/' . $source;
+        $realSourcePath = realpath($candidate);
+        if ($realSourcePath === false || !is_file($realSourcePath)) {
+            throw new RuntimeException('document source not found for ' . $id . ': ' . $source);
+        }
+        if ($projectRoot === null) {
+            return $realSourcePath;
+        }
+
+        $realProjectRoot = realpath($projectRoot);
+        if ($realProjectRoot === false) {
+            throw new RuntimeException('project root not found while resolving document ' . $id . ': ' . $projectRoot);
+        }
+
+        $projectPrefix = rtrim(str_replace('\\', '/', $realProjectRoot), '/') . '/';
+        $normalizedSource = str_replace('\\', '/', $realSourcePath);
+        if (!str_starts_with($normalizedSource, $projectPrefix)) {
+            throw new RuntimeException('document ' . $id . ' source must stay inside the project root: ' . $source);
+        }
+
+        return $realSourcePath;
     }
 
     private function projectRelativeSourceRef(string $sourcePath, ?string $projectRoot): ?string
