@@ -34,7 +34,18 @@ final class ReviewPromptBuilder
                 $lines[] = '  - ' . $evidence;
             }
         }
-        $lines = array_merge($lines, ['', '## Output contract', '', 'Return Markdown with headings: Summary, Critical blind spots, Evidence, Required next action, Close readiness.', 'Close readiness must be BLOCKED, NEEDS HUMAN REVIEW, or READY FOR HUMAN CLOSE.', '', '## Artifacts', '']);
+        $lines = array_merge($lines, [
+            '',
+            '## Output contract',
+            '',
+            'Return Markdown with headings: Summary, Critical blind spots, Evidence, Required next action, Close readiness.',
+            'For each material claim, give its epistemic status and the concrete artifact/evidence that supports or contradicts it.',
+            'Review findings are investigation candidates, not instructions to modify code.',
+            'Close readiness must be BLOCKED, NEEDS HUMAN REVIEW, or READY FOR HUMAN CLOSE.',
+            '',
+            '## Artifacts',
+            '',
+        ]);
         return $this->appendArtifacts($lines, $artifacts);
     }
 
