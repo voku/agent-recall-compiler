@@ -122,6 +122,9 @@ final class BundledOperatingPromptCatalogTest extends TestCase
         $system = (string) file_get_contents($output . '/system.md');
         self::assertStringContainsString('### todo-card-handoff (L2)', $system);
         self::assertStringContainsString('has no access to the current chat, Session-private context, hidden reasoning, or prior agent memory', $system);
+        self::assertStringContainsString('if that authority is missing or conflicting, return BLOCKED', $system);
+        self::assertStringContainsString('Keep VERIFIED facts separate from INFERRED or UNKNOWN claims', $system);
+        self::assertStringContainsString('Preserve package and workflow owner boundaries', $system);
         self::assertStringContainsString('Update an existing matching card when one already owns the work', $system);
         self::assertStringContainsString('Do not manufacture backlog, decisions, commands, paths, or architecture', $system);
         self::assertStringContainsString('begin with bounded verification rather than rediscovering the entire history', $system);
