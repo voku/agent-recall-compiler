@@ -65,6 +65,11 @@
       "id": "retry-stop",
       "level": 1,
       "template": "Retry only while each attempt is based on new evidence. If the same validation fails {{maximum_failures}} times in a row, stop. Do not attempt another speculative fix. Report the exact failing command, the latest concrete error, what changed between attempts, the smallest safe next step, and what information is still missing."
+    },
+    {
+      "id": "todo-card-handoff",
+      "level": 2,
+      "template": "Create a project-specific handoff-planning prompt that turns the current task and repository evidence into self-contained TODO or work cards for a coding agent that has no access to the current chat, Session-private context, hidden reasoning, or prior agent memory. Use the repository's existing durable task/card format and owner from recall context; if that authority is missing or conflicting, return BLOCKED instead of inventing a new task system. Each card must stand on its own and record the intended outcome, why it matters, VERIFIED current state and already-completed work, exact repository anchors needed to resume such as files, symbols, issues, pull requests, commits, contracts, runs, or artifacts, scope and non-goals, dependencies and ordering, the smallest concrete next implementation steps, exact repository-supported verification commands or evidence probes, observable acceptance criteria and Done When, and remaining blockers or UNKNOWNs. Replace conversational references such as 'as discussed above', 'continue from here', or 'we already found' with durable evidence a fresh agent can resolve. Keep VERIFIED facts separate from INFERRED or UNKNOWN claims. Preserve package and workflow owner boundaries, and reference existing upstream work instead of duplicating it. Update an existing matching card when one already owns the work; create a new card only for independently executable work with a distinct outcome or an explicit dependency. Do not manufacture backlog, decisions, commands, paths, or architecture merely to make the handoff look complete. The generated prompt must leave enough concrete context that the next coding agent can begin with bounded verification rather than rediscovering the entire history."
     }
   ]
 }
