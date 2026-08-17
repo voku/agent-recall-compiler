@@ -94,6 +94,21 @@ vendor/bin/agent-recall-compiler prompt future-work --scope task
 
 It does not mutate workflow state or imply that follow-up work must be created.
 
+## Handoff TODO Cards
+
+Use the bundled `todo-card-handoff` L2 recipe when validated follow-up work must be persisted for another coding agent that will not have the current chat, Session-private context, hidden reasoning, or prior-agent memory:
+
+```bash
+vendor/bin/agent-recall-compiler compile \
+  --task PROJECT-123 \
+  --description "Prepare self-contained follow-up TODO cards for the next coding agent" \
+  --file src/Navigation/Menu.php \
+  --operating-prompt-manifest vendor/voku/agent-recall-compiler/skills/agent-recall-consumer/operating-prompts.json \
+  --operating-prompt '{"id":"todo-card-handoff","arguments":{}}'
+```
+
+The recipe does not create cards by itself. It constructs a project-specific L1 prompt from Recall evidence. That prompt must use the repository's existing durable task/card owner and format, update an existing matching card instead of duplicating work, record verified current state and already-completed work, name concrete repository anchors and dependencies, preserve scope/non-goals and owner boundaries, provide exact supported verification/evidence probes and observable Done When criteria, and keep blockers or unknowns explicit. If Recall does not establish which durable task system owns the handoff, the generated prompt must return `BLOCKED` instead of inventing one.
+
 ## Guidance-gap Technique
 
 To expose where an implementation had to guess because a usable source of truth was absent, run the opt-in L2 helper explicitly:
