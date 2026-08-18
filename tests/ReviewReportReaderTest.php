@@ -112,6 +112,22 @@ final class ReviewReportReaderTest extends TestCase
         (new ReviewReportReader($this->root))->read('ABC-123', '.agent-recall/current');
     }
 
+    public function testRejectsVersionTwoReportWithoutBindingFields(): void
+    {
+        $contents = json_encode([
+            'version' => ReviewReport::VERSION,
+            'task_id' => 'ABC-123',
+            'status' => 'ok',
+            'findings' => [],
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n";
+        $this->writeReport('ABC-123', $contents);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('requires contract_revision and implementation_snapshot fields');
+
+        (new ReviewReportReader($this->root))->read('ABC-123', '.agent-recall/current');
+    }
+
     public function testRejectsReportForAnotherTask(): void
     {
         $contents = json_encode([
