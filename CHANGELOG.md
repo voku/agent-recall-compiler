@@ -4,6 +4,22 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.13.6] - 2026-08-18
+
+### Added
+
+- Add `ReviewReportReader`, `ReviewReportArtifact`, and `ReviewReportPaths` so PHP lifecycle hosts can consume the current blind-spot report and its exact persisted SHA-256 identity without reconstructing Recall's file layout or JSON schema.
+
+### Changed
+
+- `ReviewReportWriter` now uses the same canonical path owner as the reader without changing the existing review artifact layout.
+- Present-but-invalid, task-mismatched, binding-invalid, or internally inconsistent review reports fail explicitly; only an actually missing report returns `null`.
+- Review artifact identity remains evidence only: Recall does not infer or record acknowledgement authority for lifecycle hosts.
+
+### Validation
+
+- PR #87 added focused regressions for missing state, exact persisted-byte identity, Contract/snapshot binding preservation, task mismatch, and status/finding consistency.
+- GitHub Actions for the final PR head remained queued due runner congestion at merge time, so no green-CI claim is made for this release. The exact diff was reviewed before merge and the decoded report shape was made explicit for static analysis.
 ## [0.13.5] - 2026-08-18
 
 ### Added
