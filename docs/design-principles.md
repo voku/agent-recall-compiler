@@ -7,7 +7,7 @@ Recall therefore treats prompting as a compilation problem:
 ```text
 Task intent
 +
-approved Contract
+optional governed Contract binding
 +
 bounded repository facts
 +
@@ -18,13 +18,18 @@ prior outcome evidence
      COMPILE
         ↓
 project-specific operational context
++ selected prompt recipes
         ↓
-optional L2 → L1 construction
+receiving agent / harness
+        ↓
+optional L2 → concrete L1 construction
         ↓
 execution
         ↓
-verification / review / learning by their proper owners
+verification / review / Learning policy by their proper owners
 ```
+
+Standalone compilation can start from inline or JSON task input. Governed compilation instead receives a `governed_recall_input` envelope whose `run_id` is bound to one exact approved durable Contract revision and SHA-256 digest.
 
 The specialized documents contain the implementation contracts. This document keeps the common design rules in one place.
 
@@ -48,6 +53,8 @@ Done When
 ```
 
 `Goal` defines the observable outcome. `Context` contains current project facts. `Constraints` bound scope and forbidden shortcuts. `Verification` defines how reality is measured. `Done When` defines the stopping condition.
+
+Recall does not itself execute the L2 construction pass. It validates and renders selected recipe semantics next to the compiled evidence in `system.md`; the receiving agent or harness constructs the concrete project-specific L1 contract.
 
 See [Operating prompt recipes](operating-prompts.md).
 
@@ -154,9 +161,9 @@ See [Prompt primitives](prompt-primitives.md).
 
 ## 8. Keep execution and verifier knowledge separate when useful
 
-When repository evidence can generate verification questions and canonical accepted answers, those are different artifacts for different consumers.
+When one exact task target is compiled with an `agent-map` index, Recall can build a deterministic verification contract. The execution agent receives public verification questions and obligations, while the separate `verification-key.json` contains canonical accepted answers and source evidence for an independent verifier.
 
-The execution agent may receive the public verification plan. An independent verifier may receive canonical accepted answers and source evidence. The executor does not need the answer key merely to perform the task.
+The executor does not need the answer key merely to perform the task. When there is no map index or the task has zero or multiple exact targets, these verification-plan/key artifacts are not generated and stale copies are removed.
 
 This reduces the chance that verification becomes repetition of expected output instead of independent evidence.
 
@@ -194,7 +201,9 @@ Temporary task context should not become permanent project policy merely because
 
 Useful durable knowledge should materially change how a competent future agent approaches similar work. Task-specific narrative usually should not survive.
 
-Recall records evidence for later Learning decisions while keeping durable mutation outside the compiler's authority boundary. Forgetting low-value task history is part of context quality, not a failure of memory.
+Recall **does** own a durable evidence append surface: `log-outcome` writes immutable selection, guidance-outcome, and operating-prompt-outcome events under the Learning root with duplicate protection and rollback-safe locking. That evidence is deliberately different from durable Learning policy. Recall does not automatically promote, rewrite, weaken, or retire guidance because an outcome event exists.
+
+Forgetting low-value task history and deciding promotion/retirement policy remain concerns of the Learning layer rather than hidden side effects of compilation.
 
 ## 12. Fail closed instead of inventing coherence
 
@@ -211,10 +220,10 @@ Recall owns:
 ```text
 bounded context composition
 selection and exclusion provenance
-Recall-owned prompt semantics
+Recall-specific prompt primitive and recipe validation/rendering semantics
 validation briefing
 Recall artifact rendering and identity
-outcome evidence preparation
+immutable Recall selection/outcome event append semantics
 ```
 
 Recall does not own merely because it has relevant data:
@@ -225,7 +234,7 @@ source-code execution
 Run / Session lifecycle
 review acknowledgement
 final implementation acceptance
-durable Learning policy
+durable Learning promotion / retirement policy
 ```
 
 That narrow boundary is intentional. A component that knows useful facts should not gradually become the authority for every state transition around those facts.
