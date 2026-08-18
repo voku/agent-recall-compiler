@@ -1,318 +1,175 @@
 # Agent Recall Compiler (`voku/agent-recall-compiler`)
 
-Deterministic L2 Meta-Prompt Compiler and Briefing Manager for Coding Agents.
+Deterministic context and L2 operational-prompt compiler for coding agents.
 
 [![Build Status](https://github.com/voku/agent-recall-compiler/actions/workflows/ci.yml/badge.svg)](https://github.com/voku/agent-recall-compiler/actions)
 [![License](https://img.shields.io/github/license/voku/agent-recall-compiler.svg)](LICENSE)
 
-This package forms the **recall layer** of the governed coding-agent loop. It
-orchestrates task-relevant facts from approved work briefs, memory, learning,
-constraints, maps, board projections, and explicitly registered project
-documents into precise, context-aware meta-prompts for subsequent sessions.
+`agent-recall-compiler` is the **recall layer** of a governed coding-agent workflow. It turns approved task intent plus bounded repository evidence into a replayable briefing, project-specific prompt inputs, validation obligations, review artifacts, and outcome evidence.
 
-Rather than overloading an LLM's system prompt with every rule ever created, the Recall Compiler selects only the rules relevant to the files the agent is about to modify. It also warns the agent of past rejections and failures to prevent repeating mistakes.
+It is deliberately not a larger system prompt and not an autonomous workflow owner.
 
----
-
-## Architecture & Workflow
-
-```
-                  ┌────────────────────────┐
-                  │   Task File Scopes     │
-                  └───────────┬────────────┘
-                              │ (Matches scope prefixes)
-                              ▼
-┌──────────────┐    ┌──────────────────┐    ┌──────────────┐
-│  Providers   │───►│  Recall Compiler │◄───│ Canonical    │
-│ (read-only)  │    │  (orchestrator)   │    │ source digest│
-└──────────────┘    └────────┬─────────┘    └──────────────┘
-                             │
-            ┌────────────────┼────────────────┬──────────────┐
-            ▼                ▼                ▼              ▼
-     ┌───────────┐    ┌─────────────┐   ┌───────────┐  ┌───────────┐
-     │ system.md │    │ validation- │   │ meta.json │  │ recall-   │
-     │ (Briefing)│    │   plan.md   │   │  (Log)    │  │ log.draft │
-     └───────────┘    └─────────────┘   └───────────┘  └───────────┘
-```
-
----
-
-## Key Features
-
-- **Provider-Orchestrated Recall**: Adapters answer one question — which facts are relevant for this sealed task? — while the compiler owns deterministic composition, replay, and rendering.
-- **Deterministic Scope Matching**: Evaluates the paths targeted by a task against the scopes of approved rules. Selects global rules (`MEMORY.md` and `/` or `*` scopes) along with sub-path specific active skills or constraints.
-- **Target-Aware Edit Context**: Optional exact `Class::method` targets are resolved through `voku/agent-map`; contracts, direct callers, tests, dependencies, type definitions, source slices, blind spots, and omissions are rendered without asking a model to rediscover the repository. Repeatable `--edit-focus` literals select short primary-source windows and omit optional relation slices for a surgical change; unmatched literals retain the full target safely.
-- **Replayable Fact Bundle**: Writes canonical `recall.bundle.json`, `facts.json`, and `selection-report.json`, with provider source digests and explicit generic-fact conflict decisions.
-- **Bounded Project Documents**: Optional Git-tracked manifests add scoped Skills and ADRs with fixed excerpt limits; the compiler never scans every document or asks a model to choose one.
-- **Constraint Manifests**: Loads active hard constraints from `constraints/active/*.json` or a configured `active_constraints_dir` and selects them by path-scope overlap instead of semantic similarity.
-- **Conflict Detection**: Blocks compilation when selected active rules target the same codebase element or duplicate directive wording would give the coding agent contradictory instructions.
-- **Contradiction Guard**: Blocks compilation when selected guidance matches the target patterns of previously rejected proposals.
-- **Outcome-Driven Insights**: Inspects outcome logs to alert the agent when selected guidance was previously marked as `HARMFUL`, including the recorded reason. `irrelevant` remains a task-local usage signal for later evaluation and does not become a warning in another task's briefing.
-- **Observable Usefulness Signals**: Separates `selected_count` from `helpful_count`, `irrelevant_count`, `harmful_count`, and `violation_detected_count`. Selection means a rule entered the prompt; it is not treated as proof that the rule improved the task.
-- **Validation Briefing**: Dynamically compiles selected guidance checks and selected active constraint commands into an authoritative validation plan with required rule identifiers.
-- **Behavior Anchors and Evidence Labels**: Carries optional request/runtime/consumer/data/integration anchors from approved work briefs into `system.md`, and requires material conclusions to distinguish verified observations from inference, assumptions, blockers, and contradictions.
-- **Feedback Quarantine**: Renders supplied peer or agent feedback as untrusted claims with an evidence-backed accepted/rejected/unresolved assessment, never as authority.
-- **Loop Closure**: Prepares draft outcome feedback files so the agent can easily record what rules were helpful, irrelevant, or harmful at the end of the coding session.
-- **Immutable Guidance Events**: On governed close-out, appends recall-selection events and per-guidance outcome events for deterministic projection by `voku/agent-learning`.
-
----
-
-## Installation
-
-Install via Composer:
-
-```bash
-composer require --dev voku/agent-recall-compiler
-```
-
----
-
-## CLI Usage
-
-The package exposes a binary at `vendor/bin/agent-recall-compiler` supporting compile, outcome logging, and deterministic review helpers:
-
-Learning roots may define `config.json` to avoid hard-coding the active constraint manifest directory:
-
-```json
-{
-  "schema_version": "1.0",
-  "active_constraints_dir": "constraints/active"
-}
-```
-
-Relative paths are resolved from the learning root. Without configuration, the compiler keeps the legacy `constraints/active` and `constraints` lookup paths.
-
-## Starter Integration Pattern
-
-Use the examples instead of embedding a long recall policy in every task:
-
-- [examples/agent-learning/config.json](examples/agent-learning/config.json): starter recall-related learning-root policy.
-- [examples/agents/skills/project-agent-recall/SKILL.md](examples/agents/skills/project-agent-recall/SKILL.md): optional repo-local recall wrapper.
-- [skills/agent-recall-consumer/SKILL.md](skills/agent-recall-consumer/SKILL.md): package-neutral consumer skill.
-
-Copy this shorter contract into `AGENTS.md`, an existing learning/guidance skill, or a pre/post-task hook:
+The core idea is:
 
 ```text
-Before editing, run:
-vendor/bin/agent-recall-compiler compile \
-  --root infra/doc/agent-learning \
-  --task "<ticket-or-TODO@id>" \
-  --description "<short task description>" \
-  --file "<path touched by this task>" \
-  --output-dir ".agent-recall/current"
-
-Read:
-- .agent-recall/current/system.md
-- .agent-recall/current/validation-plan.md
-
-Before final response:
-1. Run the validation plan.
-2. Complete recall-log.draft.json.
-3. Put every selected rule in exactly one bucket: helpful, irrelevant, or harmful.
-4. Mark helpful only when the rule changed execution, prevented a mistake, or improved validation.
-
-Then run:
-vendor/bin/agent-recall-compiler log-outcome \
-  --root infra/doc/agent-learning \
-  --draft ".agent-recall/current/recall-log.draft.json" \
-  --by "<agent-or-human>" \
-  --commit "<commit-or-working-tree>"
+Task intent
++
+approved Contract
++
+repository facts
++
+relevant guidance
++
+constraints
++
+previous outcomes
+        ↓
+     COMPILE
+        ↓
+project-specific operational context
+        ↓
+L2 recipe → concrete L1 execution contract
+        ↓
+coding agent
+        ↓
+verification / review / lifecycle owner
 ```
 
-Selection is not usefulness. It only proves the rule entered the prompt. Use later `helpful`, `irrelevant`, and `harmful` outcomes for promotion, review, and retirement decisions.
+The human or workflow provides intent and authority. Repository evidence provides facts. Recall deterministically selects and explains relevant context. A receiving agent may then construct and execute a project-specific L1 contract. Mechanical verification and lifecycle decisions remain outside Recall.
+
+## Why this exists
+
+Coding agents are fast enough that the bottleneck is often no longer implementation. The harder problem is making sure an agent receives the **right task, the right context, the right authority, and a way to prove the result**.
+
+`agent-recall-compiler` therefore optimizes for five things:
+
+1. **Relevant context, not maximum context.** Scope, targets, contracts, callers, tests, constraints, project documents, and prior outcomes are selected from bounded sources instead of dumping the repository into a prompt.
+2. **Provenance, not plausible prose.** Context can explain `WHAT`, `WHY`, `HOW`, `AUTHORITY`, `USE`, and `STATE` without asking an LLM to invent rationale.
+3. **Project-specific execution contracts.** Reusable L2 recipes compile current project facts into concrete L1 prompts with `Goal`, `Context`, `Constraints`, `Verification`, and `Done When`.
+4. **Evidence before confidence.** Material claims distinguish `VERIFIED`, `INFERRED`, `ASSUMED`, `BLOCKED`, and `CONTRADICTED`; missing evidence stays missing instead of becoming confident text.
+5. **Narrow authority boundaries.** Selection is not usefulness, context is not edit permission, review identity is not acknowledgement, and Recall does not silently acquire workflow or durable-learning authority.
+
+See [Design principles](docs/design-principles.md) for the full model.
 
 ---
 
-## CLI Reference
+## Architecture
 
-### 1. Compile a Task Briefing
-
-Prepares the system briefing, validation plan, metadata log, and draft outcome files for an active task.
-
-```bash
-vendor/bin/agent-recall-compiler compile \
-  --root infra/doc/agent-learning \
-  --task "PROJECT-367" \
-  --description "Implement the new region-aware menu navigation" \
-  --file "src/Navigation/MenuEntry.php" \
-  --file "tests/Navigation/MenuEntryTest.php" \
-  --output-dir ".agent-recall/current" \
-  --compilation-id "compilation.PROJECT-367.2026-06-18.001"
+```text
+                           ┌──────────────────────────┐
+                           │ approved task / Contract │
+                           └────────────┬─────────────┘
+                                        │
+                                        ▼
+┌────────────────────┐      ┌──────────────────────────┐
+│ bounded providers  │─────►│  Agent Recall Compiler   │
+│ read-only evidence │      │ deterministic composition │
+└────────────────────┘      └────────────┬─────────────┘
+                                        │
+                   ┌────────────────────┼────────────────────┐
+                   ▼                    ▼                    ▼
+          recall.bundle.json    selection-report.json      system.md
+          facts.json            context_explain            validation-plan.md
+          meta.json                                      recall-log.draft.json
+                                        │
+                                        ▼
+                           optional L2 → L1 construction
+                                        │
+                                        ▼
+                              receiving coding agent
+                                        │
+                                        ▼
+                         verification / review / close-out
+                         owned by the appropriate consumer
 ```
 
-For an exact method edit, let `agent-map` derive the bounded source-backed context:
+The compiler owns deterministic context composition, recipe resolution, rendering, provenance, and Recall-owned artifact semantics. It does **not** execute production edits, decide that an implementation succeeded, acknowledge review, close a governed Run, or automatically rewrite durable Learning.
+
+---
+
+## Core contracts
+
+### Context selection is deterministic
+
+Recall combines explicit task scope with bounded providers such as approved guidance, active constraints, registered project documents, project capabilities, and optional `voku/agent-map` evidence.
+
+For exact targets, `agent-map` can derive primary source, contracts, direct change candidates, verification files, dependencies, type definitions, blind spots, and omissions without asking a model to rediscover the repository.
 
 ```bash
 vendor/bin/agent-recall-compiler compile \
   --root infra/doc/agent-learning \
   --task "PROJECT-367" \
   --description "Reject inactive users before persistence" \
-  --target "App\Service\UserService::save" \
+  --target "App\\Service\\UserService::save" \
   --map-index ".agent-map/php-symbols.json" \
   --map-root "$PWD" \
   --output-dir ".agent-recall/current"
 ```
 
-`--target` is repeatable and requires `--map-index`. The index may be JSON or TOON.
-`--map-root` replaces only the runtime checkout root used for source freshness and
-materialization, which is useful when the index was built inside Docker.
+Dependencies and type definitions are context-only by default. Being shown to the agent does not automatically widen edit scope.
 
-When agent-map's derived search index exists, `--map-search-index` adds ranked
-candidates to the briefing for a task that has no exact `--target` yet:
+### Context explains provenance and safe use
 
-```bash
-vendor/bin/agent-map search-index build --database ".agent-map/search.sqlite"
+`selection-report.json` can expose deterministic context explanations using:
 
-vendor/bin/agent-recall-compiler compile \
-  --root infra/doc/agent-learning \
-  --task "PROJECT-367" \
-  --description "Dunning reminder mails are sent twice for the same overdue invoice" \
-  --map-index ".agent-map/php-symbols.json" \
-  --map-root "$PWD" \
-  --map-search-index ".agent-map/search.sqlite" \
-  --map-search-limit 8 \
-  --output-dir ".agent-recall/current"
+```text
+WHAT       source, command, document, recipe, or decision
+WHY        why it is relevant to this task
+HOW        deterministic derivation path
+AUTHORITY  what makes the source or claim authoritative
+USE        what the receiving agent may use it for
+STATE      verified / inferred / unknown / blocked
 ```
 
-`--map-search-index` requires `--map-index`, and the search database must have been
-built from the same map: a snapshot mismatch is reported as a `stale` status fact
-instead of silently ranking against an older index. The candidates land in
-`facts.json` as `map.search.candidates` and in `system.md` under *Candidate
-Navigation (ranked, unverified)*. They are leads, not resolved navigation - they
-never enter the effective scope and never select path-scoped guidance.
+Discovery and authority are intentionally separate. For example, `agent-map` may explain **how** a source slice was selected, while the current repository source remains the authority for the code itself.
 
-The map-derived **effective scope** contains primary, contract, direct-caller,
-and verification files. Dependencies and type definitions remain context-only
-and do not select path-scoped guidance merely because they were shown to the agent.
+See [Context Explain](docs/context-explain.md).
 
-#### Inline vs. File-based Briefing
-Alternatively, you can pass a path to a pre-defined JSON file containing the task metadata:
+### L2 compiles L1
 
-```bash
-vendor/bin/agent-recall-compiler compile \
-  --root infra/doc/agent-learning \
-  --task-brief "task-brief.json"
+Reusable engineering advice usually belongs at L2. The reusable part defines the method and quality bar; project-specific files, symbols, commands, architecture, risks, and invariants are resolved at compile time.
+
+The target L1 shape is:
+
+```text
+Goal         = measurable outcome / minimum floor
+Context      = exact repository anchors and known facts
+Constraints  = invariants, scope boundaries, forbidden shortcuts
+Verification = exact repository-supported measurement procedure
+Done When    = observable stopping condition
 ```
 
-Where `task-brief.json` is:
-```json
-{
-  "id": "PROJECT-367",
-  "description": "Implement the new region-aware menu navigation",
-  "files": [
-    "src/Navigation/MenuEntry.php",
-    "tests/Navigation/MenuEntryTest.php"
-  ],
-  "behavior_anchors": [
-    "HTTP request -> MenuEntry resolver -> rendered navigation"
-  ],
-  "targets": [
-    "App\\Navigation\\MenuEntry::resolve"
-  ]
-}
+`Verification` answers **how reality is measured**. `Done When` answers **which observed result is sufficient to stop**.
+
+If Recall can prove an exact command from repository evidence, the generated contract can use it. If it cannot, the command remains `UNKNOWN`; the compiler does not turn package presence into an invented invocation.
+
+See [Operating prompt recipes](docs/operating-prompts.md) and [Prompt primitives](docs/prompt-primitives.md).
+
+### Evidence has explicit states
+
+Generated briefings require material conclusions to distinguish:
+
+```text
+VERIFIED
+INFERRED
+ASSUMED
+BLOCKED
+CONTRADICTED
 ```
 
-`targets` is optional and contains exact `Class::method` values resolved by `agent-map`. `behavior_anchors` is optional and belongs to behavioral work only. Each entry
-names the concrete request, runtime, consumer, data, or integration seam that
-must be inspected or verified. `system.md` also requires material conclusions
-to be labelled `VERIFIED`, `INFERRED`, `ASSUMED`, `BLOCKED`, or
-`CONTRADICTED`; agent consensus and plausible explanations are not evidence.
+Model confidence, reviewer consensus, previous rationale, prompt construction, and unexecuted commands are not verification.
 
-#### Outputs Generated:
-- **`recall.bundle.json`**: Canonical, replayable task snapshot with selected learning, resolved provider facts, and source digests.
-- **`facts.json`**: Compact structured facts for a consumer such as `agent-loop workflow context`.
-- **`selection-report.json`**: Deterministic explanation of learning and constraint selection, including explicit versus map-derived effective scope.
-- **`system.md`**: Combined system prompt meta-prompt briefing containing selected active rules and warnings.
-- **`validation-plan.md`**: Authoritative required validation commands, selected hard-constraint rule identifiers, and provenance.
-- **`meta.json`**: Technical metadata recording exactly which rules and constraints were loaded.
-- **`recall-log.draft.json`**: A draft outcome log template populated with one `guidance_outcomes` row per selected rule or constraint.
+### Selection is not usefulness
 
-Compilation fails before writing a misleading briefing when selected guidance cannot be trusted as a coherent instruction set. Blocking cases include unsupported schema versions, inactive selected rules, conflicting active rules, target overlap with a scope-relevant rejected proposal, unknown constraint engines, superseded selected constraints, constraint commands that contradict their engine, constraints without validation commands, and outcome records that reference unknown rules.
+A selected rule only proves that it entered the compiled briefing. It does not prove model attention, application, or benefit.
 
-An empty-guidance compile is valid. When no active guidance, active constraints, or rejected guidance match the task scope, `selected_guidance`, `evaluated_guidance`, `selected_constraints`, `selected_rejections`, and the outcome draft guidance arrays remain empty. Close-out may record the session result, but it must not invent synthetic guidance such as `"none"` or create per-guidance `not_used`, `helpful`, `irrelevant`, `harmful`, or `applied` evidence.
+Outcome evidence is recorded separately as `applied` plus task-local outcomes such as `helpful`, `irrelevant`, `harmful`, `not_used`, or `unknown`. Those events are evidence for later Learning decisions; Recall does not automatically promote, weaken, retire, or rewrite guidance from counts alone.
 
-#### Constraint Manifest
-Active constraints are stored as small runtime manifests:
+See [Guidance event history](docs/guidance-events.md).
 
-```json
-{
-  "schema_version": "1.0",
-  "id": "constraint.project.translation.parameters",
-  "engine": "phpstan",
-  "rule_identifier": "project.translation.parameters",
-  "scope": ["src/"],
-  "validation_commands": ["vendor/bin/phpstan analyse"],
-  "source_proposal": "proposal.2026-06-13.001",
-  "status": "active"
-}
-```
+### Review artifacts are evidence, not approval
 
-#### Document Manifest
-`--document-manifest` adds Git-tracked skills and ADRs to a briefing with fixed
-excerpt limits, so the compiler never scans a documentation tree or asks a model
-which file is relevant:
-
-```json
-{
-  "schema_version": "1.0",
-  "documents": [
-    {
-      "id": "project.shell-tooling",
-      "type": "skill",
-      "source": "../agents/skills/shell-tooling/SKILL.md",
-      "scope": ["/"],
-      "tags": ["tooling"],
-      "max_chars": 2200
-    },
-    {
-      "id": "project.adr-database-layer",
-      "type": "adr",
-      "source": "../ADR_DatabaseLayer.md",
-      "scope": ["src/Database/"],
-      "max_chars": 4000
-    }
-  ]
-}
-```
-
-`source` is resolved relative to the manifest and must stay relative. `type` is
-`skill` or `adr` and decides the default authority (`project_skill` /
-`project_adr`); `authority`, `priority`, and `conflict_key` may override it.
-`max_chars` is an integer between 1 and 12000 (default 4000) and truncation is
-marked in the excerpt and reported as `truncated` in the fact payload.
-
-A document is selected when its `scope` prefixes overlap the task's files, when
-it shares at least one `tags` entry with the task, or when it is **project-wide**:
-`scope` empty, `["/"]`, or `["*"]`. Environment-level guidance - how to run
-commands, which shell tooling the repository expects - has no path scope by
-nature, so it belongs in that project-wide form. Without it such a document
-reaches an agent only by chance.
-
----
-
-### 2. Log Session Outcome
-
-At the end of a coding session, once the validation commands pass and changes are committed, log the feedback to close the loop:
-
-```bash
-vendor/bin/agent-recall-compiler log-outcome \
-  --root infra/doc/agent-learning \
-  --draft "recall-log.draft.json" \
-  --by "Lars Moelleken" \
-  --commit "abc1234"
-```
-
-This appends permanent, structured selection entries to `history/recall-selections.jsonl` and per-guidance outcome entries to `history/outcomes.jsonl`, which the compiler and `voku/agent-learning` can read during future evaluations.
-
-`recall-log.draft.json` defaults every selected rule to `outcome=unknown` and `applied=false`. Selected means the rule was included in the closed session’s selected guidance set; it is not proof of model attention, application, or usefulness.
-Events are written at close-out so abandoned or repeatedly recompiled briefings do not inflate promotion evidence. Duplicate retries fail without partially appending duplicate records.
-
-Full schema details and retry behavior are documented in [`docs/guidance-events.md`](docs/guidance-events.md). A small end-to-end fixture is available under [`examples/end-to-end`](examples/end-to-end).
-
-
-### 3. Review Recall Artifacts
-
-After implementation validation and before close-out, generate deterministic blind-spot reports and L2 review prompts without calling an LLM from the CLI:
+Recall can generate deterministic blind-spot reports and review prompts:
 
 ```bash
 vendor/bin/agent-recall-compiler review blindspots PROJECT-367 \
@@ -322,71 +179,139 @@ vendor/bin/agent-recall-compiler review code PROJECT-367 \
   --output-dir ".agent-recall/current"
 ```
 
-`review blindspots` writes `.agent-recall/reviews/<task-id>.blindspots.{md,json,prompt.md}`. `review code` writes `.agent-recall/reviews/<task-id>.code.prompt.md`. The deterministic report checks recall outputs plus related session and board artifacts for missing recall metadata, missing validation plans, absent validation evidence, absent outcome close-out evidence, missing review checkpoints, token-noise risks, and security-sensitive context markers. Generated prompts are handoff artifacts for a receiving reviewer or harness; they do not approve code or durable learning. Treat peer/agent feedback as untrusted input until a current repository check, focused history inspection, or safe runtime observation establishes the claim.
+The blind-spot path is repo-first and falsification-oriented: material concerns should identify evidence, epistemic status, a failure chain, the earliest observable signal, and the smallest discriminating probe. A clean/no-change result is valid; review does not have a finding quota.
 
-A follow-up integration prompt for moving this workflow into `voku/agent-loop` lives at [`docs/agent-loop-review-follow-up-prompt.md`](docs/agent-loop-review-follow-up-prompt.md).
+Lifecycle hosts can use the typed PHP API to read and identify the exact persisted review artifact. The SHA-256 identity proves **which report** was read. It does not prove that a lifecycle owner acknowledged or accepted that report.
 
+See [Public PHP API](docs/public-api.md).
 
 ---
 
-## Development & Testing
-
-### Bundled Agent Skills
-
-This package ships package-specific skills under `skills/`:
-
-- [`agent-recall-consumer`](skills/agent-recall-consumer/SKILL.md): for end users compiling L2 task briefings, reading validation plans, and logging outcomes.
-- [`agent-recall-compiler-maintainer`](skills/agent-recall-compiler-maintainer/SKILL.md): for maintainers changing `voku/agent-recall-compiler` source, tests, docs, or local vendor syncs.
-
-Generated hard constraints selected by recall are authored through the `agent-hard-constraint-author` skill shipped by `voku/agent-learning`.
-
-Run the test suite using PHPUnit:
+## Installation
 
 ```bash
-vendor/bin/phpunit
+composer require --dev voku/agent-recall-compiler
 ```
 
-Run static analysis using PHPStan:
+The package requires PHP `^8.3` and exposes:
 
-```bash
-vendor/bin/phpstan analyse --configuration=phpstan.neon.dist
+```text
+vendor/bin/agent-recall-compiler
 ```
 
 ---
+
+## Quick start
+
+### Standalone compile
+
+```bash
+vendor/bin/agent-recall-compiler compile \
+  --root infra/doc/agent-learning \
+  --task "PROJECT-367" \
+  --description "Implement the new region-aware menu navigation" \
+  --file "src/Navigation/MenuEntry.php" \
+  --file "tests/Navigation/MenuEntryTest.php" \
+  --output-dir ".agent-recall/current"
+```
+
+Read at minimum:
+
+```text
+.agent-recall/current/system.md
+.agent-recall/current/validation-plan.md
+```
+
+Before close-out, complete the generated outcome draft and record the result:
+
+```bash
+vendor/bin/agent-recall-compiler log-outcome \
+  --root infra/doc/agent-learning \
+  --draft ".agent-recall/current/recall-log.draft.json" \
+  --by "<agent-or-human>" \
+  --commit "<commit-or-working-tree>"
+```
+
+### Governed use through `agent-loop`
+
+In a governed Run, Recall consumes a small envelope that binds one `run_id` to one exact approved durable Contract revision and SHA-256 digest. The durable Contract remains the task-policy owner. Recall validates that input and compiles context; `voku/agent-loop` owns orchestration, execution gating, review acknowledgement, and close-out.
+
+See [Operating prompt recipes: governed input](docs/operating-prompts.md#governed-input).
+
+---
+
+## Generated artifacts
+
+| Artifact | Purpose |
+| --- | --- |
+| `recall.bundle.json` | Canonical replayable task snapshot with selected learning, provider facts, and source digests. |
+| `facts.json` | Compact structured facts for consumers such as `agent-loop`. |
+| `selection-report.json` | Deterministic selection/exclusion reasoning, effective scope, and context provenance. |
+| `system.md` | Human/model-readable Recall briefing and selected prompt construction material. |
+| `validation-plan.md` | Required validation commands, hard-constraint identifiers, and provenance. |
+| `meta.json` | Technical metadata and artifact identities. |
+| `recall-log.draft.json` | Editable close-out draft for guidance and operating-prompt outcomes. |
+
+Compilation fails closed when selected input cannot form a coherent trusted instruction set. Empty guidance is also valid; Recall does not invent synthetic `none` guidance merely to make the artifacts look populated.
+
+---
+
+## Project documents and constraints
+
+Recall can include Git-tracked Skills and ADRs through a bounded document manifest. Documents are selected by explicit path-scope overlap, tag overlap, or project-wide scope; the compiler does not scan an arbitrary documentation tree and ask an LLM what looks useful.
+
+Active hard constraints are loaded from configured manifests and bring their own exact validation commands. Conflicting, inactive, superseded, malformed, or unverifiable constraints fail compilation rather than silently weakening the task contract.
+
+For provider, precedence, and artifact details, see [Recall provider architecture](docs/recall-provider-architecture.md).
+
+---
+
+## Documentation
+
+Start with the [documentation index](docs/README.md).
+
+Important design and integration references:
+
+- [Design principles](docs/design-principles.md)
+- [Operating prompt recipes](docs/operating-prompts.md)
+- [Prompt primitives](docs/prompt-primitives.md)
+- [Context Explain](docs/context-explain.md)
+- [Recall provider architecture](docs/recall-provider-architecture.md)
+- [Guidance event history](docs/guidance-events.md)
+- [Embedding Recall](docs/embedding.md)
+- [Public PHP API](docs/public-api.md)
+- [Dependency readiness](docs/dependency-readiness.md)
+
+Bundled package skills live under `skills/`:
+
+- [`agent-recall-consumer`](skills/agent-recall-consumer/SKILL.md) for consumers compiling Recall context and recording outcomes.
+- [`agent-recall-compiler-maintainer`](skills/agent-recall-compiler-maintainer/SKILL.md) for changes to this package.
+
+---
+
+## Development and testing
+
+Repository-supported validation is defined in `composer.json`:
+
+```bash
+composer ci
+```
+
+Equivalent focused commands are:
+
+```bash
+composer test
+composer phpstan
+```
+
+The CI script runs strict Composer validation, PHPUnit, and PHPStan.
+
+---
+
+## Design boundary in one sentence
+
+> Recall compiles bounded, explainable, replayable context and prompt semantics; it does not become the authority that executes, approves, or permanently learns from the work.
 
 ## License
 
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
-
-## Internal Pipeline and Compatibility
-
-The public CLI, Composer API classes, JSON field names, and generated file locations remain stable, but the implementation is organized around typed internal boundaries:
-
-1. **Task input normalization**: inline CLI input and JSON task briefs resolve to a `TaskBrief` before selection. Existing brief files using either `id` or legacy `task_id` continue to load.
-2. **Root/config resolution**: `RecallRootResolver` produces a `RecallRootConfig` from explicit `--root`, `config.json`, and legacy defaults. After that point, compiler services should receive typed config instead of rediscovering paths.
-3. **Guidance selection**: `RecallDecisionEngine` still returns the historical `RecallResult`, and `SelectionResult` / `GuidanceSelection` provide an additive typed adapter for the consolidated pipeline.
-4. **Rendering**: renderer facades consume `SelectionResult` or the legacy `RecallResult` and preserve the current `system.md`, `validation-plan.md`, `meta.json`, and `recall-log.draft.json` shapes.
-5. **Close-out**: `OutcomeCloseOutService` centralizes the typed close-out entry point while preserving `OutcomeLogger` for existing callers.
-
-The detailed target design, fact precedence, artifact semantics, and migration
-path live in [docs/recall-provider-architecture.md](docs/recall-provider-architecture.md).
-
-### Event Vocabulary
-
-The compiler records observable facts only:
-
-- `evaluated`: a guidance candidate was considered by deterministic selection.
-- `eligible`: the candidate was valid for selection.
-- `selected`: the candidate was included in the compiled briefing/draft set.
-- `applied`: the close-out actor supplied that the guidance was applied.
-- `helpful`, `irrelevant`, `harmful`, `not_used`, `unknown`: the close-out outcome value supplied for a selected guidance item.
-
-Selection is **not** model access. Applied is **not** automatically helpful. Helpful is task-local evidence, not a universal promotion decision. Promotion and projection remain the responsibility of `voku/agent-learning`.
-
-### Compatibility Notes
-
-- `system.md`, `validation-plan.md`, `meta.json`, and `recall-log.draft.json` remain the supported output files.
-- `meta.json` remains the technical audit file.
-- `recall-log.draft.json` remains the editable close-out draft.
-- Legacy outcome drafts still route through the existing compatibility path.
-- Duplicate close-out retries are rejected before duplicate immutable event records are appended.
+MIT. See [LICENSE](LICENSE).
