@@ -76,11 +76,20 @@ final readonly class ReviewReportReader
             $findings[] = $this->parseFinding($rawFinding, $index, $path);
         }
 
-        $contractRevision = $data['contract_revision'] ?? null;
+        if (
+            !array_key_exists('contract_revision', $data)
+            || !array_key_exists('implementation_snapshot', $data)
+        ) {
+            throw new RuntimeException(
+                'Review report requires contract_revision and implementation_snapshot fields: ' . $path,
+            );
+        }
+
+        $contractRevision = $data['contract_revision'];
         if ($contractRevision !== null && !is_int($contractRevision)) {
             throw new RuntimeException('Review report contract_revision must be an integer or null: ' . $path);
         }
-        $implementationSnapshot = $data['implementation_snapshot'] ?? null;
+        $implementationSnapshot = $data['implementation_snapshot'];
         if ($implementationSnapshot !== null && !is_string($implementationSnapshot)) {
             throw new RuntimeException('Review report implementation_snapshot must be a string or null: ' . $path);
         }
