@@ -69,7 +69,7 @@ final readonly class CompileRequest
         }
     }
 
-    /** @param list<non-empty-string> $values */
+    /** @param list<mixed> $values */
     private function assertStringList(array $values, string $name): void
     {
         foreach ($values as $value) {
