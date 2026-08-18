@@ -30,7 +30,7 @@ vendor/bin/agent-recall-compiler compile \
   --compilation-id "compilation.PROJECT-367.2026-06-18.001"
 ```
 
-The compiler prepares replayable task evidence, the human/model-readable briefing, validation obligations, and outcome drafts. It does not execute implementation work or validation commands.
+The compiler prepares replayable task evidence, the human/model-readable briefing, validation obligations, and outcome drafts. It does not execute implementation work, the L2 construction pass, or validation commands.
 
 ### Exact method target
 
@@ -110,18 +110,25 @@ For governed `agent-loop` input, see [Operating prompt recipes](operating-prompt
 
 ## Generated compile artifacts
 
-A normal compile may generate:
+A **successful** compile writes these core files:
 
 - `recall.bundle.json` — canonical replayable task snapshot with selected Learning, resolved provider facts, source digests, effective scope, and conflict decisions;
 - `facts.json` — compact structured provider facts for consumers;
-- `selection-report.json` — deterministic selection/exclusion explanation and context provenance;
-- `system.md` — Recall briefing plus selected operating-prompt construction material;
+- `selection-report.json` — deterministic selection/exclusion explanation, effective scope, and the `context_explain` projection;
+- `system.md` — Recall briefing, rendered context explanation, and selected operating-prompt construction material;
 - `validation-plan.md` — required validation commands, hard-constraint identifiers, and provenance;
-- `meta.json` — technical metadata and immutable artifact hashes;
-- `compilation-receipt.json` — operational compile timestamp, excluded from replay identity where applicable;
-- `recall-log.draft.json` — editable close-out draft with selected guidance and operating-prompt outcome rows.
+- `meta.json` — technical metadata and hashes for immutable generated artifacts;
+- `recall-log.draft.json` — editable close-out draft with selected guidance and operating-prompt outcome rows; as an editable draft it is deliberately excluded from immutable output hashes;
+- `compilation-receipt.json` — successful-compilation receipt with `compilation_id`, canonical bundle digest, and operational timestamp. The public PHP API reads this receipt; it is not part of replay identity.
 
-Compilation fails before writing a misleading briefing when selected input cannot be trusted as one coherent instruction set. Examples include unsupported schemas, inactive or conflicting selected guidance, scope-relevant rejected proposals, unknown constraint engines, superseded constraints, invalid constraint commands, missing required validation commands, and outcome references to unknown rules.
+`context_explain` is not a standalone artifact. `ContextExplainProjector` writes it into `selection-report.json`, and `ContextExplainRenderer` additionally renders it into `system.md` when explainable items exist.
+
+Conditional files:
+
+- `verification-plan.json` and `verification-key.json` are written only when `--map-index` is present and the task has exactly one target. The key is verifier-owned; if verification is not applicable, stale plan/key files are removed.
+- `feedback-assessment.draft.json` is written when non-empty `--feedback` input is supplied and parsed into an assessment.
+
+Compilation fails before writing a misleading successful briefing when selected input cannot be trusted as one coherent instruction set. A `RecallCompilationBlockedException` writes blocked `meta.json` and aborts; malformed CLI/task input can fail before that blocked metadata path is reached. Examples of blocking selection state include conflicting guidance and missing project-local validation entry points for selected guidance.
 
 An empty-guidance compile is valid. The compiler does not invent synthetic guidance such as `none` and does not manufacture `applied`, `helpful`, `irrelevant`, or `harmful` evidence for an empty selection.
 
@@ -142,7 +149,7 @@ Active constraints are small runtime manifests, for example:
 }
 ```
 
-Selected active constraints contribute authoritative validation obligations. Invalid, contradictory, superseded, or incomplete constraint input fails closed.
+Selected active constraints contribute authoritative validation obligations. Invalid, contradictory, superseded, or validation-incomplete constraint input fails closed.
 
 ## Project-document manifest
 
@@ -193,11 +200,13 @@ vendor/bin/agent-recall-compiler log-outcome \
   --commit "<commit-or-working-tree>"
 ```
 
-The command appends immutable selection and per-guidance outcome events under the Learning history. Selected guidance defaults to `applied=false` and `outcome=unknown` until the close-out actor supplies evidence.
+The generated `guidance_outcomes` rows deliberately start as `applied=false`, `outcome=unknown`, `comment=null`. Those are compiler placeholders, not finalized evidence. `log-outcome` rejects an untouched `unknown` row: either provide a non-empty comment explaining why the guidance cannot be judged, or remove unjudged rows and set `guidance_outcomes_withheld_reason` to explain the deliberate absence.
 
-Selection only proves that guidance entered the selected set. It does not prove model access, application, or usefulness.
+For `helpful`, `irrelevant`, or `harmful`, a non-empty justification comment is required. `helpful` and `harmful` also require `applied=true`. Selection only proves that guidance entered the selected set; it does not prove model access, application, or usefulness.
 
-See [Guidance event history](guidance-events.md) for event shape and retry behavior.
+The command appends immutable selection events to `history/recall-selections.jsonl`, finalized guidance outcomes to `history/outcomes.jsonl`, and selected operating-prompt outcomes to `history/operating-prompt-outcomes.jsonl`. These are durable evidence events, not automatic durable-guidance promotion or retirement decisions.
+
+See [Guidance event history](guidance-events.md) for event shape, withholding semantics, and retry behavior.
 
 ## Review artifacts
 
@@ -213,7 +222,7 @@ vendor/bin/agent-recall-compiler review code PROJECT-367 \
 
 `review blindspots` writes the blind-spot Markdown/JSON/prompt artifact set under the Recall reviews directory. `review code` writes the code-review prompt artifact.
 
-Generated prompts are handoff artifacts for a receiving reviewer or harness. They do not approve code, acknowledge review, close a Run, or mutate durable Learning.
+Generated prompts are handoff artifacts for a receiving reviewer or harness. They do not approve code, acknowledge review, close a Run, or mutate durable Learning policy.
 
 Peer or agent feedback is treated as an untrusted claim until current repository evidence, focused history, or safe runtime observation establishes it.
 
