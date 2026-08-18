@@ -44,7 +44,7 @@ final class CompileCommand
     private readonly RecallPromptBuilder $promptBuilder;
     private readonly OptionParser $optionParser;
 
-    public function __construct()
+    public function __construct(private readonly bool $reportToStdout = true)
     {
         $this->rootResolver = new RecallRootResolver();
         $this->promptBuilder = new RecallPromptBuilder();
@@ -281,19 +281,21 @@ final class CompileCommand
             $this->writeFile($outputDir . '/feedback-assessment.draft.json', $feedbackAssessment);
         }
 
-        fwrite(\STDOUT, sprintf("Briefing compiled successfully under: %s/\n", rtrim($outputDir, '/')));
-        fwrite(\STDOUT, sprintf("- compilation ID: %s\n", $compilationId));
-        fwrite(\STDOUT, sprintf("- system.md (selected guidance: %d, selected constraints: %d)\n", count($result->selectedGuidance), count($result->selectedConstraints)));
-        fwrite(\STDOUT, "- recall.bundle.json (canonical, replayable)\n");
-        fwrite(\STDOUT, "- facts.json and selection-report.json\n");
-        fwrite(\STDOUT, "- validation-plan.md\n");
-        if ($verification !== null) {
-            fwrite(\STDOUT, "- verification-plan.json (public questions, checklist, and gates)\n");
-            fwrite(\STDOUT, "- verification-key.json (verifier-owned expected answers)\n");
-        }
-        fwrite(\STDOUT, "- recall-log.draft.json\n");
-        if ($feedbackAssessment !== null) {
-            fwrite(\STDOUT, "- feedback-assessment.draft.json (untrusted peer feedback to verify)\n");
+        if ($this->reportToStdout) {
+            fwrite(\STDOUT, sprintf("Briefing compiled successfully under: %s/\n", rtrim($outputDir, '/')));
+            fwrite(\STDOUT, sprintf("- compilation ID: %s\n", $compilationId));
+            fwrite(\STDOUT, sprintf("- system.md (selected guidance: %d, selected constraints: %d)\n", count($result->selectedGuidance), count($result->selectedConstraints)));
+            fwrite(\STDOUT, "- recall.bundle.json (canonical, replayable)\n");
+            fwrite(\STDOUT, "- facts.json and selection-report.json\n");
+            fwrite(\STDOUT, "- validation-plan.md\n");
+            if ($verification !== null) {
+                fwrite(\STDOUT, "- verification-plan.json (public questions, checklist, and gates)\n");
+                fwrite(\STDOUT, "- verification-key.json (verifier-owned expected answers)\n");
+            }
+            fwrite(\STDOUT, "- recall-log.draft.json\n");
+            if ($feedbackAssessment !== null) {
+                fwrite(\STDOUT, "- feedback-assessment.draft.json (untrusted peer feedback to verify)\n");
+            }
         }
 
         return 0;
