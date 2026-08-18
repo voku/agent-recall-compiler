@@ -99,9 +99,7 @@ final readonly class ReviewReportReader
         return $report;
     }
 
-    /**
-     * @param array<string, mixed> $data
-     */
+    /** @param array<string, mixed> $data */
     private function parseFinding(array $data, int $index, string $path): BlindSpotFinding
     {
         $id = $data['id'] ?? null;
@@ -112,7 +110,8 @@ final readonly class ReviewReportReader
         if (!is_string($id) || $id === '') {
             throw new RuntimeException(sprintf('Review report finding %d requires a non-empty id: %s', $index, $path));
         }
-        if (!is_string($severity) || !ReviewSeverity::tryFrom($severity) instanceof ReviewSeverity) {
+        $parsedSeverity = is_string($severity) ? ReviewSeverity::tryFrom($severity) : null;
+        if (!$parsedSeverity instanceof ReviewSeverity) {
             throw new RuntimeException(sprintf('Review report finding %d has invalid severity: %s', $index, $path));
         }
         if (!is_string($message)) {
@@ -137,7 +136,7 @@ final readonly class ReviewReportReader
 
         return new BlindSpotFinding(
             id: $id,
-            severity: ReviewSeverity::from($severity),
+            severity: $parsedSeverity,
             message: $message,
             evidence: $typedEvidence,
         );
