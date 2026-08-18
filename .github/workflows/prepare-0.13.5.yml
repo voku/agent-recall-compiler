@@ -1,0 +1,92 @@
+name: Prepare 0.13.5 release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/prepare-0.13.5.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Prepare exact release metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          target='eb2fe40b0de09a7c2a5a4ce9e1dff667917fa742'
+          git merge-base --is-ancestor "${target}" HEAD
+
+          php <<'PHP'
+          <?php
+
+          declare(strict_types=1);
+
+          $path = 'CHANGELOG.md';
+          $text = file_get_contents($path);
+          if ($text === false) {
+              throw new RuntimeException('Cannot read CHANGELOG.md');
+          }
+
+          $anchor = "## [0.13.4] - 2026-08-17\n";
+          if (substr_count($text, $anchor) !== 1) {
+              throw new RuntimeException('0.13.4 changelog anchor is not unique');
+          }
+          if (str_contains($text, '## [0.13.5] - 2026-08-18')) {
+              throw new RuntimeException('0.13.5 section already exists');
+          }
+
+          $section = <<<'CHANGELOG'
+          ## [0.13.5] - 2026-08-18
+
+          ### Added
+
+          - Add the bundled `test-driven-development` L2 operating recipe for evidence-backed RED/GREEN/REFACTOR work without turning test-first technique into workflow authority.
+          - Add typed `CompileRequest`, `RecallCompiler`, and `CompileResult` APIs so PHP lifecycle hosts can embed governed Recall compilation without reproducing CLI option spelling, provider composition, or artifact rules.
+
+          ### Changed
+
+          - Embedded Recall compilation can suppress the human CLI success report while the standalone CLI keeps its existing output, allowing outer JSON or structured host protocols to remain valid.
+          - Document the PHP embedding boundary in the public docs and consumer skill: hosts own when compilation runs; Recall continues to own what compilation means.
+
+          ### Validation
+
+          - PR #84 passed its exact-head CI before merge for the reusable TDD recipe.
+          - PR #85 passed CI run #380 after the public API regression suite and PHPStan correction, including the existing governed integration dogfood.
+
+          CHANGELOG;
+
+          $updated = str_replace($anchor, $section . $anchor, $text, $count);
+          if ($count !== 1) {
+              throw new RuntimeException('Failed to insert 0.13.5 changelog section');
+          }
+          if (file_put_contents($path, $updated) === false) {
+              throw new RuntimeException('Cannot write CHANGELOG.md');
+          }
+          PHP
+
+          mkdir -p .release
+          cat > .release/0.13.5.json <<'JSON'
+          {
+            "target_sha": "eb2fe40b0de09a7c2a5a4ce9e1dff667917fa742",
+            "version": "0.13.5"
+          }
+          JSON
+
+          rm .github/workflows/prepare-0.13.5.yml
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add CHANGELOG.md .release/0.13.5.json .github/workflows/prepare-0.13.5.yml
+          git diff --cached --check
+          git commit -m 'release: prepare 0.13.5'
+          git tag -a '0.13.5' "${target}" -m 'agent-recall-compiler 0.13.5'
+          git push --atomic origin HEAD:main refs/tags/0.13.5
