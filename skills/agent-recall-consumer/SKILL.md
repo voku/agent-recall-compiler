@@ -1,15 +1,15 @@
 ---
 name: agent-recall-consumer
-description: Use voku/agent-recall-compiler to compile task-scoped Recall briefings, apply explicit operating-prompt recipes, review implementations, and record evidence-backed outcomes with the current CLI contract.
+description: Use voku/agent-recall-compiler to compile task-scoped Recall briefings, embed Recall through its typed PHP API, apply explicit operating-prompt recipes, review implementations, and record evidence-backed outcomes.
 ---
 
 # Agent Recall Consumer
 
-Use this skill when a coding agent needs task-scoped Recall guidance from the current repository. Treat the CLI and generated artifacts as deterministic inputs to the coding workflow, not as proof that work was executed or verified.
+Use this skill when a coding agent needs task-scoped Recall guidance from the current repository. Treat the public PHP API, CLI, and generated artifacts as deterministic inputs to the coding workflow, not as proof that work was executed or verified.
 
 ## Ownership
 
-This directory is the canonical home for instructions and reusable recipe assets that directly exercise `agent-recall-compiler`. Recall owns its commands, output contract, review primitives, L2 construction semantics, and bundled operating-prompt catalog.
+This directory is the canonical home for instructions and reusable recipe assets that directly exercise `agent-recall-compiler`. Recall owns its commands, public compile contract, output contract, review primitives, L2 construction semantics, and bundled operating-prompt catalog.
 
 The bundled manifest is:
 
@@ -44,6 +44,27 @@ vendor/bin/agent-loop recall compile --task PROJECT-123 --description "Implement
 ```
 
 `agent-loop recall compile` resolves the configured Learning and Recall roots through the project layout. The standalone compiler uses the defaults above.
+
+## PHP Embedding
+
+When another PHP package owns orchestration, use `RecallCompiler` with `CompileRequest` instead of calling `Cli` or `Command\\CompileCommand`, reproducing provider composition, or parsing human CLI output:
+
+```php
+use voku\AgentRecallCompiler\CompileRequest;
+use voku\AgentRecallCompiler\RecallCompiler;
+
+$result = (new RecallCompiler())->compile(new CompileRequest(
+    learningRoot: $learningRoot,
+    taskBrief: $governedRecallInput,
+    outputDirectory: $recallOutput,
+));
+```
+
+The task brief may be the governed `governed_recall_input` envelope; Recall remains responsible for validating its Run/Contract binding. Add optional operating-prompt manifests, document manifests, Kanban context, map input, and ranked-search input through `CompileRequest` only when the embedding host has those owner facts.
+
+Embedded compilation writes the same canonical artifacts as the CLI but emits no CLI success report to `STDOUT`, so an outer JSON or structured host protocol stays valid. `CompileResult` exposes the compilation ID, bundle digest, and common artifact paths without requiring the caller to know CLI spelling or internal provider construction.
+
+See `EMBEDDING.md` and `docs/embedding.md` for the compact and full embedding boundaries.
 
 ## Compile
 
@@ -176,4 +197,4 @@ Generated files are not automatically injected into a coding model by the standa
 
 `log-outcome` appends immutable selection/outcome events under the Learning root. It does not approve durable guidance. Duplicate retries fail rather than partially appending a second outcome.
 
-When `agent-loop` owns the governed Run, use its workflow skills for PLAN/APPROVE/CONTRACT/LEARN/CLOSE. This skill remains the canonical reference for Recall-specific commands and artifacts; it is not a second workflow lifecycle.
+When `agent-loop` owns the governed Run, use its workflow skills for PLAN/APPROVE/CONTRACT/LEARN/CLOSE. This skill remains the canonical reference for Recall-specific commands, public embedding API, and artifacts; it is not a second workflow lifecycle.
