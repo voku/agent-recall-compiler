@@ -18,6 +18,8 @@ final class BlindSpotPromptBuilder
         return $heading
             . "\n\n## First-draft falsification lens\n\n"
             . trim((new FirstDraftReviewPromptBuilder())->build())
+            . "\n\n## Repo-first blind-spot lens\n\n"
+            . trim((new BlindSpotAnalysisLensBuilder())->build())
             . "\n\n"
             . ltrim($body);
     }
