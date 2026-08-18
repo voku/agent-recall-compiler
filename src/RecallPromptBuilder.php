@@ -34,7 +34,7 @@ final class RecallPromptBuilder
 
         if ($task->acceptanceCriteria !== []) {
             $md[] = "## Acceptance Criteria";
-            $md[] = "These are required outcomes from the approved task Contract, not evidence that they are satisfied.";
+            $md[] = "These are required task outcomes, not evidence that they are satisfied.";
             foreach ($task->acceptanceCriteria as $criterion) {
                 $md[] = "- " . $criterion;
             }
@@ -358,7 +358,7 @@ final class RecallPromptBuilder
         $hasValidation = false;
         if ($task->validation !== []) {
             $hasValidation = true;
-            $md[] = "### Approved Work-Brief";
+            $md[] = "### Task Validation";
             $md[] = "";
             foreach ($task->validation as $command) {
                 $md[] = "```bash";
@@ -391,7 +391,7 @@ final class RecallPromptBuilder
         if ($omittedConstraintCommands !== []) {
             $md[] = "## Omitted Task-External Manifest Commands";
             $md[] = "";
-            $md[] = "The following legacy constraint commands name a different PHP file. The approved work brief remains authoritative for this task; migrate these manifests to structured task-scope validation requirements.";
+            $md[] = "The following legacy constraint commands name a different PHP file. The task's explicit validation remains authoritative for this task; migrate these manifests to structured task-scope validation requirements.";
             $md[] = "";
             foreach (array_values(array_unique($omittedConstraintCommands)) as $command) {
                 $md[] = "- `" . $command . "`";
