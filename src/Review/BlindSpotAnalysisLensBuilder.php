@@ -20,9 +20,13 @@ Run these bounded probes:
 4. False failure attribution: do not classify a missing dependency, generated asset, tool, or environment prerequisite as a product defect until setup readiness is established.
 5. Premature closure: verify that the requested outcome, impacted surfaces, validation evidence, and close claim actually line up.
 
-For every material blind spot, classify the claim with the existing epistemic status, cite concrete supporting or contradicting evidence, state the hidden assumption and concrete failure chain, identify the earliest observable signal, and define the smallest falsification probe that could confirm or disprove it. Name the smallest corrective action only if the claim becomes VERIFIED.
+When evidence crosses a repository or package boundary, trace the semantic owner, authoritative input, crossing artifact and retained identity to the consumer. Do not infer ownership from repository names or documentation alone.
 
-Use adversarial pre-mortem reasoning only as a hypothesis generator. A plausible failure story, model confidence, numeric score, imagined future, or repeated self-refinement is not evidence. Do not manufacture findings to satisfy a quota.
+Prefer the smallest discriminating dogfood experiment over architectural speculation. Select only environments relevant to the hypothesis, such as source checkout, clean installed/released consumer, repeat/resume, or no-change. For historical replay, freeze the base state and input and do not leak the known fix; a replay that starts with the answer cannot prove discovery quality.
+
+For every material blind spot, classify the claim with the existing epistemic status, cite concrete supporting or contradicting evidence, state the hidden assumption and concrete failure chain, identify the earliest observable signal, define the smallest falsification probe that could confirm or disprove it, and explain why existing tests or gates did not expose it. Name the smallest corrective action only if the claim becomes VERIFIED.
+
+Use adversarial pre-mortem reasoning only as a hypothesis generator. A plausible failure story, model confidence, numeric score, imagined future, repeated self-refinement, or successful mechanism execution is not evidence. Do not manufacture findings to satisfy a quota.
 
 If required repository or runtime evidence is unavailable, keep the claim UNKNOWN or BLOCKED and name the exact missing evidence. READY FOR HUMAN CLOSE is valid only after the bounded probes found no evidence-backed blocker and the supplied validation and close evidence are coherent.
 PROMPT;
