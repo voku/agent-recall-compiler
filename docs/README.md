@@ -9,6 +9,15 @@ The README explains what `agent-recall-compiler` is and how to start using it. T
 - [Operating prompt recipes](operating-prompts.md) — L1/L2 prompt levels, `Goal / Context / Constraints / Verification / Done When`, capability evidence, governed input, and `agent-loop` integration.
 - [Prompt primitives](prompt-primitives.md) — when to use L2 construction, direct L1 controls, first-draft review, future-work reflection, or guidance-gap journaling.
 
+## Starter integration
+
+Use the existing examples and shipped skills instead of embedding another long Recall policy into every task:
+
+- [`examples/agent-learning/config.json`](../examples/agent-learning/config.json) — starter Learning-root configuration for Recall-related policy.
+- [`examples/agents/skills/project-agent-recall/SKILL.md`](../examples/agents/skills/project-agent-recall/SKILL.md) — optional repository-local Recall wrapper.
+- [`skills/agent-recall-consumer/SKILL.md`](../skills/agent-recall-consumer/SKILL.md) — package-neutral consumer contract.
+- [`skills/agent-recall-compiler-maintainer/SKILL.md`](../skills/agent-recall-compiler-maintainer/SKILL.md) — maintainer workflow for this package.
+
 ## Context and compilation
 
 - [Recall provider architecture](recall-provider-architecture.md) — provider boundaries, fact precedence, source digests, target-aware context, artifact semantics, and compatibility.
