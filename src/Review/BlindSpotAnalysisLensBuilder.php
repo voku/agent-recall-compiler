@@ -22,7 +22,7 @@ Run these bounded probes:
 
 When evidence crosses a repository or package boundary, trace the semantic owner, authoritative input, crossing artifact and retained identity to the consumer. Do not infer ownership from repository names or documentation alone.
 
-Prefer the smallest discriminating dogfood experiment over architectural speculation. Select only environments relevant to the hypothesis, such as source checkout, clean installed/released consumer, repeat/resume, or no-change. For historical replay, freeze the base state and input and do not leak the known fix; a replay that starts with the answer cannot prove discovery quality.
+Prefer the smallest discriminating dogfood experiment over architectural speculation. Select only environments relevant to the hypothesis, such as source checkout, clean installed/released consumer or cross-package release set, repeat/resume, or no-change. For historical replay, freeze the base state and input and do not leak the known fix; a replay that starts with the answer cannot prove discovery quality. No-change is a valid outcome.
 
 For every material blind spot, classify the claim with the existing epistemic status, cite concrete supporting or contradicting evidence, state the hidden assumption and concrete failure chain, identify the earliest observable signal, define the smallest falsification probe that could confirm or disprove it, and explain why existing tests or gates did not expose it. Name the smallest corrective action only if the claim becomes VERIFIED.
 
