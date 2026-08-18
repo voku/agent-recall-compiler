@@ -39,6 +39,7 @@ final readonly class ReviewReportReader
         if (!is_array($data)) {
             throw new RuntimeException('Review report JSON must decode to an object: ' . $path);
         }
+        /** @var array<string, mixed> $data */
 
         $report = $this->parseReport($data, $taskId, $path);
 
