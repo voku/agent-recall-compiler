@@ -1,0 +1,53 @@
+# Documentation map
+
+The README explains what `agent-recall-compiler` is and how to start using it. The documents here separate the deeper contracts by responsibility instead of repeating one giant prompt/compiler description everywhere.
+
+## Start here
+
+- [Design principles](design-principles.md) — the architectural rules behind prompt compilation, bounded context, provenance, evidence states, review, learning, and authority boundaries.
+- [Operating prompt recipes](operating-prompts.md) — L1/L2 prompt levels, `Goal / Context / Constraints / Verification / Done When`, capability evidence, governed input, and `agent-loop` integration.
+- [Prompt primitives](prompt-primitives.md) — when to use L2 construction, direct L1 controls, first-draft review, future-work reflection, or guidance-gap journaling.
+
+## Context and compilation
+
+- [Recall provider architecture](recall-provider-architecture.md) — provider boundaries, fact precedence, source digests, target-aware context, artifact semantics, and compatibility.
+- [Context Explain](context-explain.md) — deterministic `WHAT / WHY / HOW / AUTHORITY / USE / STATE` provenance and context-use semantics.
+- [Dependency readiness](dependency-readiness.md) — distinguishing dependency/environment readiness from a defect in the component under review.
+
+## Integration
+
+- [Embedding Recall](embedding.md) — host-facing integration boundary for applications embedding the compiler.
+- [Public PHP API](public-api.md) — stable compilation types plus typed review-report evidence identity.
+- [Agent-loop review follow-up](agent-loop-review-follow-up-prompt.md) — integration handoff for the review workflow.
+
+## Evidence and close-out
+
+- [Guidance event history](guidance-events.md) — immutable selection/outcome events and the important distinction between selection, application, and usefulness.
+
+## Mental model
+
+Use this ownership split when deciding where a new behavior belongs:
+
+```text
+approved task / Contract
+        ↓
+Recall
+  - select bounded evidence
+  - explain provenance
+  - compile prompt semantics
+  - prepare validation/review/outcome artifacts
+        ↓
+receiving agent / host
+  - construct L1 when required
+  - execute implementation
+  - run verification
+        ↓
+lifecycle owner
+  - acknowledge review
+  - decide close-out
+        ↓
+Learning owner
+  - evaluate durable promotion / retirement
+```
+
+A useful fact flowing through Recall does not automatically make Recall the authority that acts on that fact. That rule is the thread connecting most of these documents.
