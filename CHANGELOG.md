@@ -4,6 +4,22 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.13.5] - 2026-08-18
+
+### Added
+
+- Add the bundled `test-driven-development` L2 operating recipe for evidence-backed RED/GREEN/REFACTOR work without turning test-first technique into workflow authority.
+- Add typed `CompileRequest`, `RecallCompiler`, and `CompileResult` APIs so PHP lifecycle hosts can embed governed Recall compilation without reproducing CLI option spelling, provider composition, or artifact rules.
+
+### Changed
+
+- Embedded Recall compilation can suppress the human CLI success report while the standalone CLI keeps its existing output, allowing outer JSON or structured host protocols to remain valid.
+- Document the PHP embedding boundary in the public docs and consumer skill: hosts own when compilation runs; Recall continues to own what compilation means.
+
+### Validation
+
+- PR #84 passed its exact-head CI before merge for the reusable TDD recipe.
+- PR #85 passed CI run #380 after the public API regression suite and PHPStan correction, including the existing governed integration dogfood.
 ## [0.13.4] - 2026-08-17
 
 ### Changed
