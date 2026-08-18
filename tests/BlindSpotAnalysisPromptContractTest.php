@@ -22,12 +22,20 @@ final class BlindSpotAnalysisPromptContractTest extends TestCase
         self::assertStringContainsString('False failure attribution', $prompt);
         self::assertStringContainsString('Premature closure', $prompt);
         self::assertStringContainsString('at least two relevant in-repository examples', $prompt);
+        self::assertStringContainsString('semantic owner, authoritative input, crossing artifact and retained identity', $prompt);
+        self::assertStringContainsString('smallest discriminating dogfood experiment', $prompt);
+        self::assertStringContainsString('clean installed/released consumer', $prompt);
+        self::assertStringContainsString('do not leak the known fix', $prompt);
+        self::assertStringContainsString('cannot prove discovery quality', $prompt);
         self::assertStringContainsString('concrete failure chain', $prompt);
         self::assertStringContainsString('smallest falsification probe', $prompt);
+        self::assertStringContainsString('why existing tests or gates did not expose it', $prompt);
         self::assertStringContainsString('missing dependency, generated asset, tool, or environment prerequisite', $prompt);
         self::assertStringContainsString('model confidence, numeric score', $prompt);
         self::assertStringContainsString('UNKNOWN or BLOCKED', $prompt);
         self::assertStringContainsString('READY FOR HUMAN CLOSE', $prompt);
+        self::assertStringNotContainsString('10 rounds', $prompt);
+        self::assertStringNotContainsString('confidence_score', $prompt);
         self::assertLessThan(3000, strlen($prompt));
     }
 
