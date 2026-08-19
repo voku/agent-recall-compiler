@@ -120,11 +120,12 @@ final readonly class CompiledRecallOutputReader
         }
 
         try {
+            $root = json_decode($contents, false, 512, JSON_THROW_ON_ERROR);
             $decoded = json_decode($contents, true, 512, JSON_THROW_ON_ERROR);
         } catch (JsonException $exception) {
             throw new RuntimeException('Invalid Recall output JSON ' . $path . ': ' . $exception->getMessage(), 0, $exception);
         }
-        if (!is_array($decoded)) {
+        if (!is_object($root) || !is_array($decoded)) {
             throw new RuntimeException('Recall output JSON must decode to an object: ' . $path);
         }
 
