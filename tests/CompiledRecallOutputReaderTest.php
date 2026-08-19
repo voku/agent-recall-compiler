@@ -44,6 +44,7 @@ final class CompiledRecallOutputReaderTest extends TestCase
 
         self::assertNotNull($output);
         self::assertSame('c-1', $output->compilationId());
+        self::assertTrue($output->describesTask('ABC-123'));
         self::assertTrue($output->bindsTo('ABC-123', 2));
         self::assertFalse($output->isBlocked());
         self::assertTrue($output->isComplete());
@@ -63,6 +64,20 @@ final class CompiledRecallOutputReaderTest extends TestCase
         self::assertNotNull($output);
         self::assertFalse($output->describesTask('ABC-123'));
         self::assertTrue($output->describesTask('OTHER-9'));
+    }
+
+    public function testMetadataWithoutTaskIdentityMatchesNoTask(): void
+    {
+        file_put_contents($this->dir . '/meta.json', json_encode([
+            'schema_version' => '1.0',
+            'compilation_id' => 'c-1',
+        ], JSON_THROW_ON_ERROR));
+
+        $output = (new CompiledRecallOutputReader())->read($this->dir);
+
+        self::assertNotNull($output);
+        self::assertFalse($output->describesTask('ABC-123'));
+        self::assertFalse($output->describesTask('OTHER-9'));
     }
 
     public function testOutputCompiledForAnotherRevisionDoesNotBind(): void
@@ -169,12 +184,34 @@ final class CompiledRecallOutputReaderTest extends TestCase
         self::assertFalse($output->bindsTo('ABC-123', 1));
     }
 
+    public function testListShapedBundleIsReportedAsCorrupt(): void
+    {
+        $this->writeMeta();
+        file_put_contents($this->dir . '/recall.bundle.json', '[]');
+
+        $output = (new CompiledRecallOutputReader())->read($this->dir);
+
+        self::assertNotNull($output);
+        self::assertTrue($output->hasBundle());
+        self::assertFalse($output->isBundleReadable());
+    }
+
     public function testUnreadableOutputFailsLoudlyInsteadOfLookingEmpty(): void
     {
         file_put_contents($this->dir . '/meta.json', '{"compilation_id":');
 
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Invalid Recall output JSON');
+
+        (new CompiledRecallOutputReader())->read($this->dir);
+    }
+
+    public function testListShapedMetadataFailsLoudly(): void
+    {
+        file_put_contents($this->dir . '/meta.json', '[]');
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('must decode to an object');
 
         (new CompiledRecallOutputReader())->read($this->dir);
     }
