@@ -4,6 +4,21 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.13.8] - 2026-08-19
+
+### Added
+
+- Add `RecallFactsDocumentReader` and `RecallFactsDocument` so hosts consuming a standalone compiled facts document can read its canonical bundle identity and typed facts without decoding Recall JSON themselves.
+
+### Changed
+
+- `CompiledRecallOutputReader` now delegates facts parsing to the same owner reader, leaving one implementation of the persisted facts schema inside Recall.
+- Facts-document reading validates the real `1.0` document shape, raw lowercase 64-hex bundle digest, JSON-object root, and list-shaped fact collection while preserving open fact payload meaning for the host.
+
+### Validation
+
+- PR #94 passed PHPUnit and PHPStan on PHP 8.3, 8.4, and 8.5 plus the governed `agent-loop` context-explain dogfood.
+- CodeRabbit reported no actionable review thread on the final PR head.
 ## [0.13.7] - 2026-08-19
 
 ### Added
