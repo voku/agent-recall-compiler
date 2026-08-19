@@ -41,21 +41,21 @@ final readonly class CompiledRecallOutput
     ) {
     }
 
-    /** Absolute path of the document identifying this compiled output. */
+    /** Path of the document identifying this compiled output. */
     public function identityPath(): string
     {
         return $this->identityPath;
     }
 
     /**
-     * Whether the compilation metadata claims this task at all.
+     * Whether the compilation metadata explicitly claims this task.
      *
      * This is weaker than bindsTo(): metadata can name the right task while the
      * compiled bundle is bound to an older Contract revision.
      */
     public function describesTask(string $taskId): bool
     {
-        return $this->describedTaskId === null || $this->describedTaskId === $taskId;
+        return $this->describedTaskId === $taskId;
     }
 
     public function compilationId(): ?string
