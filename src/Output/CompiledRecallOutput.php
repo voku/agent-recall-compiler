@@ -20,6 +20,7 @@ final readonly class CompiledRecallOutput
      * @param list<RecallFact> $facts
      */
     public function __construct(
+        private string $identityPath,
         private ?string $compilationId,
         private ?string $bundleSha256,
         private ?string $snapshotSha256,
@@ -33,6 +34,12 @@ final readonly class CompiledRecallOutput
         private array $selectedConstraints,
         private array $facts,
     ) {
+    }
+
+    /** Absolute path of the document identifying this compiled output. */
+    public function identityPath(): string
+    {
+        return $this->identityPath;
     }
 
     /**

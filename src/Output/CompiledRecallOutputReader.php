@@ -17,10 +17,21 @@ use RuntimeException;
  */
 final readonly class CompiledRecallOutputReader
 {
+    /**
+     * Where the document identifying this output lives, whether or not it exists.
+     *
+     * Hosts report Recall provenance in their own manifests and would otherwise
+     * have to hard-code the filename to do it.
+     */
+    public function identityPath(string $outputDirectory): string
+    {
+        return rtrim($outputDirectory, '/\\') . '/meta.json';
+    }
+
     public function read(string $outputDirectory): ?CompiledRecallOutput
     {
         $directory = rtrim($outputDirectory, '/\\');
-        $metaPath = $directory . '/meta.json';
+        $metaPath = $this->identityPath($directory);
         if (!is_file($metaPath)) {
             return null;
         }
@@ -41,6 +52,7 @@ final readonly class CompiledRecallOutputReader
         }
 
         return new CompiledRecallOutput(
+            identityPath: $metaPath,
             describedTaskId: $this->stringOrNull($meta['task_id'] ?? null),
             compilationId: $this->stringOrNull($meta['compilation_id'] ?? null),
             bundleSha256: $this->stringOrNull($meta['bundle_sha256'] ?? null),
