@@ -14,6 +14,7 @@ namespace voku\AgentRecallCompiler\Output;
 final readonly class CompiledRecallOutput
 {
     /**
+     * @param list<string> $taskFiles
      * @param list<string> $selectedGuidance
      * @param list<string> $selectedConstraints
      * @param list<RecallFact> $facts
@@ -32,6 +33,8 @@ final readonly class CompiledRecallOutput
         private bool $bundleReadable,
         private bool $factsPresent,
         private bool $factsReadable,
+        private bool $outcomeDraftPresent,
+        private array $taskFiles,
         private array $selectedGuidance,
         private array $selectedConstraints,
         private array $facts,
@@ -108,6 +111,18 @@ final readonly class CompiledRecallOutput
     public function areFactsReadable(): bool
     {
         return $this->factsReadable;
+    }
+
+    /** Whether the compiler produced an outcome draft for this compilation. */
+    public function hasOutcomeDraft(): bool
+    {
+        return $this->outcomeDraftPresent;
+    }
+
+    /** @return list<string> */
+    public function taskFiles(): array
+    {
+        return $this->taskFiles;
     }
 
     /**
