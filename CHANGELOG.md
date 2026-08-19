@@ -4,6 +4,15 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.13.9] - 2026-08-19
+
+### Added
+
+- Let `RecallFactsDocumentReader` own the standalone facts-document path through `path()` and `readFromOutputDirectory()`, so hosts no longer need to know the private `facts.json` filename.
+
+### Validation
+
+- PR #96 passed PHPUnit and PHPStan on PHP 8.3, 8.4, and 8.5 plus governed `agent-loop` dogfood; CodeRabbit reported no actionable review thread on the final head.
 ## [0.13.8] - 2026-08-19
 
 ### Added
