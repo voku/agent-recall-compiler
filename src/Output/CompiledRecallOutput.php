@@ -25,6 +25,7 @@ final readonly class CompiledRecallOutput
         private ?string $snapshotSha256,
         private bool $blocked,
         private ?string $blockReason,
+        private ?string $describedTaskId,
         private ?string $boundTaskId,
         private ?int $boundContractRevision,
         private bool $bundlePresent,
@@ -32,6 +33,17 @@ final readonly class CompiledRecallOutput
         private array $selectedConstraints,
         private array $facts,
     ) {
+    }
+
+    /**
+     * Whether the compilation metadata claims this task at all.
+     *
+     * This is a weaker statement than bindsTo(): metadata can name the right
+     * task while the compiled bundle is bound to an older revision.
+     */
+    public function describesTask(string $taskId): bool
+    {
+        return $this->describedTaskId === null || $this->describedTaskId === $taskId;
     }
 
     public function compilationId(): ?string

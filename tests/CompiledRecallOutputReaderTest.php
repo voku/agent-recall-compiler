@@ -50,6 +50,18 @@ final class CompiledRecallOutputReaderTest extends TestCase
         self::assertSame(['c-1'], $output->selectedConstraints());
     }
 
+    public function testMetadataNamingAnotherTaskIsDetectedSeparatelyFromBinding(): void
+    {
+        $this->writeMeta(['task_id' => 'OTHER-9']);
+        $this->writeBundle('OTHER-9', 1);
+
+        $output = (new CompiledRecallOutputReader())->read($this->dir);
+
+        self::assertNotNull($output);
+        self::assertFalse($output->describesTask('ABC-123'));
+        self::assertTrue($output->describesTask('OTHER-9'));
+    }
+
     public function testOutputCompiledForAnotherRevisionDoesNotBind(): void
     {
         $this->writeMeta();

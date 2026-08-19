@@ -41,6 +41,7 @@ final readonly class CompiledRecallOutputReader
         }
 
         return new CompiledRecallOutput(
+            describedTaskId: $this->stringOrNull($meta['task_id'] ?? null),
             compilationId: $this->stringOrNull($meta['compilation_id'] ?? null),
             bundleSha256: $this->stringOrNull($meta['bundle_sha256'] ?? null),
             snapshotSha256: $this->stringOrNull($meta['snapshot_sha256'] ?? null),
