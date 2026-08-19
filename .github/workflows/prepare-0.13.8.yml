@@ -1,0 +1,91 @@
+name: Prepare 0.13.8 release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/prepare-0.13.8.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Prepare exact release metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          target='c94ef46bf22e96706a586b2694d104ffd5dcd112'
+          git merge-base --is-ancestor "${target}" HEAD
+
+          php <<'PHP'
+          <?php
+
+          declare(strict_types=1);
+
+          $path = 'CHANGELOG.md';
+          $text = file_get_contents($path);
+          if ($text === false) {
+              throw new RuntimeException('Cannot read CHANGELOG.md');
+          }
+
+          $anchor = "## [0.13.7] - 2026-08-19\n";
+          if (substr_count($text, $anchor) !== 1) {
+              throw new RuntimeException('0.13.7 changelog anchor is not unique');
+          }
+          if (str_contains($text, '## [0.13.8] - 2026-08-19')) {
+              throw new RuntimeException('0.13.8 section already exists');
+          }
+
+          $section = <<<'CHANGELOG'
+          ## [0.13.8] - 2026-08-19
+
+          ### Added
+
+          - Add `RecallFactsDocumentReader` and `RecallFactsDocument` so hosts consuming a standalone compiled facts document can read its canonical bundle identity and typed facts without decoding Recall JSON themselves.
+
+          ### Changed
+
+          - `CompiledRecallOutputReader` now delegates facts parsing to the same owner reader, leaving one implementation of the persisted facts schema inside Recall.
+          - Facts-document reading validates the real `1.0` document shape, raw lowercase 64-hex bundle digest, JSON-object root, and list-shaped fact collection while preserving open fact payload meaning for the host.
+
+          ### Validation
+
+          - PR #94 passed PHPUnit and PHPStan on PHP 8.3, 8.4, and 8.5 plus the governed `agent-loop` context-explain dogfood.
+          - CodeRabbit reported no actionable review thread on the final PR head.
+
+          CHANGELOG;
+
+          $updated = str_replace($anchor, $section . $anchor, $text, $count);
+          if ($count !== 1) {
+              throw new RuntimeException('Failed to insert 0.13.8 changelog section');
+          }
+          if (file_put_contents($path, $updated) === false) {
+              throw new RuntimeException('Cannot write CHANGELOG.md');
+          }
+          PHP
+
+          mkdir -p .release
+          cat > .release/0.13.8.json <<'JSON'
+          {
+            "target_sha": "c94ef46bf22e96706a586b2694d104ffd5dcd112",
+            "version": "0.13.8"
+          }
+          JSON
+
+          rm .github/workflows/prepare-0.13.8.yml
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add CHANGELOG.md .release/0.13.8.json .github/workflows/prepare-0.13.8.yml
+          git diff --cached --check
+          git commit -m 'release: prepare 0.13.8'
+          git tag -a '0.13.8' "${target}" -m 'agent-recall-compiler 0.13.8'
+          git push --atomic origin HEAD:main refs/tags/0.13.8
