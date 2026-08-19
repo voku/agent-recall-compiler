@@ -5,12 +5,11 @@ declare(strict_types=1);
 namespace voku\AgentRecallCompiler\Output;
 
 /**
- * Answers a lifecycle host asks about one compiled Recall output directory.
+ * Answers lifecycle-host questions about one compiled Recall output directory.
  *
  * This deliberately exposes semantic questions rather than the documents behind
- * them. A host that has to read `meta.json` keys or know that a bundle lives in
- * `recall.bundle.json` has taken on Recall's serialization as a private
- * dependency, which is the coupling this type exists to remove.
+ * them. A host that has to read Recall JSON keys or know artifact filenames has
+ * taken on Recall's serialization as a private dependency.
  */
 final readonly class CompiledRecallOutput
 {
@@ -31,6 +30,8 @@ final readonly class CompiledRecallOutput
         private ?int $boundContractRevision,
         private bool $bundlePresent,
         private bool $bundleReadable,
+        private bool $factsPresent,
+        private bool $factsReadable,
         private array $selectedGuidance,
         private array $selectedConstraints,
         private array $facts,
@@ -46,8 +47,8 @@ final readonly class CompiledRecallOutput
     /**
      * Whether the compilation metadata claims this task at all.
      *
-     * This is a weaker statement than bindsTo(): metadata can name the right
-     * task while the compiled bundle is bound to an older revision.
+     * This is weaker than bindsTo(): metadata can name the right task while the
+     * compiled bundle is bound to an older Contract revision.
      */
     public function describesTask(string $taskId): bool
     {
@@ -79,12 +80,7 @@ final readonly class CompiledRecallOutput
         return $this->blockReason;
     }
 
-    /**
-     * Whether this output was compiled for exactly this task and Contract revision.
-     *
-     * A false answer means the directory describes previous work: the caller is
-     * looking at superseded output, not at evidence for the current Run.
-     */
+    /** Whether this output was compiled for exactly this task and Contract revision. */
     public function bindsTo(string $taskId, int $contractRevision): bool
     {
         return $this->boundTaskId === $taskId && $this->boundContractRevision === $contractRevision;
@@ -100,6 +96,18 @@ final readonly class CompiledRecallOutput
     public function isBundleReadable(): bool
     {
         return $this->bundleReadable;
+    }
+
+    /** Whether the optional compiled facts document exists. */
+    public function hasFacts(): bool
+    {
+        return $this->factsPresent;
+    }
+
+    /** Whether an existing facts document could be parsed; false means corrupt. */
+    public function areFactsReadable(): bool
+    {
+        return $this->factsReadable;
     }
 
     /**
