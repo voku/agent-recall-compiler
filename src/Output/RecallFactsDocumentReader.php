@@ -7,9 +7,20 @@ namespace voku\AgentRecallCompiler\Output;
 use JsonException;
 use RuntimeException;
 
-/** Reads one persisted facts.json without exposing its serialization contract. */
+/** Reads persisted Recall facts without exposing their serialization contract. */
 final readonly class RecallFactsDocumentReader
 {
+    /** Where Recall stores the facts document for one compiled output directory. */
+    public function path(string $outputDirectory): string
+    {
+        return rtrim($outputDirectory, '/\\') . '/facts.json';
+    }
+
+    public function readFromOutputDirectory(string $outputDirectory): ?RecallFactsDocument
+    {
+        return $this->read($this->path($outputDirectory));
+    }
+
     public function read(string $path): ?RecallFactsDocument
     {
         if (!is_file($path)) {
