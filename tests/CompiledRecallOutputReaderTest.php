@@ -162,6 +162,8 @@ final class CompiledRecallOutputReaderTest extends TestCase
     {
         $this->writeMeta();
         file_put_contents($this->dir . '/facts.json', json_encode([
+            'schema_version' => '1.0',
+            'bundle_sha256' => str_repeat('a', 64),
             'facts' => [
                 [
                     'type' => 'kanban',

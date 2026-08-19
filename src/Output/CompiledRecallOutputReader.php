@@ -105,31 +105,15 @@ final readonly class CompiledRecallOutputReader
         }
 
         try {
-            $document = $this->decode($path);
-            $rows = $document['facts'] ?? null;
-            if (!is_array($rows)) {
-                throw new RuntimeException('Recall facts document requires a facts list: ' . $path);
-            }
+            $document = (new RecallFactsDocumentReader())->read($path);
         } catch (RuntimeException) {
             return [true, false, []];
         }
-
-        $facts = [];
-        foreach ($rows as $row) {
-            if (!is_array($row) || !is_string($row['type'] ?? null)) {
-                continue;
-            }
-            /** @var array<string, mixed> $payload */
-            $payload = is_array($row['payload'] ?? null) ? $row['payload'] : [];
-            $facts[] = new RecallFact(
-                type: $row['type'],
-                payload: $payload,
-                sourceRef: $this->stringOrNull($row['source_ref'] ?? null),
-                scope: $this->stringList($row['scope'] ?? null),
-            );
+        if (!$document instanceof RecallFactsDocument) {
+            return [false, true, []];
         }
 
-        return [true, true, $facts];
+        return [true, true, $document->facts];
     }
 
     /**
