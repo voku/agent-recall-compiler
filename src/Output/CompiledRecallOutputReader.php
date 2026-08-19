@@ -10,19 +10,12 @@ use RuntimeException;
 /**
  * Reads a compiled Recall output directory without creating or mutating it.
  *
- * Recall already owns writing these artifacts. Until this reader existed, every
- * embedding host had to re-derive the filenames and key names to ask ordinary
- * questions about its own Run, so the format was public by accident rather than
- * by contract. Filenames and keys stop here.
+ * Recall already owns writing these artifacts. Hosts should not have to know
+ * artifact filenames or JSON key names to ask ordinary lifecycle questions.
  */
 final readonly class CompiledRecallOutputReader
 {
-    /**
-     * Where the document identifying this output lives, whether or not it exists.
-     *
-     * Hosts report Recall provenance in their own manifests and would otherwise
-     * have to hard-code the filename to do it.
-     */
+    /** Where the document identifying this output lives, whether or not it exists. */
     public function identityPath(string $outputDirectory): string
     {
         return rtrim($outputDirectory, '/\\') . '/meta.json';
@@ -44,9 +37,8 @@ final readonly class CompiledRecallOutputReader
         $boundRevision = null;
         $bundleReadable = true;
         if ($bundlePresent) {
-            // A corrupt bundle is a distinct lifecycle signal from a missing or
-            // mismatched one, so it is reported rather than thrown: the host can
-            // route it back through recompilation instead of failing closed.
+            // A corrupt bundle is distinct from a missing or mismatched one, so
+            // report it instead of throwing: the host can route to recompilation.
             try {
                 $bundle = $this->decode($bundlePath);
                 $task = $bundle['task'] ?? null;
@@ -58,6 +50,8 @@ final readonly class CompiledRecallOutputReader
                 $bundleReadable = false;
             }
         }
+
+        [$factsPresent, $factsReadable, $facts] = $this->facts($directory);
 
         return new CompiledRecallOutput(
             identityPath: $metaPath,
@@ -71,24 +65,30 @@ final readonly class CompiledRecallOutputReader
             boundContractRevision: $boundRevision,
             bundlePresent: $bundlePresent,
             bundleReadable: $bundleReadable,
+            factsPresent: $factsPresent,
+            factsReadable: $factsReadable,
             selectedGuidance: $this->stringList($meta['selected_guidance'] ?? null),
-            selectedConstraints: $this->stringList($meta['selected_constraints'] ?? null),
-            facts: $this->facts($directory),
+            selectedConstraints: $this->constraintIds($meta['selected_constraints'] ?? null),
+            facts: $facts,
         );
     }
 
-    /** @return list<RecallFact> */
+    /** @return array{bool, bool, list<RecallFact>} */
     private function facts(string $directory): array
     {
         $path = $directory . '/facts.json';
         if (!is_file($path)) {
-            return [];
+            return [false, true, []];
         }
 
-        $document = $this->decode($path);
-        $rows = $document['facts'] ?? null;
-        if (!is_array($rows)) {
-            throw new RuntimeException('Recall facts document requires a facts list: ' . $path);
+        try {
+            $document = $this->decode($path);
+            $rows = $document['facts'] ?? null;
+            if (!is_array($rows)) {
+                throw new RuntimeException('Recall facts document requires a facts list: ' . $path);
+            }
+        } catch (RuntimeException) {
+            return [true, false, []];
         }
 
         $facts = [];
@@ -98,10 +98,15 @@ final readonly class CompiledRecallOutputReader
             }
             /** @var array<string, mixed> $payload */
             $payload = is_array($row['payload'] ?? null) ? $row['payload'] : [];
-            $facts[] = new RecallFact($row['type'], $payload);
+            $facts[] = new RecallFact(
+                type: $row['type'],
+                payload: $payload,
+                sourceRef: $this->stringOrNull($row['source_ref'] ?? null),
+                scope: $this->stringList($row['scope'] ?? null),
+            );
         }
 
-        return $facts;
+        return [true, true, $facts];
     }
 
     /** @return array<string, mixed> */
@@ -139,11 +144,33 @@ final readonly class CompiledRecallOutputReader
 
         $items = [];
         foreach ($value as $item) {
-            if (is_string($item)) {
+            if (is_string($item) && $item !== '') {
                 $items[] = $item;
             }
         }
 
         return $items;
+    }
+
+    /** @return list<string> */
+    private function constraintIds(mixed $value): array
+    {
+        if (!is_array($value)) {
+            return [];
+        }
+
+        $ids = [];
+        foreach ($value as $constraint) {
+            if (is_string($constraint) && $constraint !== '') {
+                // Keep backward compatibility with early/hand-written fixtures.
+                $ids[] = $constraint;
+                continue;
+            }
+            if (is_array($constraint) && is_string($constraint['id'] ?? null) && $constraint['id'] !== '') {
+                $ids[] = $constraint['id'];
+            }
+        }
+
+        return $ids;
     }
 }
