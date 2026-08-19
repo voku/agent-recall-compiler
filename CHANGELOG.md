@@ -4,6 +4,23 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.13.7] - 2026-08-19
+
+### Added
+
+- Add `CompiledRecallOutputReader`, `CompiledRecallOutput`, and `RecallFact` as the typed read side of compiled Recall output for lifecycle hosts.
+- Expose semantic task/Contract binding, compilation identity, selected guidance/constraints, facts, task files, outcome-draft presence, bundle/facts readability, legacy task fallback, and owner-recorded output-integrity checks without requiring consumers to know Recall filenames or JSON keys.
+
+### Changed
+
+- Missing task identity matches no task; corrupt bundle/facts remain distinguishable from absent artifacts so hosts can preserve stale/incomplete recovery semantics.
+- Recall now owns the legacy `current` task fallback and validation of its recorded output hashes, including rejecting unsafe recorded relative paths before hashing.
+- Fact provenance and scope are preserved alongside the open payload; real object-shaped `selected_constraints` are exposed as their semantic IDs.
+
+### Validation
+
+- PR #92 passed CI on its final implementation head and resolved all three actionable CodeRabbit review threads.
+- Consumer-driven Slice D work in `agent-loop` exercised the API against the existing lifecycle call sites and forced the reader to preserve real constraint, fact-provenance, missing/corrupt, task-fallback, and output-integrity semantics instead of simplifying fixtures around them.
 ## [0.13.6] - 2026-08-18
 
 ### Added
