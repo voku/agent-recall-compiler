@@ -47,7 +47,7 @@ final class CompiledRecallOutputReaderTest extends TestCase
         self::assertFalse($output->isBlocked());
         self::assertTrue($output->isComplete());
         self::assertSame(['g-1'], $output->selectedGuidance());
-        self::assertSame(['c-1'], $output->selectedConstraints());
+        self::assertSame(['constraint-1'], $output->selectedConstraints());
     }
 
     public function testMetadataNamingAnotherTaskIsDetectedSeparatelyFromBinding(): void
@@ -97,23 +97,59 @@ final class CompiledRecallOutputReaderTest extends TestCase
         self::assertSame('no guidance available', $output->blockReason());
     }
 
-    public function testFactsAreReturnedTypedAndSkipMalformedRows(): void
+    public function testFactsPreserveTypedPayloadProvenanceAndScope(): void
     {
         $this->writeMeta();
         file_put_contents($this->dir . '/facts.json', json_encode([
             'facts' => [
-                ['type' => 'kanban', 'payload' => ['card' => 'ABC-123']],
+                [
+                    'type' => 'kanban',
+                    'source_ref' => 'todo/cards/ABC-123.md',
+                    'scope' => ['src/Foo.php'],
+                    'payload' => ['card' => ['title' => 'ABC-123']],
+                ],
                 ['payload' => ['no' => 'type']],
                 ['type' => 'navigation', 'payload' => []],
             ],
         ], JSON_THROW_ON_ERROR));
 
-        $facts = (new CompiledRecallOutputReader())->read($this->dir)?->facts() ?? [];
+        $output = (new CompiledRecallOutputReader())->read($this->dir);
+        self::assertNotNull($output);
+        self::assertTrue($output->hasFacts());
+        self::assertTrue($output->areFactsReadable());
+        $facts = $output->facts();
 
         self::assertCount(2, $facts);
         self::assertSame('kanban', $facts[0]->type);
-        self::assertSame(['card' => 'ABC-123'], $facts[0]->payload);
+        self::assertSame(['card' => ['title' => 'ABC-123']], $facts[0]->payload);
+        self::assertSame('todo/cards/ABC-123.md', $facts[0]->sourceRef);
+        self::assertSame(['src/Foo.php'], $facts[0]->scope);
         self::assertSame('navigation', $facts[1]->type);
+    }
+
+    public function testCorruptFactsAreReportedSeparatelyFromMissingFacts(): void
+    {
+        $this->writeMeta();
+        file_put_contents($this->dir . '/facts.json', '{"facts":');
+
+        $output = (new CompiledRecallOutputReader())->read($this->dir);
+
+        self::assertNotNull($output);
+        self::assertTrue($output->hasFacts());
+        self::assertFalse($output->areFactsReadable());
+        self::assertSame([], $output->facts());
+    }
+
+    public function testMissingFactsRemainAbsentAndReadable(): void
+    {
+        $this->writeMeta();
+
+        $output = (new CompiledRecallOutputReader())->read($this->dir);
+
+        self::assertNotNull($output);
+        self::assertFalse($output->hasFacts());
+        self::assertTrue($output->areFactsReadable());
+        self::assertSame([], $output->facts());
     }
 
     public function testCorruptBundleIsReportedRatherThanThrown(): void
@@ -147,7 +183,13 @@ final class CompiledRecallOutputReaderTest extends TestCase
             'task_id' => 'ABC-123',
             'compilation_id' => 'c-1',
             'selected_guidance' => ['g-1'],
-            'selected_constraints' => ['c-1'],
+            'selected_constraints' => [[
+                'id' => 'constraint-1',
+                'engine' => 'phpstan',
+                'rule_identifier' => 'foo.rule',
+                'source_proposal' => 'proposal-1',
+                'selection_reason' => 'constraint_scope',
+            ]],
         ], JSON_THROW_ON_ERROR));
     }
 
