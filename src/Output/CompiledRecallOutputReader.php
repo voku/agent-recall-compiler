@@ -67,6 +67,8 @@ final readonly class CompiledRecallOutputReader
             bundleReadable: $bundleReadable,
             factsPresent: $factsPresent,
             factsReadable: $factsReadable,
+            outcomeDraftPresent: is_file($directory . '/recall-log.draft.json'),
+            taskFiles: $this->stringList($meta['task_files'] ?? null),
             selectedGuidance: $this->stringList($meta['selected_guidance'] ?? null),
             selectedConstraints: $this->constraintIds($meta['selected_constraints'] ?? null),
             facts: $facts,
