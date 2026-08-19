@@ -24,7 +24,7 @@ final class CompiledRecallOutputReaderTest extends TestCase
     protected function tearDown(): void
     {
         foreach (glob($this->dir . '/*') ?: [] as $file) {
-            unlink($file);
+            is_dir($file) ? $this->removeDirectory($file) : unlink($file);
         }
         rmdir($this->dir);
     }
@@ -52,6 +52,7 @@ final class CompiledRecallOutputReaderTest extends TestCase
         self::assertTrue($output->hasOutcomeDraft());
         self::assertSame(['g-1'], $output->selectedGuidance());
         self::assertSame(['constraint-1'], $output->selectedConstraints());
+        self::assertSame([], $output->integrityFailures());
     }
 
     public function testMetadataNamingAnotherTaskIsDetectedSeparatelyFromBinding(): void
@@ -78,6 +79,48 @@ final class CompiledRecallOutputReaderTest extends TestCase
         self::assertNotNull($output);
         self::assertFalse($output->describesTask('ABC-123'));
         self::assertFalse($output->describesTask('OTHER-9'));
+    }
+
+    public function testReadForTaskOwnsLegacyCurrentFallback(): void
+    {
+        $root = $this->dir . '/root';
+        mkdir($root . '/current', 0o775, true);
+        file_put_contents($root . '/current/meta.json', json_encode([
+            'schema_version' => '1.0',
+            'task_id' => 'ABC-123',
+            'compilation_id' => 'c-current',
+            'output_hashes' => [],
+        ], JSON_THROW_ON_ERROR));
+
+        $reader = new CompiledRecallOutputReader();
+        $output = $reader->readForTask($root, 'ABC-123');
+
+        self::assertNotNull($output);
+        self::assertSame('c-current', $output->compilationId());
+        self::assertNull($reader->readForTask($root, 'OTHER-9'));
+    }
+
+    public function testCanonicalTaskOutputWinsOverLegacyCurrentProjection(): void
+    {
+        $root = $this->dir . '/root';
+        mkdir($root . '/ABC-123', 0o775, true);
+        mkdir($root . '/current', 0o775, true);
+        foreach ([
+            $root . '/ABC-123/meta.json' => 'canonical',
+            $root . '/current/meta.json' => 'current',
+        ] as $path => $compilationId) {
+            file_put_contents($path, json_encode([
+                'schema_version' => '1.0',
+                'task_id' => 'ABC-123',
+                'compilation_id' => $compilationId,
+                'output_hashes' => [],
+            ], JSON_THROW_ON_ERROR));
+        }
+
+        $output = (new CompiledRecallOutputReader())->readForTask($root, 'ABC-123');
+
+        self::assertNotNull($output);
+        self::assertSame('canonical', $output->compilationId());
     }
 
     public function testOutputCompiledForAnotherRevisionDoesNotBind(): void
@@ -196,6 +239,39 @@ final class CompiledRecallOutputReaderTest extends TestCase
         self::assertFalse($output->isBundleReadable());
     }
 
+    public function testOutputIntegrityReportsMissingStaleAndUnsafeRecordedFiles(): void
+    {
+        file_put_contents($this->dir . '/current.md', 'current');
+        file_put_contents($this->dir . '/stale.md', 'actual');
+        $this->writeMeta([
+            'output_hashes' => [
+                'current.md' => hash('sha256', 'current'),
+                'missing.md' => hash('sha256', 'missing'),
+                'stale.md' => hash('sha256', 'expected'),
+                '../outside.md' => hash('sha256', 'outside'),
+            ],
+        ]);
+
+        $output = (new CompiledRecallOutputReader())->read($this->dir);
+
+        self::assertNotNull($output);
+        self::assertSame([
+            'compiled Recall output is missing recorded file: missing.md',
+            'compiled Recall output file is stale: stale.md',
+            'compiled Recall output records an unsafe relative path: ../outside.md',
+        ], $output->integrityFailures());
+    }
+
+    public function testMalformedOutputIntegrityManifestIsReportedByOwner(): void
+    {
+        $this->writeMeta(['output_hashes' => 'not-a-map']);
+
+        $output = (new CompiledRecallOutputReader())->read($this->dir);
+
+        self::assertNotNull($output);
+        self::assertSame(['compiled Recall output integrity manifest is malformed'], $output->integrityFailures());
+    }
+
     public function testUnreadableOutputFailsLoudlyInsteadOfLookingEmpty(): void
     {
         file_put_contents($this->dir . '/meta.json', '{"compilation_id":');
@@ -232,6 +308,7 @@ final class CompiledRecallOutputReaderTest extends TestCase
                 'source_proposal' => 'proposal-1',
                 'selection_reason' => 'constraint_scope',
             ]],
+            'output_hashes' => [],
         ], JSON_THROW_ON_ERROR));
     }
 
@@ -240,5 +317,13 @@ final class CompiledRecallOutputReaderTest extends TestCase
         file_put_contents($this->dir . '/recall.bundle.json', json_encode([
             'task' => ['id' => $taskId, 'revision' => $revision],
         ], JSON_THROW_ON_ERROR));
+    }
+
+    private function removeDirectory(string $path): void
+    {
+        foreach (glob($path . '/*') ?: [] as $entry) {
+            is_dir($entry) ? $this->removeDirectory($entry) : unlink($entry);
+        }
+        rmdir($path);
     }
 }
