@@ -30,6 +30,32 @@ final class RecallFactsDocumentReaderTest extends TestCase
         self::assertNull((new RecallFactsDocumentReader())->read($this->path));
     }
 
+    public function testReadsFromOutputDirectoryWithoutCallerNamingFactsFile(): void
+    {
+        $directory = sys_get_temp_dir() . '/recall-facts-output-' . bin2hex(random_bytes(6));
+        mkdir($directory, 0o775, true);
+        try {
+            $reader = new RecallFactsDocumentReader();
+            $path = $reader->path($directory);
+            file_put_contents($path, json_encode([
+                'schema_version' => '1.0',
+                'bundle_sha256' => str_repeat('c', 64),
+                'facts' => [],
+            ], JSON_THROW_ON_ERROR));
+
+            $document = $reader->readFromOutputDirectory($directory . '/');
+
+            self::assertNotNull($document);
+            self::assertSame($path, $document->identityPath);
+            self::assertSame(str_repeat('c', 64), $document->bundleSha256);
+        } finally {
+            if (is_file($directory . '/facts.json')) {
+                unlink($directory . '/facts.json');
+            }
+            rmdir($directory);
+        }
+    }
+
     public function testReadsBundleIdentityAndTypedFacts(): void
     {
         $digest = str_repeat('a', 64);
