@@ -30,6 +30,7 @@ final readonly class CompiledRecallOutput
         private ?string $boundTaskId,
         private ?int $boundContractRevision,
         private bool $bundlePresent,
+        private bool $bundleReadable,
         private array $selectedGuidance,
         private array $selectedConstraints,
         private array $facts,
@@ -87,6 +88,18 @@ final readonly class CompiledRecallOutput
     public function bindsTo(string $taskId, int $contractRevision): bool
     {
         return $this->boundTaskId === $taskId && $this->boundContractRevision === $contractRevision;
+    }
+
+    /** Whether the compiled bundle has been written at all. */
+    public function hasBundle(): bool
+    {
+        return $this->bundlePresent;
+    }
+
+    /** Whether an existing bundle could be parsed; false means corrupt, not absent. */
+    public function isBundleReadable(): bool
+    {
+        return $this->bundleReadable;
     }
 
     /**

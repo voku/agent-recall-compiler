@@ -42,12 +42,20 @@ final readonly class CompiledRecallOutputReader
 
         $boundTaskId = null;
         $boundRevision = null;
+        $bundleReadable = true;
         if ($bundlePresent) {
-            $bundle = $this->decode($bundlePath);
-            $task = $bundle['task'] ?? null;
-            if (is_array($task)) {
-                $boundTaskId = is_string($task['id'] ?? null) ? $task['id'] : null;
-                $boundRevision = is_int($task['revision'] ?? null) ? $task['revision'] : null;
+            // A corrupt bundle is a distinct lifecycle signal from a missing or
+            // mismatched one, so it is reported rather than thrown: the host can
+            // route it back through recompilation instead of failing closed.
+            try {
+                $bundle = $this->decode($bundlePath);
+                $task = $bundle['task'] ?? null;
+                if (is_array($task)) {
+                    $boundTaskId = is_string($task['id'] ?? null) ? $task['id'] : null;
+                    $boundRevision = is_int($task['revision'] ?? null) ? $task['revision'] : null;
+                }
+            } catch (RuntimeException) {
+                $bundleReadable = false;
             }
         }
 
@@ -62,6 +70,7 @@ final readonly class CompiledRecallOutputReader
             boundTaskId: $boundTaskId,
             boundContractRevision: $boundRevision,
             bundlePresent: $bundlePresent,
+            bundleReadable: $bundleReadable,
             selectedGuidance: $this->stringList($meta['selected_guidance'] ?? null),
             selectedConstraints: $this->stringList($meta['selected_constraints'] ?? null),
             facts: $this->facts($directory),

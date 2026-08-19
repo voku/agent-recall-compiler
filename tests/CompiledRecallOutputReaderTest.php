@@ -116,6 +116,19 @@ final class CompiledRecallOutputReaderTest extends TestCase
         self::assertSame('navigation', $facts[1]->type);
     }
 
+    public function testCorruptBundleIsReportedRatherThanThrown(): void
+    {
+        $this->writeMeta();
+        file_put_contents($this->dir . '/recall.bundle.json', '{"task":');
+
+        $output = (new CompiledRecallOutputReader())->read($this->dir);
+
+        self::assertNotNull($output, 'A corrupt bundle must stay recoverable, not fail the whole read.');
+        self::assertTrue($output->hasBundle());
+        self::assertFalse($output->isBundleReadable());
+        self::assertFalse($output->bindsTo('ABC-123', 1));
+    }
+
     public function testUnreadableOutputFailsLoudlyInsteadOfLookingEmpty(): void
     {
         file_put_contents($this->dir . '/meta.json', '{"compilation_id":');
