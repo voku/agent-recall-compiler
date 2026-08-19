@@ -18,6 +18,7 @@ final readonly class CompiledRecallOutput
      * @param list<string> $selectedGuidance
      * @param list<string> $selectedConstraints
      * @param list<RecallFact> $facts
+     * @param list<string> $integrityFailures
      */
     public function __construct(
         private string $identityPath,
@@ -38,6 +39,7 @@ final readonly class CompiledRecallOutput
         private array $selectedGuidance,
         private array $selectedConstraints,
         private array $facts,
+        private array $integrityFailures,
     ) {
     }
 
@@ -152,5 +154,16 @@ final readonly class CompiledRecallOutput
     public function facts(): array
     {
         return $this->facts;
+    }
+
+    /**
+     * Output files whose current bytes no longer satisfy Recall's own recorded
+     * compilation integrity contract.
+     *
+     * @return list<string>
+     */
+    public function integrityFailures(): array
+    {
+        return $this->integrityFailures;
     }
 }
