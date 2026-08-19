@@ -8,7 +8,7 @@ use JsonException;
 use RuntimeException;
 
 /**
- * Reads a compiled Recall output directory without creating or mutating it.
+ * Reads compiled Recall output without creating or mutating it.
  *
  * Recall already owns writing these artifacts. Hosts should not have to know
  * artifact filenames or JSON key names to ask ordinary lifecycle questions.
@@ -19,6 +19,26 @@ final readonly class CompiledRecallOutputReader
     public function identityPath(string $outputDirectory): string
     {
         return rtrim($outputDirectory, '/\\') . '/meta.json';
+    }
+
+    /**
+     * Resolve the canonical task output, falling back to Recall's legacy current
+     * projection only when that projection explicitly identifies the same task.
+     */
+    public function readForTask(string $recallRoot, string $taskId): ?CompiledRecallOutput
+    {
+        $root = rtrim($recallRoot, '/\\');
+        $canonical = $this->read($root . '/' . $taskId);
+        if ($canonical !== null) {
+            return $canonical;
+        }
+
+        $current = $this->read($root . '/current');
+        if ($current !== null && $current->describesTask($taskId)) {
+            return $current;
+        }
+
+        return null;
     }
 
     public function read(string $outputDirectory): ?CompiledRecallOutput
@@ -72,6 +92,7 @@ final readonly class CompiledRecallOutputReader
             selectedGuidance: $this->stringList($meta['selected_guidance'] ?? null),
             selectedConstraints: $this->constraintIds($meta['selected_constraints'] ?? null),
             facts: $facts,
+            integrityFailures: $this->integrityFailures($directory, $meta),
         );
     }
 
@@ -109,6 +130,60 @@ final readonly class CompiledRecallOutputReader
         }
 
         return [true, true, $facts];
+    }
+
+    /**
+     * @param array<string, mixed> $meta
+     * @return list<string>
+     */
+    private function integrityFailures(string $directory, array $meta): array
+    {
+        $hashes = $meta['output_hashes'] ?? [];
+        if (!is_array($hashes)) {
+            return ['compiled Recall output integrity manifest is malformed'];
+        }
+
+        $failures = [];
+        foreach ($hashes as $relativeFile => $expectedHash) {
+            if (!is_string($relativeFile) || !is_string($expectedHash)) {
+                continue;
+            }
+            if (!$this->isSafeRelativePath($relativeFile)) {
+                $failures[] = 'compiled Recall output records an unsafe relative path: ' . $relativeFile;
+                continue;
+            }
+
+            $path = $directory . '/' . str_replace('\\', '/', $relativeFile);
+            if (!is_file($path)) {
+                $failures[] = 'compiled Recall output is missing recorded file: ' . $relativeFile;
+                continue;
+            }
+
+            $actualHash = hash_file('sha256', $path);
+            if (!is_string($actualHash)) {
+                $failures[] = 'compiled Recall output cannot hash recorded file: ' . $relativeFile;
+                continue;
+            }
+            if (!hash_equals($expectedHash, $actualHash)) {
+                $failures[] = 'compiled Recall output file is stale: ' . $relativeFile;
+            }
+        }
+
+        return $failures;
+    }
+
+    private function isSafeRelativePath(string $path): bool
+    {
+        if ($path === '' || str_starts_with($path, '/') || preg_match('/^[A-Za-z]:[\\\\\/]/', $path) === 1) {
+            return false;
+        }
+
+        $segments = preg_split('~[\\\\/]+~', $path);
+        if (!is_array($segments)) {
+            return false;
+        }
+
+        return !in_array('..', $segments, true);
     }
 
     /** @return array<string, mixed> */
