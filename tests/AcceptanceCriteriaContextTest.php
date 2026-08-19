@@ -129,7 +129,7 @@ final class AcceptanceCriteriaContextTest extends TestCase
         self::assertSame('run-task-1', $brief->governedRun?->runId);
     }
 
-    public function testFactsSystemPromptAndEffectiveTaskKeepCriteriaWithoutClaimingSatisfaction(): void
+    public function testFactsSystemPromptAndEffectiveTaskKeepCriteriaWithoutClaimingSatisfactionOrApproval(): void
     {
         $task = new TaskBrief(
             id: 'TASK-1',
@@ -149,8 +149,9 @@ final class AcceptanceCriteriaContextTest extends TestCase
 
         $prompt = (new RecallPromptBuilder())->buildSystemMd($task, '', new RecallResult([], [], []));
         self::assertStringContainsString('## Acceptance Criteria', $prompt);
-        self::assertStringContainsString('required outcomes from the approved task Contract', $prompt);
+        self::assertStringContainsString('required task outcomes', $prompt);
         self::assertStringContainsString('not evidence that they are satisfied', $prompt);
+        self::assertStringNotContainsString('approved task Contract', $prompt);
         self::assertStringContainsString('installed skill exposes the new behavior', $prompt);
         self::assertStringContainsString('workflow report preserves this requirement', $prompt);
 
