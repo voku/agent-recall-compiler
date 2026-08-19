@@ -38,6 +38,7 @@ final class CompiledRecallOutputReaderTest extends TestCase
     {
         $this->writeMeta(['compilation_id' => 'c-1', 'bundle_sha256' => 'sha256:' . str_repeat('a', 64)]);
         $this->writeBundle('ABC-123', 2);
+        file_put_contents($this->dir . '/recall-log.draft.json', '{}');
 
         $output = (new CompiledRecallOutputReader())->read($this->dir);
 
@@ -46,6 +47,8 @@ final class CompiledRecallOutputReaderTest extends TestCase
         self::assertTrue($output->bindsTo('ABC-123', 2));
         self::assertFalse($output->isBlocked());
         self::assertTrue($output->isComplete());
+        self::assertSame(['src/Foo.php'], $output->taskFiles());
+        self::assertTrue($output->hasOutcomeDraft());
         self::assertSame(['g-1'], $output->selectedGuidance());
         self::assertSame(['constraint-1'], $output->selectedConstraints());
     }
@@ -150,6 +153,7 @@ final class CompiledRecallOutputReaderTest extends TestCase
         self::assertFalse($output->hasFacts());
         self::assertTrue($output->areFactsReadable());
         self::assertSame([], $output->facts());
+        self::assertFalse($output->hasOutcomeDraft());
     }
 
     public function testCorruptBundleIsReportedRatherThanThrown(): void
@@ -181,6 +185,7 @@ final class CompiledRecallOutputReaderTest extends TestCase
         file_put_contents($this->dir . '/meta.json', json_encode($overrides + [
             'schema_version' => '1.0',
             'task_id' => 'ABC-123',
+            'task_files' => ['src/Foo.php'],
             'compilation_id' => 'c-1',
             'selected_guidance' => ['g-1'],
             'selected_constraints' => [[
