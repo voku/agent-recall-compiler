@@ -80,7 +80,7 @@ final class DiscoveryProductionHandoffPromptTest extends TestCase
         self::assertStringContainsString('already-completed work and disproved hypotheses', $system);
         self::assertStringContainsString('task authority, semantic owner boundaries', $system);
         self::assertStringContainsString('repository-supported positive and negative-path tests', $system);
-        self::assertStringContainsString('stale-artifact, retry, or reproducibility checks when relevant', $system);
+        self::assertStringContainsString('stale-artifact/retry/reproducibility checks when relevant', $system);
         self::assertStringContainsString('exact validation commands or explicit UNKNOWN discovery obligations', $system);
         self::assertStringContainsString('falsification questions that try to disprove the proposed fix', $system);
         self::assertStringContainsString('observable Done When criteria', $system);
