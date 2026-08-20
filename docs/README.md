@@ -7,6 +7,7 @@ The README explains what `agent-recall-compiler` is and how to start using it. T
 - [Design principles](design-principles.md) — the architectural rules behind prompt compilation, bounded context, provenance, evidence states, review, Learning evidence, and authority boundaries.
 - [CLI reference](cli-reference.md) — detailed compile, target/map, manifest, outcome, review, and prompt commands kept out of the top-level README.
 - [Operating prompt recipes](operating-prompts.md) — L1/L2 prompt levels, `Goal / Context / Constraints / Verification / Done When`, capability evidence, governed input, and `agent-loop` integration.
+- [Discovery-first to production-ready handoff](discovery-production-handoff.md) — the two-step recipe pattern for re-grounding current state before constructing a self-contained execution prompt for a fresh coding agent.
 - [Prompt primitives](prompt-primitives.md) — when to use L2 construction, direct L1 controls, first-draft review, future-work reflection, or guidance-gap journaling.
 
 ## Starter integration
