@@ -74,6 +74,8 @@ final readonly class MapRecallProvider implements RecallProvider
             $staleByPath[$stale['path']] = $stale['reason'];
         }
 
+        $inheritedSymbolIds = self::inheritedSymbolIds($runtimeMap);
+
         foreach ($task->files as $path) {
             $file = $filesByPath[$path] ?? null;
             if ($file === null) {
@@ -99,7 +101,7 @@ final readonly class MapRecallProvider implements RecallProvider
                 continue;
             }
 
-            $facts[] = $this->fileFact($runtimeMap, $file);
+            $facts[] = $this->fileFact($runtimeMap, $file, $inheritedSymbolIds);
         }
 
         foreach ($task->targets as $target) {
@@ -372,10 +374,16 @@ final readonly class MapRecallProvider implements RecallProvider
         );
     }
 
-    private function fileFact(AgentMapIndex $map, FileEntry $file): RecallFact
+    /**
+     * @param array<string, true> $inheritedSymbolIds
+     */
+    private function fileFact(AgentMapIndex $map, FileEntry $file, array $inheritedSymbolIds): RecallFact
     {
         $symbolIds = [];
         foreach ($file->symbols as $symbol) {
+            if (isset($inheritedSymbolIds[$symbol->id()])) {
+                continue;
+            }
             $symbolIds[$symbol->id()] = true;
             foreach ($symbol->methods as $method) {
                 $symbolIds[$symbol->methodId($method)] = true;
@@ -418,6 +426,37 @@ final readonly class MapRecallProvider implements RecallProvider
             scope: [$file->path],
             payload: $payload,
         );
+    }
+
+    /**
+     * Symbol ids the map lists under more than one file.
+     *
+     * A file entry also carries the base classes its own symbols extend, so an
+     * external parent such as PHPUnit\Framework\TestCase is attributed to every
+     * file inheriting it. Matching incoming relations against those shared ids
+     * makes each file absorb the relation graph of every sibling sharing a
+     * parent, which grows with the square of the inheriting files. A symbol
+     * listed by several files is declared by none of them.
+     *
+     * @return array<string, true>
+     */
+    private static function inheritedSymbolIds(AgentMapIndex $map): array
+    {
+        $owners = [];
+        foreach ($map->files as $entry) {
+            foreach ($entry->symbols as $symbol) {
+                $owners[$symbol->id()][$entry->path] = true;
+            }
+        }
+
+        $inherited = [];
+        foreach ($owners as $symbolId => $paths) {
+            if (count($paths) > 1) {
+                $inherited[$symbolId] = true;
+            }
+        }
+
+        return $inherited;
     }
 
     private function factSuffix(string $value): string

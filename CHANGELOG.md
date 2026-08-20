@@ -4,6 +4,12 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [Unreleased]
+
+### Fixed
+
+- Stop a file's navigation fact from absorbing the relation graph of every sibling that shares an inherited base class. A map file entry also lists the parents its own symbols extend, so an external base such as `PHPUnit\Framework\TestCase` is attributed to every file inheriting it; matching incoming relations against those shared ids grew with the square of the inheriting files. On a 311-file repository one test file's fact carried 88,179 relations (33.7 MB) instead of 949 (0.39 MB), and the compiled bundle reached 124 MB. Symbols listed under more than one file are now excluded from that matching, since a symbol listed by several files is declared by none of them. Files that declare their own symbols are unaffected.
+
 ## [0.13.9] - 2026-08-19
 
 ### Added
