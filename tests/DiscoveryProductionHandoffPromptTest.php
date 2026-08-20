@@ -56,8 +56,12 @@ final class DiscoveryProductionHandoffPromptTest extends TestCase
         self::assertStringContainsString('before proposing or implementing a change', $system);
         self::assertStringContainsString('already-completed or disproved work', $system);
         self::assertStringContainsString('VERIFIED, INFERRED, UNKNOWN, BLOCKED, or CONTRADICTED', $system);
+        self::assertStringContainsString('bounded falsification of plausible stale-assumption, regression, ownership, dependency/toolchain, and measurement-definition risks', $system);
         self::assertStringContainsString('NO_CHANGE is valid', $system);
         self::assertStringContainsString('smallest evidence-backed next slice', $system);
+        self::assertStringContainsString('semantic owner boundary', $system);
+        self::assertStringContainsString('exact verification or discriminating probe needed before editing', $system);
+        self::assertStringContainsString('If authoritative context is missing or conflicting, return BLOCKED', $system);
         self::assertStringContainsString('Do not implement during the discovery pass', $system);
     }
 
@@ -72,9 +76,17 @@ final class DiscoveryProductionHandoffPromptTest extends TestCase
         self::assertStringContainsString('### production-ready-handoff (L2)', $system);
         self::assertStringContainsString('has no access to the current chat, Session-private context, hidden reasoning, or prior-agent memory', $system);
         self::assertStringContainsString('re-ground all supplied anchors against current repository state before acting', $system);
+        self::assertStringContainsString('preserve VERIFIED, INFERRED, UNKNOWN, BLOCKED, and CONTRADICTED distinctions', $system);
         self::assertStringContainsString('already-completed work and disproved hypotheses', $system);
-        self::assertStringContainsString('Production-ready must not mean broader scope', $system);
+        self::assertStringContainsString('task authority, semantic owner boundaries', $system);
+        self::assertStringContainsString('repository-supported positive and negative-path tests', $system);
+        self::assertStringContainsString('stale-artifact, retry, or reproducibility checks when relevant', $system);
+        self::assertStringContainsString('exact validation commands or explicit UNKNOWN discovery obligations', $system);
         self::assertStringContainsString('falsification questions that try to disprove the proposed fix', $system);
+        self::assertStringContainsString('observable Done When criteria', $system);
+        self::assertStringContainsString('Production-ready must not mean broader scope', $system);
+        self::assertStringContainsString('current authority wins', $system);
+        self::assertStringContainsString('re-planning or BLOCKED', $system);
         self::assertStringContainsString('copy-paste-ready L1 execution prompt', $system);
         self::assertStringContainsString('not a summary, TODO card, implementation, or claim of verification', $system);
     }
