@@ -197,4 +197,4 @@ Generated files are not automatically injected into a coding model by the standa
 
 `log-outcome` appends immutable selection/outcome events under the Learning root. It does not approve durable guidance. Duplicate retries fail rather than partially appending a second outcome.
 
-When `agent-loop` owns the governed Run, use its workflow skills for PLAN/APPROVE/CONTRACT/LEARN/CLOSE. This skill remains the canonical reference for Recall-specific commands, public embedding API, and artifacts; it is not a second workflow lifecycle.
+When `agent-loop` owns the governed Run, enter through `agent-loop enter <task-id>` and reconcile deterministic close-out through `agent-loop finish <task-id>`, following the returned canonical next action until complete. This skill remains the canonical reference for Recall-specific commands, public embedding API, and artifacts; it is not a second workflow lifecycle.
