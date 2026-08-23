@@ -37,6 +37,8 @@ final class ExecutePlanWithBlindSpotCheckPromptTest extends TestCase
         self::assertStringContainsString('amend only the smallest affected plan step', $template);
         self::assertStringContainsString('preserve the approved Goal, acceptance criteria, scope, non-goals, and authority', $template);
         self::assertStringContainsString('HUMAN_DECISION_REQUIRED / BLOCKED', $template);
+        self::assertStringContainsString('lacks observable Done When criteria or executable verification evidence', $template);
+        self::assertStringContainsString('instead of inventing completion criteria or commands', $template);
         self::assertStringContainsString('execute the plan immediately in bounded steps', $template);
         self::assertStringContainsString('Do not stop after the blind-spot analysis', $template);
         self::assertStringContainsString("plan's observable Done When criteria are satisfied by executed verification", $template);
