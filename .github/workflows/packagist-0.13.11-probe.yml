@@ -1,0 +1,37 @@
+name: Packagist 0.13.11 publication probe
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  clean-composer-consumer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          tools: composer:v2
+
+      - name: Install exact published release
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="${RUNNER_TEMP}/recall-packagist-0.13.11"
+          rm -rf "${root}"
+          mkdir -p "${root}"
+          cd "${root}"
+
+          composer init --no-interaction --name=voku/recall-release-consumer
+          composer require --no-interaction --prefer-dist --no-progress --no-ansi \
+            'voku/agent-recall-compiler:0.13.11'
+
+          installed="$(composer show voku/agent-recall-compiler --format=json | jq -r '.versions[0]')"
+          test "${installed}" = '0.13.11'
+          test -f vendor/voku/agent-recall-compiler/skills/agent-recall-consumer/operating-prompts.json
+          grep -Fq '"id": "execute-plan-with-blind-spot-check"' \
+            vendor/voku/agent-recall-compiler/skills/agent-recall-consumer/operating-prompts.json
