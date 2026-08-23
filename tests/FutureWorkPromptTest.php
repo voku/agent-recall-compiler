@@ -12,16 +12,21 @@ use voku\AgentRecallCompiler\Reflection\FutureWorkScope;
 
 final class FutureWorkPromptTest extends TestCase
 {
-    public function testProjectReflectionStaysContextLightAndOpenEnded(): void
+    public function testProjectReflectionUsesHotContextWithoutCreatingBacklogAuthority(): void
     {
         $prompt = (new FutureWorkPromptBuilder())->build(FutureWorkScope::PROJECT);
 
-        self::assertStringContainsString('future work in this project meaningfully better', $prompt);
-        self::assertStringContainsString('one highest-leverage direction', $prompt);
-        self::assertStringContainsString('nothing worthwhile emerged', $prompt);
+        self::assertStringContainsString('what would you do next', $prompt);
+        self::assertStringContainsString('current context is already loaded', $prompt);
+        self::assertStringContainsString('semantic owner', $prompt);
+        self::assertStringContainsString('smallest independent follow-up slice', $prompt);
+        self::assertStringContainsString('NOW_WORTH_PREPARING', $prompt);
+        self::assertStringContainsString('NO_FURTHER_INVESTMENT', $prompt);
+        self::assertStringContainsString('Do not manufacture backlog', $prompt);
+        self::assertStringContainsString('authority to approve or execute a new task', $prompt);
         self::assertStringNotContainsString('## Goal', $prompt);
         self::assertStringNotContainsString('system.md', $prompt);
-        self::assertLessThan(1500, strlen($prompt));
+        self::assertLessThan(2000, strlen($prompt));
     }
 
     public function testTaskReflectionCanReturnToReviewWithoutManufacturingWork(): void
@@ -30,10 +35,12 @@ final class FutureWorkPromptTest extends TestCase
 
         self::assertStringContainsString("current task's stated completion bar has been met", $prompt);
         self::assertStringContainsString('RETURN_TO_REVIEW', $prompt);
-        self::assertStringContainsString('nothing worthwhile emerged', $prompt);
+        self::assertStringContainsString('NOW_WORTH_PREPARING', $prompt);
+        self::assertStringContainsString('NO_FURTHER_INVESTMENT', $prompt);
         self::assertStringContainsString('Do not manufacture extra work', $prompt);
+        self::assertStringContainsString('widen the approved Contract', $prompt);
         self::assertStringNotContainsString('## Done When', $prompt);
-        self::assertLessThan(1500, strlen($prompt));
+        self::assertLessThan(2000, strlen($prompt));
     }
 
     public function testUnknownReflectionScopeFailsClosed(): void
