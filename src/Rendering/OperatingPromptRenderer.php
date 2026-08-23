@@ -70,6 +70,9 @@ final readonly class OperatingPromptRenderer
             '- Never treat prior model reasoning, model confidence, reviewer consensus, prompt construction, or an unexecuted command as verification.',
             '- Never invent repository commands, tools, APIs, or architectural rules. Mark missing evidence as `UNKNOWN` or make evidence discovery part of the generated Context section.',
             '- Use imperative language. Remove hedges such as "maybe", "try to", "consider", "if possible", and "should probably".',
+            '',
+            'Delegated execution continuation rules:',
+            ...$this->executionContinuationRules(),
         ];
         if ($hasL1Contracts) {
             $md[] = '- Keep every direct L1 contract below unchanged. Apply those contracts alongside the generated project-specific L1 prompt during execution.';
@@ -94,6 +97,9 @@ final readonly class OperatingPromptRenderer
             '',
             'These task-selected instructions are already executable operating contracts. Apply them directly and do not weaken their measurable gates or stopping conditions.',
             '',
+            'For any selected contract that performs multi-step or delegated execution, also apply these shared continuation rules:',
+            ...$this->executionContinuationRules(),
+            '',
         ];
 
         foreach ($facts as $fact) {
@@ -101,6 +107,19 @@ final readonly class OperatingPromptRenderer
         }
 
         return rtrim(implode("\n", $md));
+    }
+
+    /** @return list<string> */
+    private function executionContinuationRules(): array
+    {
+        return [
+            '- When the authorized work contains multiple TODOs or milestones, define bounded executable slices before implementation. For each slice name the objective, dependencies, expected change or artifact, and the verification/checkpoint that can justify continuing.',
+            '- After each slice, run the relevant available validation and perform an internal continuation check against current task/run/contract authority, observed evidence, remaining dependencies, and blocker scope. This is not approval and must never substitute for a human, owner, reviewer, accepted-risk, destructive, irreversible, or security decision.',
+            '- Continue automatically across remaining authorized independent slices when the current authority and evidence still support them. A discovered blocker stops only the affected slice and work that actually depends on it unless every remaining safe slice is transitively blocked.',
+            '- When practical, compare failing validation with known baseline evidence and distinguish `PRE_EXISTING`, `INTRODUCED`, and `UNKNOWN_ORIGIN`. Do not attribute an old failure to the current slice or stop unrelated authorized work merely because a baseline gate was already red; unresolved required gates still prevent final success.',
+            '- A handoff described as production-ready must not delegate execution when current authoritative evidence already proves a required hard prerequisite is missing, the worker is not authorized to satisfy it, and execution depends on it. Render that handoff `NOT_READY_TO_DELEGATE` with the prerequisite, owner, verification probe, and current evidence instead of spending an execution run to rediscover it.',
+            '- Treat executor completion prose as a claim. Before final success, reconcile it with available authoritative artifacts and evidence such as actual head/base/diff, changed files or artifacts, validation results, review findings, and remaining blockers; real evidence wins on disagreement.',
+        ];
     }
 
     /**
