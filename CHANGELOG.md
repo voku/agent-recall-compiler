@@ -6,6 +6,22 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.13.11] - 2026-08-23
+
+### Added
+
+- Add bundled L2 `discovery-first` and `production-ready-handoff` operating recipes for repository re-grounding and fresh-agent execution handoff without inventing authority, commands, or scope.
+- Add bundled L1 `execute-plan-with-blind-spot-check` for executing an existing authoritative plan only after a bounded evidence-backed self blind-spot pass; disproved assumptions may change only the smallest affected plan step, while missing Done When or executable verification evidence fails closed instead of being invented.
+
+### Changed
+
+- Governed Recall consumer guidance now routes ordinary lifecycle work through `agent-loop enter <task-id>` and `agent-loop finish <task-id>` plus the canonical next action instead of teaching a stale internal phase choreography.
+
+### Validation
+
+- PR #98 passed PHPUnit and PHPStan on PHP 8.3, 8.4, and 8.5 plus governed `agent-loop` context-explain dogfood for the discovery/handoff recipes.
+- PR #102 passed PHPUnit and PHPStan on PHP 8.3, 8.4, and 8.5 plus governed `agent-loop` context-explain dogfood for `execute-plan-with-blind-spot-check` on exact head `eaa0fab86cf58c4a2f622dca490ad134b50f052f`.
+- `agent-loop` PR #272 ran current Loop head `3c38e332c8f4ee87466fed67166ecff4af532f53` against exact Recall candidate `285ba3413a0a92c3dd34251c6bac3e6e574dc73a`; prompt-primitives dogfood run `32662042560` installed the candidate catalog and proved `workflow plan` accepts the new L1 recipe. The probe PR was then closed unmerged because no Loop product change or minimum-version bump was required.
 ## [0.13.10] - 2026-08-20
 
 ### Fixed
