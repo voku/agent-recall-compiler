@@ -1,0 +1,109 @@
+name: Prepare 0.13.11 release
+
+on:
+  push:
+    branches: [release/0.13.11]
+    paths:
+      - '.github/workflows/prepare-0.13.11.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: release/0.13.11
+          fetch-depth: 0
+
+      - name: Prepare release content and exact tag marker
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='285ba3413a0a92c3dd34251c6bac3e6e574dc73a'
+          git merge-base --is-ancestor "${base}" HEAD
+
+          php <<'PHP'
+          <?php
+          declare(strict_types=1);
+
+          $path = 'CHANGELOG.md';
+          $text = file_get_contents($path);
+          if ($text === false) {
+              throw new RuntimeException('Cannot read CHANGELOG.md');
+          }
+
+          $unreleased = "## [Unreleased]\n";
+          $previous = "## [0.13.10] - 2026-08-20\n";
+          if (substr_count($text, $unreleased) !== 1) {
+              throw new RuntimeException('Unreleased changelog heading is not unique');
+          }
+          if (substr_count($text, $previous) !== 1) {
+              throw new RuntimeException('0.13.10 changelog anchor is not unique');
+          }
+          if (str_contains($text, '## [0.13.11] - 2026-08-23')) {
+              throw new RuntimeException('0.13.11 section already exists');
+          }
+
+          $start = strpos($text, $unreleased);
+          $previousStart = strpos($text, $previous);
+          if ($start === false || $previousStart === false || $previousStart <= $start) {
+              throw new RuntimeException('Cannot locate unreleased changelog body');
+          }
+
+          $bodyStart = $start + strlen($unreleased);
+          $body = trim(substr($text, $bodyStart, $previousStart - $bodyStart));
+          if ($body !== '') {
+              throw new RuntimeException('Unreleased changelog is no longer empty; re-plan release contents');
+          }
+
+          $section = <<<'CHANGELOG'
+          ## [Unreleased]
+
+          ## [0.13.11] - 2026-08-23
+
+          ### Added
+
+          - Add bundled L2 `discovery-first` and `production-ready-handoff` operating recipes for repository re-grounding and fresh-agent execution handoff without inventing authority, commands, or scope.
+          - Add bundled L1 `execute-plan-with-blind-spot-check` for executing an existing authoritative plan only after a bounded evidence-backed self blind-spot pass; disproved assumptions may change only the smallest affected plan step, while missing Done When or executable verification evidence fails closed instead of being invented.
+
+          ### Changed
+
+          - Governed Recall consumer guidance now routes ordinary lifecycle work through `agent-loop enter <task-id>` and `agent-loop finish <task-id>` plus the canonical next action instead of teaching a stale internal phase choreography.
+
+          ### Validation
+
+          - PR #98 passed PHPUnit and PHPStan on PHP 8.3, 8.4, and 8.5 plus governed `agent-loop` context-explain dogfood for the discovery/handoff recipes.
+          - PR #102 passed PHPUnit and PHPStan on PHP 8.3, 8.4, and 8.5 plus governed `agent-loop` context-explain dogfood for `execute-plan-with-blind-spot-check` on exact head `eaa0fab86cf58c4a2f622dca490ad134b50f052f`.
+          - `agent-loop` PR #272 ran current Loop head `3c38e332c8f4ee87466fed67166ecff4af532f53` against exact Recall candidate `285ba3413a0a92c3dd34251c6bac3e6e574dc73a`; prompt-primitives dogfood run `32662042560` installed the candidate catalog and proved `workflow plan` accepts the new L1 recipe. The probe PR was then closed unmerged because no Loop product change or minimum-version bump was required.
+
+          CHANGELOG;
+
+          $updated = substr($text, 0, $start) . $section . substr($text, $previousStart);
+          if (file_put_contents($path, $updated) === false) {
+              throw new RuntimeException('Failed to write 0.13.11 changelog');
+          }
+          PHP
+
+          rm .github/workflows/prepare-0.13.11.yml
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add CHANGELOG.md .github/workflows/prepare-0.13.11.yml
+          git diff --cached --check
+          git commit -m 'release: prepare 0.13.11 content'
+          target="$(git rev-parse HEAD)"
+
+          mkdir -p .release
+          cat > .release/0.13.11.json <<JSON
+          {
+            "target_sha": "${target}",
+            "version": "0.13.11"
+          }
+          JSON
+          git add .release/0.13.11.json
+          git diff --cached --check
+          git commit -m 'release: request 0.13.11 tag'
+          git push origin HEAD:release/0.13.11
