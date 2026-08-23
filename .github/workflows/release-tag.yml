@@ -43,11 +43,19 @@ jobs:
               exit 1
             fi
             if ! grep -Fq "## [$version] - " CHANGELOG.md; then
-              echo "CHANGELOG.md has no release section for $version" >&2
+              echo "Current CHANGELOG.md has no release section for $version" >&2
               exit 1
             fi
 
             git cat-file -e "${target}^{commit}"
+            if ! git merge-base --is-ancestor "$target" HEAD; then
+              echo "Release target $target for $version is not an ancestor of current main" >&2
+              exit 1
+            fi
+            if ! git show "${target}:CHANGELOG.md" | grep -Fq "## [$version] - "; then
+              echo "Release target $target does not contain the $version changelog section" >&2
+              exit 1
+            fi
 
             if git rev-parse -q --verify "refs/tags/$version" >/dev/null; then
               existing="$(git rev-list -n 1 "$version")"
