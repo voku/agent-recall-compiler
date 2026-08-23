@@ -52,11 +52,10 @@ jobs:
               echo "Release target $target for $version is not an ancestor of current main" >&2
               exit 1
             fi
-            if ! git show "${target}:CHANGELOG.md" | grep -Fq "## [$version] - "; then
-              echo "Release target $target does not contain the $version changelog section" >&2
-              exit 1
-            fi
 
+            # Existing historical tags are immutable release evidence. Keep the
+            # workflow idempotent as long as the marker still names that exact
+            # target, even if an older release predates stricter target checks.
             if git rev-parse -q --verify "refs/tags/$version" >/dev/null; then
               existing="$(git rev-list -n 1 "$version")"
               if [[ "$existing" != "$target" ]]; then
@@ -65,6 +64,13 @@ jobs:
               fi
               echo "Tag $version already points to $target"
               continue
+            fi
+
+            # A new tag must point at release-ready content, not merely at an
+            # older feature commit while main happens to contain the metadata.
+            if ! git show "${target}:CHANGELOG.md" | grep -Fq "## [$version] - "; then
+              echo "Release target $target does not contain the $version changelog section" >&2
+              exit 1
             fi
 
             git config user.name 'github-actions[bot]'
