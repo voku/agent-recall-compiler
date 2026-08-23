@@ -51,9 +51,22 @@ A follow-up request such as:
 
 has a different job. The next agent must not depend on the current chat, private Session context, hidden reasoning, or previous-agent memory.
 
-`production-ready-handoff` constructs a project-specific L1 execution prompt from verified current-state evidence available to Recall. When that evidence is missing, incomplete, or stale, the generated prompt must make bounded re-grounding its first step instead of filling the gap with conversational assumptions.
+`production-ready-handoff` constructs a project-specific L1 execution prompt from verified current-state evidence available to Recall. Before it presents that prompt as ready, it inventories known hard prerequisites:
 
-The generated execution prompt should carry forward the facts that materially prevent rediscovery or regression:
+```text
+prerequisite
+semantic owner
+verification probe
+current evidence state
+delegated worker can satisfy it? yes/no
+required before execution? yes/no
+```
+
+If current evidence already proves a required prerequisite is missing and the delegated worker is forbidden to satisfy it, the correct result is `NOT_READY_TO_DELEGATE`. The handoff must expose the blocker and its evidence rather than spending a remote coding run rediscovering a known owner-external prerequisite.
+
+Unknown, incomplete, or stale repository-local evidence is different. It may become bounded re-grounding in the execution prompt because the delegated worker can resolve it without violating ownership. A blocker discovered only during execution stops its dependent milestones by default; independent authorized milestones continue. An unresolved required blocker still prevents final success.
+
+When the handoff is ready, the generated execution prompt should carry forward the facts that materially prevent rediscovery or regression:
 
 - exact repository anchors such as files, symbols, issues, pull requests, commits, Contracts, Runs, and artifacts;
 - VERIFIED current state and already-completed work;
@@ -67,6 +80,22 @@ The generated execution prompt should carry forward the facts that materially pr
 - exact validation commands, or explicit `UNKNOWN` obligations to discover them from repository evidence;
 - falsification questions that try to disprove the proposed fix;
 - observable `Done When` criteria.
+
+For sustained implementation, the handoff also carries a **minimum-delivery contract** rather than only a broad Goal and final Done When. Preserve or derive from the supplied executable plan concrete milestones with:
+
+```text
+id/objective
+dependencies
+required artifact or code change
+acceptance evidence
+validation/checkpoint
+```
+
+The executor is required to attempt every currently authorized independent milestone before declaring the whole work package blocked. Git commits are not a universal checkpoint; use them only when the execution environment has that authority.
+
+Validation failures should be compared with available baseline evidence before causal attribution. Preserve `PRE_EXISTING`, `INTRODUCED`, or `UNKNOWN_ORIGIN` where evidence permits. A pre-existing red gate may still block final completion without becoming invented proof that the current implementation caused it.
+
+The executor's final report is also not workflow truth. The handoff requires reconciliation against available real artifacts such as head/base/diff, changed files, executed validation, review findings, and remaining blockers before success is accepted.
 
 "Production-ready" does not mean "broaden the task until it looks comprehensive". The recipe forbids speculative abstractions, invented commands or historical provenance, unrelated cleanup, and redesign of already-validated behavior.
 
@@ -105,7 +134,7 @@ These recipes do not replace `todo-card-handoff`.
 | Recipe | Output purpose |
 | --- | --- |
 | `discovery-first` | determine the current evidence-backed state and smallest safe next slice |
-| `production-ready-handoff` | construct one copy-paste-ready L1 execution prompt for a fresh coding agent |
+| `production-ready-handoff` | return `NOT_READY_TO_DELEGATE` for a proven non-delegable prerequisite, otherwise construct one copy-paste-ready L1 execution prompt with minimum-delivery milestones |
 | `todo-card-handoff` | persist independently resumable work in the repository's existing durable TODO/work-card system |
 
 A production-ready execution prompt is not automatically durable backlog. A TODO card is not automatically an executable implementation contract. Keeping those boundaries separate prevents one convenient handoff mechanism from quietly acquiring task-storage or workflow authority.
@@ -114,4 +143,4 @@ A production-ready execution prompt is not automatically durable backlog. A TODO
 
 Both recipes are explicit opt-ins. Recall does not select them heuristically.
 
-The normal L2 construction contract still applies: the receiving agent or harness produces one concrete L1 document with `Goal`, `Context`, `Constraints`, `Verification`, and `Done When`. Recall owns deterministic context and recipe semantics; it does not execute the implementation, approve scope changes, acknowledge review, or close a governed Run.
+The normal L2 construction contract still applies: the receiving agent or harness produces one concrete L1 document with `Goal`, `Context`, `Constraints`, `Verification`, and `Done When`. Recall owns deterministic context and recipe semantics; it does not execute the implementation, approve scope changes, acknowledge review, or close a governed Run. `agent-loop` remains the authority that decides whether a governed handoff is actually ready to execute.
