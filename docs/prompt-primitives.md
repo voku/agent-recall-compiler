@@ -82,6 +82,18 @@ The compiler now keeps these boundaries explicit during L2 construction:
 - model confidence, prior rationale, reviewer consensus, prompt construction, and unexecuted commands are not verification;
 - requirements are not weakened merely to obtain a successful-looking result.
 
+## Delegation readiness and execution continuation
+
+A prompt described as a production-ready execution handoff must not use the delegated executor as a costly prerequisite detector when current evidence already proves a required external prerequisite is missing and that executor cannot satisfy it. Such a handoff renders `NOT_READY_TO_DELEGATE` with the prerequisite owner, verification probe, current evidence, and authority boundary. Unknown or stale repository-local facts may still be re-grounded by the executor; known non-delegable unreadiness is a handoff-construction failure.
+
+For sustained implementation, a broad Goal plus final Done When is not enough. The generated execution contract should preserve or derive from the supplied plan concrete delivery milestones with dependencies, required artifacts/code changes, acceptance evidence, and validation/checkpoints. Git commits are not a universal checkpoint because publication/mutation authority belongs to the execution environment.
+
+During execution, a blocker is local to the affected milestone and its real dependents by default. Independent authorized milestones continue. A whole-execution stop is reserved for invalid/superseded authority, an all-path dependency blocker, a required owner decision that gates every remaining safe milestone, or an explicitly human-owned destructive/security boundary. Any unresolved required blocker still prevents final success.
+
+Validation failures should be compared with available baseline evidence before causal attribution. Preserve `PRE_EXISTING`, `INTRODUCED`, or `UNKNOWN_ORIGIN` where evidence permits. A pre-existing red gate can still block final completion without becoming invented proof that the current slice caused it.
+
+Finally, executor completion prose is a claim rather than repository truth. The execution contract requires reconciliation against available real artifacts such as head/base/diff, changed files, validation evidence, review findings, and remaining blockers before success is reported.
+
 Reusable first-party engineering recipe semantics remain owned by the repository that defines them, such as `voku/agent-skills`. Recall validates, compiles, grounds, and renders selected recipes; it does not duplicate their catalog in PHP source.
 
 ## Practical selection
