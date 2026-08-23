@@ -70,9 +70,14 @@ final readonly class OperatingPromptRenderer
             '- Never treat prior model reasoning, model confidence, reviewer consensus, prompt construction, or an unexecuted command as verification.',
             '- Never invent repository commands, tools, APIs, or architectural rules. Mark missing evidence as `UNKNOWN` or make evidence discovery part of the generated Context section.',
             '- Use imperative language. Remove hedges such as "maybe", "try to", "consider", "if possible", and "should probably".',
+            '- For a production-ready execution handoff, inventory known hard prerequisites with owner, verification probe, current evidence state, whether the delegated worker can satisfy them, and whether they are required before execution. If current evidence proves a required prerequisite is missing outside delegated authority, render `NOT_READY_TO_DELEGATE`; do not disguise known unreadiness as first-step re-grounding.',
+            '- For sustained implementation work, turn the supplied executable plan into concrete delivery milestones with dependencies, required change/artifact, acceptance evidence, and validation/checkpoint. A broad goal plus final Done When is not a minimum-delivery contract. Do not require Git commits unless the execution environment is explicitly authorized to create them.',
+            '- A blocker discovered during execution is local to the affected action or milestone and its real dependents by default. Continue other authorized independent milestones. Permit a whole-execution stop only when authority itself is invalid, every remaining milestone depends on the blocker, a required owner decision gates every remaining safe milestone, or continuing would cross an explicitly human-owned destructive/security boundary. Any unresolved required blocker still prevents final success.',
+            '- When validation is already red, compare against available baseline evidence before assigning causality. Distinguish `PRE_EXISTING`, `INTRODUCED`, and `UNKNOWN_ORIGIN` where evidence permits; an old red gate may still block final success but must not be falsely attributed to the current slice or automatically stop unrelated work.',
+            '- Treat an executor completion report as a claim, not repository truth. Require reconciliation against available actual artifacts such as head/base/diff, changed files, validation results, review findings, and remaining blockers before final success is accepted.',
         ];
         if ($hasL1Contracts) {
-            $md[] = '- Keep every direct L1 contract below unchanged. Apply those contracts alongside the generated project-specific L1 prompt during execution.';
+            $md[] = '- Keep every direct L1 contract below unchanged. Apply those contracts alongside the generated project-specific L1 prompt during execution. When a local recipe says `stop` or `BLOCKED`, apply the shared blocker-scope rule above rather than interpreting it as task-global unless its stated authority/dependencies make it global.';
         }
         $md[] = '- The L2 pass ends after producing the project-specific L1 prompt. Do not implement the task during prompt construction.';
         $md[] = '';
@@ -93,6 +98,13 @@ final readonly class OperatingPromptRenderer
             '## L1 Operating Contract',
             '',
             'These task-selected instructions are already executable operating contracts. Apply them directly and do not weaken their measurable gates or stopping conditions.',
+            '',
+            '### Shared execution-control semantics',
+            '- A blocker stops the affected action/milestone and work that actually depends on it; continue remaining authorized independent work whose own prerequisites still hold.',
+            '- Stop the whole execution only when current authority is invalid/superseded, every remaining authorized milestone depends on the blocker, a required owner decision gates every remaining safe milestone, or continuing would cross an explicitly human-owned destructive/security boundary.',
+            '- An unresolved required blocker still prevents the final success claim even when independent work can continue.',
+            '- Compare red validation with available baseline evidence before assigning causality; preserve `PRE_EXISTING`, `INTRODUCED`, or `UNKNOWN_ORIGIN` rather than blaming the current slice without evidence.',
+            '- Treat completion prose as a claim. Reconcile it against available repository/artifact/validation evidence before reporting success.',
             '',
         ];
 
