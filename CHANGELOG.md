@@ -6,6 +6,19 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.13.12] - 2026-08-24
+
+### Changed
+
+- Multi-item delegated execution now defines bounded executable slices before implementation, validates each slice, continues still-authorized independent work past dependency-local blockers, distinguishes `PRE_EXISTING`, `INTRODUCED`, and `UNKNOWN_ORIGIN` validation failures when practical, and reconciles final completion claims against actual artifacts and evidence.
+- Project future-work reflection now exploits still-hot repository context to identify one highest-leverage next investment with concrete evidence, semantic owner, prerequisite, expected leverage, validation approach, and smallest independent follow-up slice while preserving `NO_FURTHER_INVESTMENT` and authority boundaries.
+- Prompt-primitives documentation now routes recurring natural-language continuation and future-investment intents to their existing semantic owners instead of encouraging duplicate prompt recipes.
+
+### Validation
+
+- PR #108 exact head `fe3159fd54bc55ac30480698fd469aa679a80672` passed PHPUnit and PHPStan on PHP 8.3, 8.4, and 8.5 plus governed `agent-loop` context-explain dogfood in Actions run `32664987840`.
+- PR #109 exact head `9dc9528ccde4c7abf534defd04ba2ed0ab5b2deb` passed PHPUnit and PHPStan on PHP 8.3, 8.4, and 8.5 plus governed `agent-loop` context-explain dogfood in Actions run `32665686309`.
+- PR #111 exact head `7572702f8e5fd239ea3afdf6ddb93b81d65e10eb` passed PHPUnit and PHPStan on PHP 8.3, 8.4, and 8.5 plus governed `agent-loop` context-explain dogfood in Actions run `32692426818`; AccessLint and CodeRabbit were green and CodeRabbit reported no actionable comments.
 ## [0.13.11] - 2026-08-23
 
 ### Added
