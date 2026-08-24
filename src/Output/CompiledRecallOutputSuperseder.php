@@ -35,7 +35,7 @@ final readonly class CompiledRecallOutputSuperseder
         $suffix = $digest === false ? 'unknown' : substr($digest, 0, 12);
         $archive = $directory . '.superseded-' . $suffix;
 
-        for ($attempt = 1; file_exists($archive); ++$attempt) {
+        for ($attempt = 1; file_exists($archive) || is_link($archive); ++$attempt) {
             $archive = $directory . '.superseded-' . $suffix . '-' . $attempt;
         }
 
