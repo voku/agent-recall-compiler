@@ -66,10 +66,29 @@ final class CompiledRecallOutputSupersederTest extends TestCase
         self::assertSame('current', file_get_contents($archive . '/system.md'));
     }
 
+    public function testDanglingSymlinkArchivePathIsPreservedAndSkipped(): void
+    {
+        $directory = $this->root . '/TASK-1';
+        mkdir($directory, 0o775, true);
+        file_put_contents($directory . '/system.md', 'current');
+        $occupied = $directory . '.superseded-unknown';
+        symlink($this->root . '/missing-target', $occupied);
+
+        $archive = (new CompiledRecallOutputSuperseder())->archiveIfPresent($directory);
+
+        self::assertSame($directory . '.superseded-unknown-1', $archive);
+        self::assertTrue(is_link($occupied));
+        self::assertDirectoryExists($archive);
+        self::assertSame('current', file_get_contents($archive . '/system.md'));
+    }
+
     private function remove(string $path): void
     {
+        if (is_link($path) || is_file($path)) {
+            unlink($path);
+            return;
+        }
         if (!is_dir($path)) {
-            is_file($path) && unlink($path);
             return;
         }
 
