@@ -128,7 +128,28 @@ vendor/bin/agent-recall-compiler compile \
   --operating-prompt '{"id":"todo-card-handoff","arguments":{}}'
 ```
 
-The recipe does not create cards by itself. It constructs a project-specific L1 prompt from Recall evidence. That prompt must use the repository's existing durable task/card owner and format, update an existing matching card instead of duplicating work, record verified current state and already-completed work, name concrete repository anchors and dependencies, preserve scope/non-goals and owner boundaries, provide exact supported verification/evidence probes and observable Done When criteria, and keep blockers or unknowns explicit. If Recall does not establish which durable task system owns the handoff, the generated prompt must return `BLOCKED` instead of inventing one.
+The recipe does not create cards by itself. It constructs a project-specific L1 prompt from Recall evidence. That prompt must use the repository's existing durable task/card owner and format, update an existing matching card instead of duplicating work, record verified current state and already-completed work, name concrete repository anchors and dependencies, preserve scope/non-goals and owner boundaries, provide exact supported verification/evidence probes and observable Done When criteria, and keep blockers or unknowns explicit. Treat the result as a portable durable work-package candidate, not approved Contract/Run authority. Keep transient host availability, giant environment dumps, secrets, tokens, credentials, and speculative future-VM facts out of durable state. If Recall does not establish which durable task system owns the handoff, the generated prompt must return `BLOCKED` instead of inventing one.
+
+When a requested `production-ready-handoff` contains independently resumable milestones, cross-repository/release sequencing, or follow-up work that should survive the current execution context, do not turn the execution prompt into durable backlog. Route that work explicitly through `todo-card-handoff` and the existing task owner. Recipe selection remains explicit; Recall does not silently create or persist cards.
+
+## Execution Dispatch
+
+Use the bundled `execution-dispatch` L2 recipe only after a durable task/work package already exists and the current execution slice has applicable approved authority:
+
+```bash
+vendor/bin/agent-recall-compiler compile \
+  --task PROJECT-123 \
+  --description "Dispatch the current authorized slice from the durable work package" \
+  --file src/Navigation/Menu.php \
+  --operating-prompt-manifest vendor/voku/agent-recall-compiler/skills/agent-recall-consumer/operating-prompts.json \
+  --operating-prompt '{"id":"execution-dispatch","arguments":{}}'
+```
+
+The dispatch recipe builds one short current execution prompt. It must bind to the selected durable task/work-package revision and applicable current Contract/Run/stage authority, re-ground current repository anchors, and include only the current slice plus the evidence needed to execute it. A durable card is not approval, and a generated dispatch prompt is not workflow authority.
+
+If correct execution genuinely depends on runtime capability, consume only bounded current capability evidence supplied through an explicit owner boundary. Do not ingest arbitrary environment dumps, secrets, tokens, credentials, or host-selected task policy. Missing, stale, conflicting, or insufficient required environment evidence is `NOT_READY_TO_DELEGATE` / `BLOCKED`; do not guess. Current repository, authority, and bounded environment evidence win over stale dispatch text, so regenerate the prompt when they drift.
+
+Recall owns prompt semantics, not the Runner-side observation API. In the governed stack, the typed boundary that can supply bounded runtime observations before final prompt construction belongs to `agent-loop`; Runner remains an observation/execution plane and must not concatenate its own workflow prompt context.
 
 ## Guidance-gap Technique
 
