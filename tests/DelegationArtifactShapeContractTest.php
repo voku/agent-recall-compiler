@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use RuntimeException;
 use voku\AgentRecallCompiler\Reflection\FutureWorkPromptBuilder;
 use voku\AgentRecallCompiler\Reflection\FutureWorkScope;
+use voku\AgentRecallCompiler\Rendering\OperatingPromptRenderer;
 
 final class DelegationArtifactShapeContractTest extends TestCase
 {
@@ -78,6 +79,24 @@ final class DelegationArtifactShapeContractTest extends TestCase
         self::assertStringContainsString('Prefer one highest-leverage direction over a broad wishlist', $prompt);
         self::assertStringContainsString('Do not manufacture backlog merely because time is available', $prompt);
         self::assertStringContainsString('or treat this reflection as authority to approve or execute a new task', $prompt);
+    }
+
+    public function testDurableWorkPackageDoesNotAcquireAutomaticExecutionAuthorityFromSharedRendering(): void
+    {
+        $markdown = (new OperatingPromptRenderer())->render([
+            [
+                'type' => 'operating_prompt',
+                'source_ref' => 'operating-prompts.json#todo-card-handoff',
+                'payload' => [
+                    'prompt_id' => 'todo-card-handoff',
+                    'level' => 2,
+                    'content' => $this->template('todo-card-handoff'),
+                ],
+            ],
+        ]);
+
+        self::assertStringContainsString('A durable planning/work-package recipe such as `todo-card-handoff` is not executable authority', $markdown);
+        self::assertStringContainsString('must not inherit automatic continuation merely because it is rendered beside execution guidance', $markdown);
     }
 
     private function template(string $id): string
