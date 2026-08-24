@@ -6,6 +6,16 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.13.13] - 2026-08-24
+
+### Added
+
+- Add `CompiledRecallOutputSuperseder` beside the compiled Recall output model so lifecycle hosts no longer implement Recall-owned output archival themselves. Existing output is archived by the persisted identity digest when available, fallback names remain collision-safe, and dangling symbolic links are treated as occupied archive paths instead of being overwritten or causing the rename to fail.
+
+### Validation
+
+- PR #114 exact head `aede433affb0d5481c290ba65a2b5fc73f69cafc` passed PHPUnit and PHPStan on PHP 8.3, 8.4, and 8.5 plus governed `agent-loop` context-explain dogfood in Actions run `32704270415`. CodeRabbit's dangling-symlink collision finding was reproduced, fixed, regression-covered, and automatically resolved on the final head.
+
 ## [0.13.12] - 2026-08-24
 
 ### Changed
@@ -832,7 +842,10 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 - Extend legacy outcome-stat handling so new per-guidance outcome events and older aggregate outcome records can coexist.
 - Treat legacy proposal `target_type=file` records as memory guidance when projecting evaluated guidance events.
-- Update consumer guidance to distinguish eligible, selected, applied, and helpful signals.
+- Generate `recall-log.draft.json` with empty usefulness buckets instead of pre-marking selected guidance as helpful.
+- Require every selected rule in a logged outcome to be classified exactly once as `helpful`, `irrelevant`, or `harmful`.
+- Reject outcome feedback for rules that were not selected for the session.
+- Update consumer guidance to state that prompt selection is exposure only, not evidence of usefulness.
 
 ## [0.2.0] - 2026-06-18
 
