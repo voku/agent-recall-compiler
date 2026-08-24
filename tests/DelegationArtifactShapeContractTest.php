@@ -99,6 +99,16 @@ final class DelegationArtifactShapeContractTest extends TestCase
         self::assertStringContainsString('must not inherit automatic continuation merely because it is rendered beside execution guidance', $markdown);
     }
 
+    public function testConsumerSkillPublishesExplicitExecutionDispatchWithoutMovingOwnerAuthority(): void
+    {
+        $skill = file_get_contents(dirname(__DIR__) . '/skills/agent-recall-consumer/SKILL.md');
+        self::assertIsString($skill);
+
+        self::assertStringContainsString('"id":"execution-dispatch","arguments":{}', $skill);
+        self::assertStringContainsString('A durable card is not approval, and a generated dispatch prompt is not workflow authority', $skill);
+        self::assertStringContainsString('Recall owns prompt semantics, not the Runner-side observation API', $skill);
+    }
+
     private function template(string $id): string
     {
         $path = dirname(__DIR__) . '/skills/agent-recall-consumer/operating-prompts.json';
