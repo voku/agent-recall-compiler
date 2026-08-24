@@ -113,6 +113,7 @@ final readonly class OperatingPromptRenderer
     private function executionContinuationRules(): array
     {
         return [
+            '- Apply these continuation rules only to contracts that execute work. A durable planning/work-package recipe such as `todo-card-handoff` is not executable authority and must not inherit automatic continuation merely because it is rendered beside execution guidance.',
             '- When the authorized work contains multiple TODOs or milestones, define bounded executable slices before implementation. For each slice name the objective, dependencies, expected change or artifact, and the verification/checkpoint that can justify continuing.',
             '- After each slice, run the relevant available validation and perform an internal continuation check against current task/run/contract authority, observed evidence, remaining dependencies, and blocker scope. This is not approval and must never substitute for a human, owner, reviewer, accepted-risk, destructive, irreversible, or security decision.',
             '- Continue automatically across remaining authorized independent slices when the current authority and evidence still support them. A discovered blocker stops only the affected slice and work that actually depends on it unless every remaining safe slice is transitively blocked.',
