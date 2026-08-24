@@ -90,17 +90,27 @@ Reusable first-party engineering recipe semantics remain owned by the repository
 Need a project-specific executable task contract?
     -> select an L2 operating recipe
 
+Need bounded autonomous continuation across already-authorized slices?
+    -> select the Recall-owned L1 `continue-until-done`
+
 Need a context-independent execution control?
     -> select a direct L1 contract
 
 Need to attack a completed/current implementation?
     -> review first-draft
 
-Need to ask what the work revealed after completion?
-    -> prompt future-work --scope project|task
+Need to ask what to invest in next while completed-work context is still hot?
+    -> prompt future-work --scope project
+
+Need to examine whether this exact completed task deserves deeper scrutiny?
+    -> prompt future-work --scope task
 
 Need to expose where implementation had to guess because process guidance was missing?
     -> prompt guidance-gaps
 ```
+
+`continue-until-done` owns instructions such as "split the remaining work into slices, validate each slice, confirm continuation internally, and keep going while existing authority remains valid." That internal continuation check is not permission to self-approve a human, owner, reviewer, accepted-risk, scope, or policy decision.
+
+Project-level `future-work` already assumes the completed work's current repository context is still fresh and asks for the highest-leverage evidence-backed investment. Do not create or stack another prompt merely to say "use the momentum/current context"; momentum can help preserve navigation context, but it does not create follow-up authority or widen the completed Contract.
 
 The important part is the boundary, not the command spelling: execution contracts, control rules, adversarial review, reflection, and opt-in guidance-gap journaling are different reasoning jobs and should not be collapsed into one universal monster prompt.
