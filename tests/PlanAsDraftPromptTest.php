@@ -33,7 +33,7 @@ final class PlanAsDraftPromptTest extends TestCase
         self::assertStringContainsString('treat the supplied plan as a deliberately provisional draft and minimum floor', $template);
         self::assertStringContainsString('even when it already looks polished or plausible', $template);
         self::assertStringContainsString('Do not merely restate, reformat, or cosmetically expand the supplied plan', $template);
-        self::assertStringContainsString('preserve VERIFIED goals, acceptance criteria, scope, non-goals, authority, and already-completed work', $template);
+        self::assertStringContainsString('Preserve VERIFIED goals, acceptance criteria, scope, non-goals, authority, and already-completed work', $template);
         self::assertStringContainsString('KEEP, STRENGTHEN, ADD, and REJECT_OR_OUT_OF_SCOPE', $template);
         self::assertStringContainsString('repository evidence for every material addition or revision', $template);
         self::assertStringContainsString('PLAN_SUFFICIENT', $template);
