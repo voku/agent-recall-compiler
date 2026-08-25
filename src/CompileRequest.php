@@ -26,7 +26,6 @@ final readonly class CompileRequest
         public array $operatingPromptManifests = [],
         public array $documentManifests = [],
         public ?string $kanbanContext = null,
-        public ?KanbanContextProjection $kanbanContextProjection = null,
         public ?string $mapIndex = null,
         public ?string $mapRoot = null,
         public ?string $mapSearchIndex = null,
@@ -34,6 +33,7 @@ final readonly class CompileRequest
         public array $editFocus = [],
         public ?string $compilationId = null,
         public ?string $feedback = null,
+        public ?KanbanContextProjection $kanbanContextProjection = null,
     ) {
         $this->assertNonEmpty($this->learningRoot, 'learningRoot');
         $this->assertNonEmpty($this->taskBrief, 'taskBrief');
