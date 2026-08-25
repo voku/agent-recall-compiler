@@ -24,18 +24,33 @@ final class KanbanContextRecallProvider implements RecallProvider
 
     public function manifest(): RecallProviderManifest
     {
-        $sourcePath = $this->context instanceof KanbanContextProjection
-            ? $this->context->sourcePath
-            : $this->context;
+        if ($this->context instanceof KanbanContextProjection) {
+            return new RecallProviderManifest('kanban-context', '1.0', [$this->context->sourcePath], required: false);
+        }
 
-        return new RecallProviderManifest('kanban-context', '1.0', [$sourcePath], required: false);
+        if ($this->isInlineProjection($this->context)) {
+            $data = $this->decodeContext($this->context, 'inline kanban context');
+            $source = $data['source'] ?? null;
+            $sourcePath = is_array($source) ? ($source['path'] ?? null) : null;
+
+            return new RecallProviderManifest(
+                'kanban-context',
+                '1.0',
+                is_string($sourcePath) && trim($sourcePath) !== '' ? [$sourcePath] : [],
+                required: false,
+            );
+        }
+
+        return new RecallProviderManifest('kanban-context', '1.0', [$this->context], required: false);
     }
 
     public function collect(TaskBrief $task, RecallRootConfig $rootConfig): RecallProviderResult
     {
-        $data = $this->context instanceof KanbanContextProjection
-            ? $this->context->toArray()
-            : $this->readContextFile($this->context);
+        $data = match (true) {
+            $this->context instanceof KanbanContextProjection => $this->context->toArray(),
+            $this->isInlineProjection($this->context) => $this->decodeContext($this->context, 'inline kanban context'),
+            default => $this->readContextFile($this->context),
+        };
 
         if (($data['schema_version'] ?? null) !== '1.0') {
             throw new RuntimeException('kanban context must use schema_version "1.0"');
@@ -78,15 +93,27 @@ final class KanbanContextRecallProvider implements RecallProvider
         if ($content === false) {
             throw new RuntimeException('cannot read kanban context: ' . $contextPath);
         }
+
+        return $this->decodeContext($content, 'kanban context');
+    }
+
+    /** @return array<string, mixed> */
+    private function decodeContext(string $content, string $label): array
+    {
         try {
             $data = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
         } catch (\JsonException $exception) {
-            throw new RuntimeException('invalid kanban context: ' . $exception->getMessage());
+            throw new RuntimeException('invalid ' . $label . ': ' . $exception->getMessage());
         }
         if (!is_array($data)) {
-            throw new RuntimeException('kanban context must decode to an object');
+            throw new RuntimeException($label . ' must decode to an object');
         }
 
         return $data;
+    }
+
+    private function isInlineProjection(string $context): bool
+    {
+        return str_starts_with(ltrim($context), '{');
     }
 }
