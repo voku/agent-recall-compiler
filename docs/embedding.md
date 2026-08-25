@@ -10,6 +10,7 @@ Use the public PHP API when another package owns orchestration and needs Recall 
 declare(strict_types=1);
 
 use voku\AgentRecallCompiler\CompileRequest;
+use voku\AgentRecallCompiler\KanbanContextProjection;
 use voku\AgentRecallCompiler\RecallCompiler;
 
 $result = (new RecallCompiler())->compile(new CompileRequest(
@@ -22,7 +23,16 @@ $result = (new RecallCompiler())->compile(new CompileRequest(
     documentManifests: [
         '/project/.agent-loop/recall-documents.json',
     ],
-    kanbanContext: '/project/.agent-loop/runs/PROJECT-123/kanban-context.json',
+    kanbanContextProjection: new KanbanContextProjection(
+        taskId: 'PROJECT-123',
+        sourcePath: 'todo/cards/PROJECT-123.md',
+        sourceRevision: 'sha256:card-revision',
+        title: 'Keep the change bounded',
+        lane: 'READY',
+        status: 'Selected',
+        priority: 1,
+        nextAction: 'Implement the approved slice.',
+    ),
     mapIndex: '/project/.agent-loop/map/php-symbols.json',
     mapRoot: '/project',
     mapSearchIndex: '/project/.agent-loop/map/search.sqlite',
@@ -39,6 +49,8 @@ $result->bundlePath();
 
 `CompileRequest` deliberately models only owner inputs needed by an embedding host. The task brief may be a normal task brief or the governed `governed_recall_input` envelope. Recall still verifies the governed Run/Contract binding through `TaskBriefParser`; the caller must not parse or recreate that rule.
 
+Embedding hosts that already obtained a typed board card from its owner should use `KanbanContextProjection`. It carries only the bounded fields Recall consumes plus the semantic source path and exact card revision, and it does not require the host to persist a second context file. The legacy `kanbanContext` path remains available for standalone/file-oriented callers; a request may not provide both forms.
+
 ## Boundary
 
 The embedded API owns:
@@ -54,6 +66,7 @@ The caller owns:
 
 - selecting the approved task/Contract and paths it is authorized to use;
 - deciding when compilation should occur;
+- obtaining board state through the board owner's API before constructing a bounded `KanbanContextProjection`;
 - deciding which optional owner inputs are available;
 - consuming the returned artifacts in its own lifecycle.
 

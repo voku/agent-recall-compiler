@@ -42,7 +42,9 @@ final readonly class RecallCompiler
         if ($request->feedback !== null) {
             array_push($tokens, '--feedback', $request->feedback);
         }
-        if ($request->kanbanContext !== null) {
+        if ($request->kanbanContextProjection !== null) {
+            array_push($tokens, '--kanban-context', CanonicalJson::encode($request->kanbanContextProjection->toArray()));
+        } elseif ($request->kanbanContext !== null) {
             array_push($tokens, '--kanban-context', $request->kanbanContext);
         }
         if ($request->mapIndex !== null) {

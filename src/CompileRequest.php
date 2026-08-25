@@ -33,6 +33,7 @@ final readonly class CompileRequest
         public array $editFocus = [],
         public ?string $compilationId = null,
         public ?string $feedback = null,
+        public ?KanbanContextProjection $kanbanContextProjection = null,
     ) {
         $this->assertNonEmpty($this->learningRoot, 'learningRoot');
         $this->assertNonEmpty($this->taskBrief, 'taskBrief');
@@ -47,6 +48,9 @@ final readonly class CompileRequest
         $this->assertStringList($this->documentManifests, 'documentManifests');
         $this->assertStringList($this->editFocus, 'editFocus');
 
+        if ($this->kanbanContext !== null && $this->kanbanContextProjection !== null) {
+            throw new InvalidArgumentException('kanbanContext and kanbanContextProjection are mutually exclusive.');
+        }
         if ($this->mapSearchLimit < 1) {
             throw new InvalidArgumentException('mapSearchLimit must be a positive integer.');
         }
