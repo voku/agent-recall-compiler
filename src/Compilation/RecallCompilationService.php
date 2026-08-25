@@ -99,11 +99,20 @@ final class RecallCompilationService
             'effective_scope' => $scopeResolution->toArray(),
             'snapshot' => $snapshot->toArray(),
             'selected_guidance' => array_map(static fn ($item): string => $item->id, $selection->selectedGuidance),
+            // Persist the constraint metadata this compilation actually
+            // selected. It is already in memory here; dropping it forced later
+            // readers either to report it as unavailable or - worse - to look it
+            // up in current Learning state and present today's answer as the
+            // historical one.
             'selected_constraints' => array_map(static fn ($item): array => [
                 'id' => $item->id,
                 'engine' => $item->engine,
                 'rule_identifier' => $item->ruleIdentifier,
                 'source_proposal' => $item->sourceProposal,
+                'scope' => $item->scope,
+                'validation_commands' => $item->validationCommands,
+                'status' => $item->status,
+                'tags' => $item->tags,
             ], $selection->selectedConstraints),
             'selected_rejections' => array_map(static fn ($item): string => $item->id, $selection->selectedRejections),
             'evaluated_guidance' => array_map(static fn ($item): array => $item->toArray(), $selection->evaluatedGuidance),
