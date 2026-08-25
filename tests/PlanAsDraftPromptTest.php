@@ -37,6 +37,6 @@ final class PlanAsDraftPromptTest extends TestCase
         self::assertStringContainsString('KEEP, STRENGTHEN, ADD, and REJECT_OR_OUT_OF_SCOPE', $template);
         self::assertStringContainsString('repository evidence for every material addition or revision', $template);
         self::assertStringContainsString('PLAN_SUFFICIENT', $template);
-        self::assertStringContainsString('do not invent backlog, commands, dependencies, architecture, or authority', $template);
+        self::assertStringContainsString('must not invent backlog, commands, dependencies, architecture, or authority', $template);
     }
 }
