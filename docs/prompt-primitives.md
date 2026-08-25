@@ -84,11 +84,29 @@ The compiler now keeps these boundaries explicit during L2 construction:
 
 Reusable first-party engineering recipe semantics remain owned by the repository that defines them, such as `voku/agent-skills`. Recall validates, compiles, grounds, and renders selected recipes; it does not duplicate their catalog in PHP source.
 
+## Plan-as-draft challenge
+
+Use the bundled L2 `plan-as-draft` recipe when the input is already a plan but you intentionally want the next planning pass to treat that plan as the minimum floor rather than as a stopping signal. Natural-language instructions such as "Sounds like a draft plan, build a real one on top of this" belong here even when the supplied plan already looks polished and plausible.
+
+The word **draft** is a deliberate challenge frame, not an evidence claim that the existing plan is poor. The generated project-specific planning contract must re-ground the supplied plan, preserve verified goals, acceptance criteria, scope, non-goals, authority, and completed work, and then identify evidence-backed ways to strengthen completeness. It must materially build on the plan rather than merely reformatting or paraphrasing it.
+
+This is intentionally distinct from other primitives:
+
+- `adversarial-review` treats the current **implementation** as a first draft and tries to falsify it;
+- `plan-horizon` extends planning across a requested **time horizon**;
+- `execute-plan-with-blind-spot-check` treats the current plan as already authoritative and permits only bounded evidence-backed corrections before execution;
+- `plan-as-draft` challenges the **quality and completeness of a supplied plan before it becomes the executable planning contract**.
+
+`PLAN_SUFFICIENT` remains valid, but only after the bounded challenge pass finds no material evidence-backed strengthening. The challenge frame must not manufacture backlog, architecture, commands, dependencies, or authority merely to make the second plan longer. More text is, despite centuries of management practice suggesting otherwise, not automatically more planning.
+
 ## Practical selection
 
 ```text
 Need a project-specific executable task contract?
     -> select an L2 operating recipe
+
+Have an existing plan but want a stronger planning pass that treats it as the minimum floor?
+    -> select the Recall-owned L2 `plan-as-draft`
 
 Need bounded autonomous continuation across already-authorized slices?
     -> select the Recall-owned L1 `continue-until-done`
@@ -113,4 +131,4 @@ Need to expose where implementation had to guess because process guidance was mi
 
 Project-level `future-work` already assumes the completed work's current repository context is still fresh and asks for the highest-leverage evidence-backed investment. Do not create or stack another prompt merely to say "use the momentum/current context"; momentum can help preserve navigation context, but it does not create follow-up authority or widen the completed Contract.
 
-The important part is the boundary, not the command spelling: execution contracts, control rules, adversarial review, reflection, and opt-in guidance-gap journaling are different reasoning jobs and should not be collapsed into one universal monster prompt.
+The important part is the boundary, not the command spelling: execution contracts, plan challenge, control rules, adversarial review, reflection, and opt-in guidance-gap journaling are different reasoning jobs and should not be collapsed into one universal monster prompt.
