@@ -6,6 +6,11 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+### Fixed
+
+- Run the package PHPStan check with its explicit 512M analysis budget so the
+  standard Composer CI entry point remains reliable in the supported container runtime.
+
 ## [0.13.13] - 2026-08-24
 
 ### Added
