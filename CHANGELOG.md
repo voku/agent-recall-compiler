@@ -6,10 +6,23 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.13.14] - 2026-08-26
+
+### Added
+
+- Add the `plan-as-draft` operating recipe so an apparently complete plan can be challenged as a minimum baseline and strengthened without inventing authority, scope, or missing evidence.
+- Add typed persisted context-explanation projections/readers, including selected/excluded guidance and first-class constraint metadata, so consumers can explain the exact compiled context without re-reading current Learning state.
+- Add typed `KanbanContextProjection` embedding input so a host can pass the bounded board facts Recall already consumes without persisting a second orchestration-owned context file; the standalone `--kanban-context <path>` contract remains supported.
+
 ### Fixed
 
-- Run the package PHPStan check with its explicit 512M analysis budget so the
-  standard Composer CI entry point remains reliable in the supported container runtime.
+- Persist selected constraint scope, validation commands, status, and tags in compiled selection evidence so later explanation reads historical compilation truth instead of reporting available-at-compile-time metadata as unavailable.
+- Run the package PHPStan check with its explicit 512M analysis budget so the standard Composer CI entry point remains reliable in the supported container runtime.
+
+### Validation
+
+- The Kanban projection owner slice passed PHPUnit and PHPStan on PHP 8.3, 8.4, and 8.5 plus governed `agent-loop` context-explain dogfood on exact PR #121 head `ff1cbbbc333088df84cf7eaf8c30b5d8743913c2` in Actions run `32905912065`.
+- The persisted context-explanation/constraint metadata changes were independently regression-covered on their merged owner PRs before this release metadata slice.
 
 ## [0.13.13] - 2026-08-24
 
