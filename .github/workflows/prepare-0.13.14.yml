@@ -1,0 +1,41 @@
+name: Prepare 0.13.14 metadata once
+
+on:
+  push:
+    branches:
+      - release/0.13.14
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Write release changelog section
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('CHANGELOG.md')
+          text = path.read_text()
+          start = text.index('## [Unreleased]')
+          next_release = text.index('## [0.13.13]', start)
+          section = '''## [Unreleased]\n\n## [0.13.14] - 2026-08-26\n\n### Added\n\n- Add the `plan-as-draft` operating recipe so an apparently complete plan can be challenged as a minimum baseline and strengthened without inventing authority, scope, or missing evidence.\n- Add typed persisted context-explanation projections/readers, including selected/excluded guidance and first-class constraint metadata, so consumers can explain the exact compiled context without re-reading current Learning state.\n- Add typed `KanbanContextProjection` embedding input so a host can pass the bounded board facts Recall already consumes without persisting a second orchestration-owned context file; the standalone `--kanban-context <path>` contract remains supported.\n\n### Fixed\n\n- Persist selected constraint scope, validation commands, status, and tags in compiled selection evidence so later explanation reads historical compilation truth instead of reporting available-at-compile-time metadata as unavailable.\n- Run the package PHPStan check with its explicit 512M analysis budget so the standard Composer CI entry point remains reliable in the supported container runtime.\n\n### Validation\n\n- The Kanban projection owner slice passed PHPUnit and PHPStan on PHP 8.3, 8.4, and 8.5 plus governed `agent-loop` context-explain dogfood on exact PR #121 head `ff1cbbbc333088df84cf7eaf8c30b5d8743913c2` in Actions run `32905912065`.\n- The persisted context-explanation/constraint metadata changes were independently regression-covered on their merged owner PRs before this release metadata slice.\n\n'''
+          path.write_text(text[:start] + section + text[next_release:])
+          PY
+
+      - name: Remove one-shot preparer and commit metadata
+        shell: bash
+        run: |
+          git rm .github/workflows/prepare-0.13.14.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add CHANGELOG.md
+          git commit -m 'chore: prepare 0.13.14 release'
+          git push origin HEAD:release/0.13.14
