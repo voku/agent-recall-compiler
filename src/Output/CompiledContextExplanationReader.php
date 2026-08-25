@@ -6,6 +6,7 @@ namespace voku\AgentRecallCompiler\Output;
 
 use JsonException;
 use RuntimeException;
+use voku\AgentRecallCompiler\CanonicalJson;
 use voku\AgentRecallCompiler\ExclusionReason;
 use voku\AgentRecallCompiler\GuidanceType;
 use voku\AgentRecallCompiler\SelectionReason;
@@ -69,7 +70,7 @@ final readonly class CompiledContextExplanationReader
             guidance: $this->guidance($document['evaluated_guidance'] ?? []),
             items: $this->items($document['context_explain'] ?? []),
             warnings: $this->stringList($document['warnings'] ?? [], 'warnings'),
-            outcomeStats: $this->outcomeStats($document['outcome_stats'] ?? []),
+            outcomeStats: $this->bundleOutcomeStats($directory, $bundleSha256),
             integrityFailures: $output->integrityFailures(),
         );
     }
@@ -86,23 +87,24 @@ final readonly class CompiledContextExplanationReader
             if (!is_array($item)) {
                 throw new RuntimeException('selection-report selected_constraints[' . $index . '] must be an object.');
             }
-            foreach (['scope', 'validation_commands', 'status', 'tags'] as $required) {
-                if (!array_key_exists($required, $item)) {
-                    throw new RuntimeException(
-                        'Persisted constraint explanation lacks ' . $required . '; recompile Recall with a current compiler.',
-                    );
-                }
-            }
 
             $constraints[] = new CompiledConstraintSelection(
                 id: $this->requiredString($item['id'] ?? null, 'selected_constraints.id'),
                 engine: $this->requiredString($item['engine'] ?? null, 'selected_constraints.engine'),
                 ruleIdentifier: $this->requiredString($item['rule_identifier'] ?? null, 'selected_constraints.rule_identifier'),
-                scope: $this->stringList($item['scope'], 'selected_constraints.scope'),
-                validationCommands: $this->stringList($item['validation_commands'], 'selected_constraints.validation_commands'),
                 sourceProposal: $this->requiredString($item['source_proposal'] ?? null, 'selected_constraints.source_proposal'),
-                status: $this->requiredString($item['status'], 'selected_constraints.status'),
-                tags: $this->stringList($item['tags'], 'selected_constraints.tags'),
+                scope: array_key_exists('scope', $item)
+                    ? $this->stringList($item['scope'], 'selected_constraints.scope')
+                    : null,
+                validationCommands: array_key_exists('validation_commands', $item)
+                    ? $this->stringList($item['validation_commands'], 'selected_constraints.validation_commands')
+                    : null,
+                status: array_key_exists('status', $item)
+                    ? $this->requiredString($item['status'], 'selected_constraints.status')
+                    : null,
+                tags: array_key_exists('tags', $item)
+                    ? $this->stringList($item['tags'], 'selected_constraints.tags')
+                    : null,
             );
         }
 
@@ -202,23 +204,41 @@ final readonly class CompiledContextExplanationReader
     /**
      * @return array<string, array{selected_count:int, helpful_count:int, irrelevant_count:int, harmful_count:int, violation_detected_count:int}>
      */
+    private function bundleOutcomeStats(string $directory, string $expectedBundleSha256): array
+    {
+        $path = $directory . '/recall.bundle.json';
+        if (!is_file($path)) {
+            throw new RuntimeException('Compiled context outcome statistics are unavailable: recall.bundle.json is missing.');
+        }
+
+        $bundle = $this->decode($path);
+        if (!hash_equals($expectedBundleSha256, CanonicalJson::digest($bundle))) {
+            throw new RuntimeException('recall.bundle.json does not match the context explanation bundle identity.');
+        }
+
+        return $this->outcomeStats($bundle['outcome_stats'] ?? []);
+    }
+
+    /**
+     * @return array<string, array{selected_count:int, helpful_count:int, irrelevant_count:int, harmful_count:int, violation_detected_count:int}>
+     */
     private function outcomeStats(mixed $value): array
     {
         if (!is_array($value)) {
-            throw new RuntimeException('selection-report outcome_stats must be an object.');
+            throw new RuntimeException('Persisted outcome_stats must be an object.');
         }
 
         $result = [];
         foreach ($value as $guidanceId => $stats) {
             if (!is_string($guidanceId) || $guidanceId === '' || !is_array($stats)) {
-                throw new RuntimeException('selection-report outcome_stats contains an invalid guidance entry.');
+                throw new RuntimeException('Persisted outcome_stats contains an invalid guidance entry.');
             }
 
             $row = [];
             foreach (['selected_count', 'helpful_count', 'irrelevant_count', 'harmful_count', 'violation_detected_count'] as $key) {
                 $count = $stats[$key] ?? null;
                 if (!is_int($count) || $count < 0) {
-                    throw new RuntimeException('selection-report outcome_stats.' . $guidanceId . '.' . $key . ' must be a non-negative integer.');
+                    throw new RuntimeException('Persisted outcome_stats.' . $guidanceId . '.' . $key . ' must be a non-negative integer.');
                 }
                 $row[$key] = $count;
             }
