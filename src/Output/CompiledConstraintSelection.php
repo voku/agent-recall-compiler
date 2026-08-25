@@ -1,0 +1,25 @@
+<?php
+
+declare(strict_types=1);
+
+namespace voku\AgentRecallCompiler\Output;
+
+final readonly class CompiledConstraintSelection
+{
+    /**
+     * @param list<string> $scope
+     * @param list<string> $validationCommands
+     * @param list<string> $tags
+     */
+    public function __construct(
+        public string $id,
+        public string $engine,
+        public string $ruleIdentifier,
+        public array $scope,
+        public array $validationCommands,
+        public string $sourceProposal,
+        public string $status,
+        public array $tags,
+    ) {
+    }
+}
