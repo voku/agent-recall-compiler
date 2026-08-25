@@ -234,20 +234,27 @@ final readonly class CompiledContextExplanationReader
                 throw new RuntimeException('Persisted outcome_stats contains an invalid guidance entry.');
             }
 
-            $row = [];
-            foreach (['selected_count', 'helpful_count', 'irrelevant_count', 'harmful_count', 'violation_detected_count'] as $key) {
-                $count = $stats[$key] ?? null;
-                if (!is_int($count) || $count < 0) {
-                    throw new RuntimeException('Persisted outcome_stats.' . $guidanceId . '.' . $key . ' must be a non-negative integer.');
-                }
-                $row[$key] = $count;
-            }
-
-            $result[$guidanceId] = $row;
+            $result[$guidanceId] = [
+                'selected_count' => $this->outcomeCount($stats, $guidanceId, 'selected_count'),
+                'helpful_count' => $this->outcomeCount($stats, $guidanceId, 'helpful_count'),
+                'irrelevant_count' => $this->outcomeCount($stats, $guidanceId, 'irrelevant_count'),
+                'harmful_count' => $this->outcomeCount($stats, $guidanceId, 'harmful_count'),
+                'violation_detected_count' => $this->outcomeCount($stats, $guidanceId, 'violation_detected_count'),
+            ];
         }
 
-        /** @var array<string, array{selected_count:int, helpful_count:int, irrelevant_count:int, harmful_count:int, violation_detected_count:int}> $result */
         return $result;
+    }
+
+    /** @param array<mixed> $stats */
+    private function outcomeCount(array $stats, string $guidanceId, string $key): int
+    {
+        $count = $stats[$key] ?? null;
+        if (!is_int($count) || $count < 0) {
+            throw new RuntimeException('Persisted outcome_stats.' . $guidanceId . '.' . $key . ' must be a non-negative integer.');
+        }
+
+        return $count;
     }
 
     private function selectionReason(mixed $value): ?SelectionReason
