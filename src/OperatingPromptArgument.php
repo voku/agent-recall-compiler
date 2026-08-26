@@ -13,13 +13,15 @@ final readonly class OperatingPromptArgument
     public const string TYPE_SCALAR = 'scalar';
     public const string TYPE_STRING = 'string';
 
+    /** @var self::TYPE_* */
+    public string $type;
+
     /**
-     * @param self::TYPE_* $type
      * @param list<bool|int|string> $examples
      */
     public function __construct(
         public string $name,
-        public string $type,
+        string $type,
         public bool $required,
         public string $description,
         public ?int $minimum = null,
@@ -41,5 +43,7 @@ final readonly class OperatingPromptArgument
         if ($minimum !== null && $maximum !== null && $minimum > $maximum) {
             throw new InvalidArgumentException('operating prompt argument minimum must not exceed maximum: ' . $name);
         }
+
+        $this->type = $type;
     }
 }
