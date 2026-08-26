@@ -21,6 +21,6 @@ final readonly class OperatingPromptValidationResult
     /** @param list<string> $errors */
     public static function invalid(array $errors): self
     {
-        return new self(false, array_values($errors));
+        return new self(false, $errors);
     }
 }
