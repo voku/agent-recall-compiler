@@ -90,14 +90,14 @@ final class OperatingPromptCatalogApiTest extends TestCase
         $directory = sys_get_temp_dir() . '/agent-recall-catalog-' . bin2hex(random_bytes(6));
         self::assertTrue(mkdir($directory, 0777, true));
         $manifest = $directory . '/operating-prompts.json';
-        file_put_contents($manifest, json_encode([
+        self::assertNotFalse(file_put_contents($manifest, json_encode([
             'schema_version' => '1.0',
             'prompts' => [[
                 'id' => 'legacy-prompt',
                 'level' => 1,
                 'template' => 'Run {{count}} checks.',
             ]],
-        ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+        ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR)));
 
         try {
             $catalog = new OperatingPromptCatalog([$manifest]);
@@ -107,8 +107,8 @@ final class OperatingPromptCatalogApiTest extends TestCase
             self::assertTrue($catalog->preview(new OperatingPromptRequest('legacy-prompt', ['count' => 2]))->validation->valid);
             self::assertTrue($catalog->preview(new OperatingPromptRequest('legacy-prompt', ['count' => 'two']))->validation->valid);
         } finally {
-            @unlink($manifest);
-            @rmdir($directory);
+            self::assertTrue(unlink($manifest));
+            self::assertTrue(rmdir($directory));
         }
     }
 }
