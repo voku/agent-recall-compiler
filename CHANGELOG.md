@@ -6,6 +6,28 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.13.15] - 2026-08-26
+
+### Added
+
+- Publish the read-only `OperatingPromptCatalog` embedding API with immutable recipe, argument, validation, and deterministic preview projections so hosts can build prompt tooling without parsing Recall manifests or rendered CLI output.
+- Expose Recall-owned recipe presentation/input metadata and owner-derived applicability signals, including whether task context or current mutation authority is required and whether free-form developer instructions are allowed.
+
+### Changed
+
+- Route `OperatingPromptRecallProvider` through the same public catalog used by embedding hosts, keeping recipe parsing/rendering and validation under one semantic owner while preserving legacy schema-1.0 custom manifests.
+- Harden marker-driven release tagging and document the Recall owner/dependency boundary plus the anti-premature-completion concepts that should be adapted without creating duplicate lifecycle or evidence authorities.
+
+### Fixed
+
+- Keep direct operating-prompt request and recipe/argument runtime guards both fail-closed at runtime and valid under PHPStan after the typed catalog API landed.
+
+### Validation
+
+- PR #126 merged the typed catalog/preview boundary after exact-head PHPUnit/PHPStan verification; PR #127 added owner-derived applicability coverage for execute, dispatch, discovery, and start scenarios.
+- The post-merge runtime-guard correction is included in this release target, and the release remains gated by the repository PHP 8.3/8.4/8.5 PHPUnit + PHPStan matrix.
+
+
 ## [0.13.14] - 2026-08-26
 
 ### Added
