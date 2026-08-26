@@ -32,6 +32,9 @@ final readonly class OperatingPromptRecipe
         public array $arguments,
         public string $sourceRef,
         public string $templateSha256,
+        public bool $requiresTaskContext = false,
+        public bool $requiresMutationAuthority = false,
+        public bool $allowsAdditionalInstruction = false,
     ) {
         if (preg_match('/\A[a-z][a-z0-9._-]*\z/', $id) !== 1) {
             throw new InvalidArgumentException('operating prompt id must match [a-z][a-z0-9._-]*: ' . $id);
@@ -57,6 +60,9 @@ final readonly class OperatingPromptRecipe
         }
         if (preg_match('/\A[a-f0-9]{64}\z/', $templateSha256) !== 1) {
             throw new InvalidArgumentException('operating prompt template digest must be sha256: ' . $id);
+        }
+        if ($requiresMutationAuthority && !$requiresTaskContext) {
+            throw new InvalidArgumentException('operating prompt mutation authority requires task context: ' . $id);
         }
     }
 }
