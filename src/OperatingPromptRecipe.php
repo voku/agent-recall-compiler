@@ -59,4 +59,29 @@ final readonly class OperatingPromptRecipe
             throw new InvalidArgumentException('operating prompt template digest must be sha256: ' . $id);
         }
     }
+
+    /**
+     * Whether this recipe may only be composed for an existing task projection.
+     */
+    public function requiresTaskContext(): bool
+    {
+        return $this->requiresMutationAuthority();
+    }
+
+    /**
+     * Whether current workflow mutation authority is required before emitting a copyable prompt.
+     */
+    public function requiresMutationAuthority(): bool
+    {
+        return $this->purpose === self::PURPOSE_EXECUTE || $this->id === 'execution-dispatch';
+    }
+
+    /**
+     * Free-form developer instructions are forbidden unless Recall explicitly opts a recipe in.
+     * No bundled recipe currently grants that extension point.
+     */
+    public function allowsAdditionalInstruction(): bool
+    {
+        return false;
+    }
 }
