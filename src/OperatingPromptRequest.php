@@ -8,19 +8,23 @@ use InvalidArgumentException;
 
 final readonly class OperatingPromptRequest
 {
+    /** @var array<string, bool|int|string> */
+    public array $arguments;
+
     /**
-     * @param array<string, bool|int|string> $arguments
+     * @param array<array-key, mixed> $arguments
      */
     public function __construct(
         public string $id,
-        public array $arguments = [],
+        array $arguments = [],
     ) {
         if (preg_match('/\A[a-z][a-z0-9._-]*\z/', $id) !== 1) {
             throw new InvalidArgumentException('operating prompt id must match [a-z][a-z0-9._-]*: ' . $id);
         }
 
+        $normalized = [];
         foreach ($arguments as $name => $value) {
-            if (preg_match('/\A[a-z][a-z0-9_]*\z/', $name) !== 1) {
+            if (!is_string($name) || preg_match('/\A[a-z][a-z0-9_]*\z/', $name) !== 1) {
                 throw new InvalidArgumentException('operating prompt argument name must match [a-z][a-z0-9_]*: ' . $name);
             }
             if (!is_bool($value) && !is_int($value) && !is_string($value)) {
@@ -29,7 +33,9 @@ final readonly class OperatingPromptRequest
             if (is_string($value) && trim($value) === '') {
                 throw new InvalidArgumentException('operating prompt argument must not be an empty string: ' . $name);
             }
+            $normalized[$name] = $value;
         }
+        $this->arguments = $normalized;
     }
 
     /**
@@ -47,19 +53,8 @@ final readonly class OperatingPromptRequest
             throw new InvalidArgumentException('operating prompt arguments must be a JSON object');
         }
 
-        /** @var array<string, bool|int|string> $normalized */
-        $normalized = [];
-        foreach ($arguments as $name => $value) {
-            if (!is_string($name)) {
-                throw new InvalidArgumentException('operating prompt argument names must be strings');
-            }
-            if (!is_bool($value) && !is_int($value) && !is_string($value)) {
-                throw new InvalidArgumentException('operating prompt arguments must be boolean, integer, or string JSON values: ' . $name);
-            }
-            $normalized[$name] = $value;
-        }
-
-        return new self(trim($id), $normalized);
+        /** @var array<array-key, mixed> $arguments */
+        return new self(trim($id), $arguments);
     }
 
     /** @return array{id: string, arguments: array<string, bool|int|string>} */
