@@ -14,7 +14,6 @@ final readonly class OperatingPromptArgument
     public const string TYPE_STRING = 'string';
 
     /**
-     * @param self::TYPE_* $type
      * @param list<bool|int|string> $examples
      */
     public function __construct(
