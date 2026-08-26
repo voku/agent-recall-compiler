@@ -19,8 +19,6 @@ final readonly class OperatingPromptRecipe
     public const string PURPOSE_UNSPECIFIED = 'unspecified';
 
     /**
-     * @param 1|2 $level
-     * @param self::PURPOSE_* $purpose
      * @param list<OperatingPromptArgument> $arguments
      */
     public function __construct(
