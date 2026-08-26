@@ -18,6 +18,12 @@ final readonly class OperatingPromptRecipe
     public const string PURPOSE_START = 'start';
     public const string PURPOSE_UNSPECIFIED = 'unspecified';
 
+    /** @var 1|2 */
+    public int $level;
+
+    /** @var self::PURPOSE_* */
+    public string $purpose;
+
     /**
      * @param list<OperatingPromptArgument> $arguments
      */
@@ -25,8 +31,8 @@ final readonly class OperatingPromptRecipe
         public string $id,
         public string $title,
         public string $description,
-        public int $level,
-        public string $purpose,
+        int $level,
+        string $purpose,
         public array $arguments,
         public string $sourceRef,
         public string $templateSha256,
@@ -56,6 +62,9 @@ final readonly class OperatingPromptRecipe
         if (preg_match('/\A[a-f0-9]{64}\z/', $templateSha256) !== 1) {
             throw new InvalidArgumentException('operating prompt template digest must be sha256: ' . $id);
         }
+
+        $this->level = $level;
+        $this->purpose = $purpose;
     }
 
     /**
