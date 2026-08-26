@@ -61,7 +61,7 @@ final readonly class OperatingPromptRecallProvider implements RecallProvider
 
             $preview = $catalog->preview($request);
             if (!$preview->validation->valid || $preview->content === null) {
-                throw new RuntimeException(implode('; ', $preview->validation->errors));
+                throw new RuntimeException($this->providerValidationMessage($request->id, $preview->validation->errors));
             }
             $recipe = $catalog->recipe($request->id);
 
@@ -89,5 +89,43 @@ final readonly class OperatingPromptRecallProvider implements RecallProvider
             ]),
             $facts,
         );
+    }
+
+    /**
+     * Preserve the provider's existing public error wording while validation is
+     * now owned by OperatingPromptCatalog.
+     *
+     * @param list<string> $errors
+     */
+    private function providerValidationMessage(string $id, array $errors): string
+    {
+        $missingPrefix = 'operating prompt ' . $id . ' is missing argument: ';
+        $extraPrefix = 'operating prompt ' . $id . ' received unknown argument: ';
+        $missing = [];
+        $extra = [];
+        $other = [];
+
+        foreach ($errors as $error) {
+            if (str_starts_with($error, $missingPrefix)) {
+                $missing[] = substr($error, strlen($missingPrefix));
+                continue;
+            }
+            if (str_starts_with($error, $extraPrefix)) {
+                $extra[] = substr($error, strlen($extraPrefix));
+                continue;
+            }
+            $other[] = $error;
+        }
+
+        $messages = [];
+        if ($missing !== []) {
+            $messages[] = 'operating prompt ' . $id . ' is missing arguments: ' . implode(', ', $missing);
+        }
+        if ($extra !== []) {
+            $messages[] = 'operating prompt ' . $id . ' received unknown arguments: ' . implode(', ', $extra);
+        }
+        array_push($messages, ...$other);
+
+        return implode('; ', $messages);
     }
 }
