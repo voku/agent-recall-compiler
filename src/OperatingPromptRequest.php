@@ -23,6 +23,9 @@ final readonly class OperatingPromptRequest
             if (preg_match('/\A[a-z][a-z0-9_]*\z/', $name) !== 1) {
                 throw new InvalidArgumentException('operating prompt argument name must match [a-z][a-z0-9_]*: ' . $name);
             }
+            if (!is_bool($value) && !is_int($value) && !is_string($value)) {
+                throw new InvalidArgumentException('operating prompt arguments must be boolean, integer, or string values: ' . $name);
+            }
             if (is_string($value) && trim($value) === '') {
                 throw new InvalidArgumentException('operating prompt argument must not be an empty string: ' . $name);
             }
