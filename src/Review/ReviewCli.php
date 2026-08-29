@@ -81,11 +81,11 @@ final class ReviewCli
         (new ReviewReportWriter($this->workspacePath))->write($report, $outputDir);
 
         $base = rtrim($outputDir, '/') . '/reviews/' . $taskId . '.blindspots';
-        echo 'Review blindspots for ' . $taskId . ': ' . $report->status() . "\n";
-        echo 'Markdown report: ' . $base . ".md\n";
-        echo 'JSON report: ' . $base . ".json\n";
-        echo 'L2 prompt: ' . $base . ".prompt.md\n";
-        echo 'Findings: ' . count($report->findings) . "\n";
+        echo 'Deterministic blind-spot audit for ' . $taskId . ': ' . $report->status() . "\n";
+        echo 'Markdown audit report: ' . $base . ".md\n";
+        echo 'JSON audit report: ' . $base . ".json\n";
+        echo 'Semantic L2 review prompt: ' . $base . ".prompt.md\n";
+        echo 'Deterministic findings: ' . count($report->findings) . "\n";
 
         return $report->status() === 'fail' ? 1 : 0;
     }
@@ -119,7 +119,7 @@ final class ReviewCli
     private function usage(): string
     {
         return <<<'TXT'
-agent-recall-compiler review - deterministic recall review helpers.
+agent-recall-compiler review - deterministic review helpers and semantic L2 review prompts.
 
 Usage:
   agent-recall-compiler review help
@@ -130,7 +130,7 @@ Usage:
 Commands:
   help                  Show review help.
   first-draft           Print a compact context-light falsification lens for manual or automated review.
-  blindspots <task-id>  Write deterministic blind-spot Markdown/JSON reports and an L2 prompt.
+  blindspots <task-id>  Run a deterministic prerequisite/evidence audit and emit the semantic L2 blind-spot review prompt that still needs host/model execution.
   code <task-id>        Generate an L2 code-review prompt from recall artifacts and task files.
 
 TXT;
