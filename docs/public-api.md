@@ -10,9 +10,23 @@ Stable host-facing Recall compilation uses:
 
 Command classes, CLI option arrays, provider construction, and console output are implementation details. See `embedding.md` for the integration contract.
 
+## Review audit preparation
+
+Hosts that need Recall to prepare the deterministic blind-spot evidence audit use:
+
+- `voku\AgentRecallCompiler\Review\ReviewAuditPreparer`
+- `voku\AgentRecallCompiler\Review\ReviewReportArtifact`
+- `voku\AgentRecallCompiler\Review\ReviewReport`
+
+`ReviewAuditPreparer::prepare()` owns the deterministic audit, optional Contract-revision/implementation-snapshot binding, report persistence, semantic L2 prompt handoff, and exact persisted report identity. The optional Contract revision and implementation snapshot must be provided together.
+
+The returned `ReviewReportArtifact` is evidence, not lifecycle authority. Recall does not decide whether the report is current for a host Run, acknowledge it, approve the implementation, or execute the emitted semantic review prompt.
+
+Hosts should not reproduce audit preparation by composing `BlindSpotReviewer`, `ReviewReportWriter`, or other Review implementation pieces directly. Those classes remain implementation details even though they are PSR-4 autoloadable before 1.0.
+
 ## Review report evidence
 
-Lifecycle hosts that need the current blind-spot review result use:
+Lifecycle hosts that only need the current persisted deterministic audit result use:
 
 - `voku\AgentRecallCompiler\Review\ReviewReportReader`
 - `voku\AgentRecallCompiler\Review\ReviewReportArtifact`
