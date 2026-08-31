@@ -80,12 +80,12 @@ jobs:
           $path = "build/agent-loop/composer.json";
           $data = json_decode(file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
           $data["repositories"] = [
-              ["type" => "path", "url" => getenv("RUNNER_TEMP") . "/agent-recall-candidate", "options" => ["symlink" => false, "versions" => ["voku/agent-recall-compiler" => "0.11.999"]]],
+              ["type" => "path", "url" => getenv("RUNNER_TEMP") . "/agent-recall-candidate", "options" => ["symlink" => false, "versions" => ["voku/agent-recall-compiler" => "0.13.999"]]],
           ];
           $data["require"]["voku/agent-kanban"] = "0.2.1";
           $data["require"]["voku/agent-learning"] = "0.10.0";
-          $data["require"]["voku/agent-map"] = "0.7.0";
-          $data["require"]["voku/agent-recall-compiler"] = "0.11.999";
+          $data["require"]["voku/agent-map"] = "0.9.0";
+          $data["require"]["voku/agent-recall-compiler"] = "0.13.999";
           $data["require"]["voku/agent-session"] = "0.5.0";
           file_put_contents($path, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . PHP_EOL);
           '
