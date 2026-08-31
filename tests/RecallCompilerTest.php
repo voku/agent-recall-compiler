@@ -255,15 +255,17 @@ final class RecallCompilerTest extends TestCase
     {
         mkdir($this->root . '/workspace/modules', 0777, true);
         file_put_contents($this->root . '/workspace/modules/ExampleView.php', "<?php\nfinal class ExampleView {}\n");
-        $hash = sha1_file($this->root . '/workspace/modules/ExampleView.php');
+        $hash = hash_file('sha256', $this->root . '/workspace/modules/ExampleView.php');
+        self::assertIsString($hash);
         file_put_contents($this->root . '/map.json', json_encode([
-            'schema_version' => '1.0',
+            'schema_version' => '2.0',
             'root' => '/var/www/html',
             'files' => [[
                 'path' => 'modules/ExampleView.php',
-                'sha1' => $hash,
+                'sha256' => 'sha256:' . $hash,
                 'namespace' => '',
                 'symbols' => [[
+                    'name' => 'ExampleView',
                     'fqn' => 'ExampleView',
                     'kind' => 'class',
                     'line_start' => 2,
@@ -579,13 +581,13 @@ final class RecallCompilerTest extends TestCase
             'rule_identifier' => 'Project.Classes.NoRedirectInUnitCest.RedirectCallInUnitCest',
             'scope' => ['modules/'],
             'validation_commands' => ['make php_codesniffer STATIC_ANALYSE_FILES="modules/Example_UnitCest.php"'],
-            'source_proposal' => 'proposal.2026-07-24.007',
+            'source_proposal' => 'proposal.2026-07-01.001',
             'status' => 'active',
         ], JSON_THROW_ON_ERROR));
 
         $constraints = (new RecallRepository())->loadConstraintManifests($this->root);
         $result = (new RecallDecisionEngine())->decide(
-            new TaskBrief('ITPNG-123', 'Touch a unit test', ['modules/Example_UnitCest.php']),
+            new TaskBrief('PROJECT-123', 'Touch a unit test', ['modules/Example_UnitCest.php']),
             [],
             [],
             [],
@@ -596,7 +598,7 @@ final class RecallCompilerTest extends TestCase
         self::assertSame('constraint.project.no-redirect-in-unit-cest', $result->selectedConstraints[0]->id);
 
         $validationPlan = (new RecallPromptBuilder())->buildValidationPlan(
-            new TaskBrief('ITPNG-123', '', ['modules/Example_UnitCest.php']),
+            new TaskBrief('PROJECT-123', '', ['modules/Example_UnitCest.php']),
             $result,
         );
         self::assertStringContainsString('### PHPCS', $validationPlan);
