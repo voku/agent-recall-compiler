@@ -6,6 +6,18 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.13.16] - 2026-08-31
+
+### Changed
+
+- Require released `voku/agent-map` `^0.9.0` and run the governed `agent-loop` context-explain dogfood against Map 0.9.0 instead of the retired pre-0.9 dependency line.
+- Update the portable map-root regression fixture to Map schema 2 / SHA-256; Recall does not restore support for Map schema 1 or add compatibility aliases around removed 0.9 surfaces.
+
+### Validation
+
+- PR #137 compatibility head `2b02a3013ef2c2d12ab89556c217b725a5f5aec2` passed the PHP 8.3/8.4/8.5 PHPUnit + PHPStan matrix and the governed installed `agent-loop` context-explain dogfood using released `agent-map 0.9.0` in Actions run `33387614396`.
+- This release changelog entry is the only change added on top of that validated compatibility head; the resulting release head remains gated by the same repository CI before merge.
+
 ## [0.13.15] - 2026-08-26
 
 ### Added
@@ -934,6 +946,11 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
   - Outcome records referencing unknown rule IDs.
 - Add `schema_version` validation check (`"1.0"`) to task briefs, guidance files, and outcome logs.
 - Add `selected` and `applied` rule fields in generated outcome logs to separate prompt selection from actual rule utilization.
+
+### Changed
+
+- Clarify README behavior for compile-blocking conflicts, rejected-guidance contradictions, schema validation, invalid active rules, missing constraint validation commands, and invalid outcome references.
+- Make `validation-plan.md` authoritative for selected constraints by listing required commands and rule identifiers.
 
 ## [0.0.1] - 2026-06-12
 
