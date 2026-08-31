@@ -40,9 +40,18 @@ final class ReviewReportWriter
 
     private function toMarkdown(ReviewReport $report): string
     {
-        $lines = ['# Blind-spot review for ' . $report->taskId, '', 'Status: ' . $report->status(), '', '## Findings', ''];
+        $lines = [
+            '# Deterministic blind-spot evidence audit for ' . $report->taskId,
+            '',
+            'Audit status: ' . $report->status(),
+            '',
+            '> This report covers deterministic prerequisite/evidence checks only. It does not mean the semantic L2 blind-spot review has been executed.',
+            '',
+            '## Audit findings',
+            '',
+        ];
         if ($report->findings === []) {
-            $lines[] = '- [OK] no_findings: No deterministic blind spots were found.';
+            $lines[] = '- [OK] no_findings: No deterministic audit findings were found; semantic blind-spot review may still identify issues.';
         }
         foreach ($report->findings as $finding) {
             $lines[] = '- [' . $finding->severity->value . '] ' . $finding->id . ': ' . $finding->message;
