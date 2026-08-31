@@ -27,12 +27,13 @@ final class FirstPartySkillCatalog
     /** @return list<string> */
     public static function names(): array
     {
+        $root = self::root();
         $names = [];
-        foreach (scandir(self::root()) ?: [] as $entry) {
+        foreach (scandir($root) ?: [] as $entry) {
             if (!is_string($entry) || str_starts_with($entry, '.')) {
                 continue;
             }
-            if (is_file(self::root() . '/' . $entry . '/SKILL.md')) {
+            if (is_file($root . '/' . $entry . '/SKILL.md')) {
                 $names[] = $entry;
             }
         }
