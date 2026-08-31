@@ -34,7 +34,7 @@ final class ReviewBoundaryContractTest extends TestCase
 
     public function testBlindspotSubcommandHelpDistinguishesAuditFromSemanticReview(): void
     {
-        $result = $this->run(['agent-recall-compiler review', 'blindspots', '--help']);
+        $result = $this->runReviewCli(['agent-recall-compiler review', 'blindspots', '--help']);
 
         self::assertSame(0, $result['exit']);
         self::assertStringContainsString('deterministic prerequisite/evidence audit', $result['output']);
@@ -43,7 +43,7 @@ final class ReviewBoundaryContractTest extends TestCase
 
     public function testBlindspotCommandLabelsDeterministicAuditAndSemanticHandoff(): void
     {
-        $result = $this->run(['agent-recall-compiler review', 'blindspots', 'ABC-123']);
+        $result = $this->runReviewCli(['agent-recall-compiler review', 'blindspots', 'ABC-123']);
 
         self::assertSame(1, $result['exit']);
         self::assertStringContainsString('Deterministic blind-spot evidence audit for ABC-123: fail', $result['output']);
@@ -61,7 +61,7 @@ final class ReviewBoundaryContractTest extends TestCase
      * @param list<string> $argv
      * @return array{exit: int, output: string}
      */
-    private function run(array $argv): array
+    private function runReviewCli(array $argv): array
     {
         ob_start();
         try {
