@@ -79,11 +79,13 @@ final class ReviewCli
             throw new RuntimeException('--contract-revision and --implementation-snapshot must be provided together.');
         }
 
-        $report = (new BlindSpotReviewer($this->workspacePath))->review($taskId, $outputDir);
-        if ($contractRevision !== null) {
-            $report = new ReviewReport($report->taskId, $report->findings, $contractRevision, $implementationSnapshot);
-        }
-        (new ReviewReportWriter($this->workspacePath))->write($report, $outputDir);
+        $artifact = (new ReviewAuditPreparer($this->workspacePath))->prepare(
+            taskId: $taskId,
+            outputDirectory: $outputDir,
+            contractRevision: $contractRevision,
+            implementationSnapshot: $implementationSnapshot,
+        );
+        $report = $artifact->report;
 
         $base = rtrim($outputDir, '/') . '/reviews/' . $taskId . '.blindspots';
         echo 'Deterministic blind-spot evidence audit for ' . $taskId . ': ' . $report->status() . "\n";
