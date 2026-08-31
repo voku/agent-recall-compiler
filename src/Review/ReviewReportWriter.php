@@ -43,7 +43,7 @@ final class ReviewReportWriter
         $lines = [
             '# Deterministic blind-spot evidence audit for ' . $report->taskId,
             '',
-            'Audit status: ' . $report->status(),
+            'Status: ' . $report->status(),
             '',
             '> This report covers deterministic prerequisite/evidence checks only. It does not mean the semantic L2 blind-spot review has been executed.',
             '',
