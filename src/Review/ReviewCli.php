@@ -26,6 +26,11 @@ final class ReviewCli
             return $this->unknownCommand($command);
         }
 
+        if (count($tokens) === 1 && in_array($tokens[0], ['--help', '-h'], true)) {
+            echo $this->usage();
+            return 0;
+        }
+
         if ($command === 'first-draft') {
             if ($tokens !== []) {
                 fwrite(\STDERR, "[ERROR] review first-draft accepts no arguments or options.\n");
