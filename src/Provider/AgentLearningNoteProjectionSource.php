@@ -24,9 +24,14 @@ final readonly class AgentLearningNoteProjectionSource implements LearningNotePr
     {
     }
 
+    public function isAvailable(): bool
+    {
+        return class_exists($this->serviceClass);
+    }
+
     public function active(string $learningRoot): array
     {
-        if (!class_exists($this->serviceClass)) {
+        if (!$this->isAvailable()) {
             return [];
         }
 
