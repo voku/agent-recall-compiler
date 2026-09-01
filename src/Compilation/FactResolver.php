@@ -98,6 +98,7 @@ final class FactResolver
             'project_adr' => 500,
             'approved_learning' => 400,
             'project_skill' => 300,
+            'learning_precedent' => 250,
             'repository_memory' => 200,
             'derived_navigation' => 100,
             default => 0,

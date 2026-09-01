@@ -11,6 +11,7 @@ use voku\AgentRecallCompiler\EvaluatedGuidance;
 use voku\AgentRecallCompiler\ExclusionReason;
 use voku\AgentRecallCompiler\GuidanceType;
 use voku\AgentRecallCompiler\OperatingPromptRequest;
+use voku\AgentRecallCompiler\Provider\ConditionalRecallProvider;
 use voku\AgentRecallCompiler\Provider\RecallFact;
 use voku\AgentRecallCompiler\Provider\RecallProvider;
 use voku\AgentRecallCompiler\Provider\RecallProviderResult;
@@ -38,7 +39,10 @@ final class RecallCompilationService
 
     public function compile(TaskBrief $task, RecallRootConfig $rootConfig): RecallCompilation
     {
-        $providers = $this->providers;
+        $providers = array_values(array_filter(
+            $this->providers,
+            static fn (RecallProvider $provider): bool => !$provider instanceof ConditionalRecallProvider || $provider->isAvailable($rootConfig),
+        ));
         usort($providers, static fn (RecallProvider $left, RecallProvider $right): int => strcmp($left->manifest()->id, $right->manifest()->id));
         $this->assertUniqueProviderIds($providers);
 

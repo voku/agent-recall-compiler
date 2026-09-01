@@ -11,6 +11,7 @@ use voku\AgentMap\Context\EditContextPolicy;
 use voku\AgentRecallCompiler\CanonicalJson;
 use voku\AgentRecallCompiler\Compilation\RecallCompilationService;
 use voku\AgentRecallCompiler\Context\ContextExplainProjector;
+use voku\AgentRecallCompiler\Context\LearningPrecedentExplainProjector;
 use voku\AgentRecallCompiler\FeedbackAssessmentRenderer;
 use voku\AgentRecallCompiler\FeedbackParser;
 use voku\AgentRecallCompiler\InlineTaskBriefResolver;
@@ -18,6 +19,7 @@ use voku\AgentRecallCompiler\JsonTaskBriefResolver;
 use voku\AgentRecallCompiler\OperatingPromptOutcomeDraftAugmenter;
 use voku\AgentRecallCompiler\OperatingPromptRequest;
 use voku\AgentRecallCompiler\Provider\KanbanContextRecallProvider;
+use voku\AgentRecallCompiler\Provider\LearningNoteRecallProvider;
 use voku\AgentRecallCompiler\Provider\LearningRecallProvider;
 use voku\AgentRecallCompiler\Provider\MapRecallProvider;
 use voku\AgentRecallCompiler\Provider\MemoryRecallProvider;
@@ -31,6 +33,7 @@ use voku\AgentRecallCompiler\RecallRepository;
 use voku\AgentRecallCompiler\RecallResult;
 use voku\AgentRecallCompiler\RecallRootResolver;
 use voku\AgentRecallCompiler\Rendering\ContextExplainRenderer;
+use voku\AgentRecallCompiler\Rendering\LearningPrecedentRenderer;
 use voku\AgentRecallCompiler\Rendering\OperatingPromptRenderer;
 use voku\AgentRecallCompiler\TaskBrief;
 use voku\AgentRecallCompiler\Verification\CompiledVerificationPlan;
@@ -118,6 +121,7 @@ final class CompileCommand
                 new TaskContextRecallProvider(),
                 new MemoryRecallProvider($repository),
                 new LearningRecallProvider($repository),
+                new LearningNoteRecallProvider(),
             ];
             if ($rootConfig->projectRoot !== null && $this->hasProjectCapabilityEvidence($rootConfig->projectRoot)) {
                 $providers[] = new ProjectCapabilityRecallProvider($rootConfig->projectRoot);
@@ -170,6 +174,11 @@ final class CompileCommand
             $compilation->facts,
             $result,
         );
+        array_push(
+            $contextExplain,
+            ...(new LearningPrecedentExplainProjector())->project($compilation->facts, $result),
+        );
+        usort($contextExplain, static fn (array $left, array $right): int => $left['id'] <=> $right['id']);
         $facts = [
             'schema_version' => '1.0',
             'bundle_sha256' => $bundleDigest,
@@ -194,6 +203,10 @@ final class CompileCommand
             $compilation->facts,
             $bundleDigest,
         );
+        $precedentContext = (new LearningPrecedentRenderer())->render($compilation->facts, $result);
+        if ($precedentContext !== '') {
+            $systemMd = rtrim($systemMd) . "\n\n" . $precedentContext;
+        }
         $contextExplainMd = (new ContextExplainRenderer())->render($contextExplain);
         if ($contextExplainMd !== '') {
             $systemMd = rtrim($systemMd) . "\n\n" . $contextExplainMd;
@@ -310,8 +323,6 @@ final class CompileCommand
         ?string $mapRoot,
         EditContextPolicy $mapPolicy,
     ): ?CompiledVerificationPlan {
-        // The v1 schema has one canonical target. Existing repeatable target
-        // compilation remains compatible; it simply retains the pre-v1 artifact set.
         if ($mapIndex === null || count($task->targets) !== 1) {
             return null;
         }
