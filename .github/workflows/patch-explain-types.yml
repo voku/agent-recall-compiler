@@ -1,0 +1,46 @@
+name: Patch explain types
+
+on:
+  push:
+    branches: [feature/learning-note-recall-145]
+    paths: ['.github/workflows/patch-explain-types.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/learning-note-recall-145
+      - name: Remove obsolete optional shape accesses
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          compile_path = Path('src/Command/CompileCommand.php')
+          text = compile_path.read_text()
+          old = "usort($contextExplain, static fn (array $left, array $right): int => ($left['id'] ?? '') <=> ($right['id'] ?? ''));"
+          new = "usort($contextExplain, static fn (array $left, array $right): int => $left['id'] <=> $right['id']);"
+          if text.count(old) != 1:
+              raise SystemExit(f'expected one context-explain comparator, found {text.count(old)}')
+          compile_path.write_text(text.replace(old, new))
+
+          test_path = Path('tests/LearningPrecedentExplainProjectorTest.php')
+          text = test_path.read_text()
+          old = "self::assertSame('covered_by_active_guidance:proposal.active.001', $items[0]['why_not']);"
+          new = "self::assertSame('covered_by_active_guidance:proposal.active.001', $items[0]['why_not'] ?? null);"
+          if text.count(old) != 1:
+              raise SystemExit(f'expected one why_not assertion, found {text.count(old)}')
+          test_path.write_text(text.replace(old, new))
+          PY
+          rm .github/workflows/patch-explain-types.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/Command/CompileCommand.php tests/LearningPrecedentExplainProjectorTest.php .github/workflows/patch-explain-types.yml
+          git commit -m 'fix(phpstan): consume exact explain shape'
+          git push origin HEAD:feature/learning-note-recall-145
