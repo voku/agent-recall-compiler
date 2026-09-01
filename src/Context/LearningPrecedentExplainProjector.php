@@ -6,11 +6,27 @@ namespace voku\AgentRecallCompiler\Context;
 
 use voku\AgentRecallCompiler\RecallResult;
 
+/**
+ * @phpstan-type LearningExplainItem array{
+ *     id: string,
+ *     kind: string,
+ *     what: string,
+ *     why: string,
+ *     how: string,
+ *     authority: string,
+ *     use: string,
+ *     state: string,
+ *     selected: bool,
+ *     source_ref: string|null,
+ *     evidence_ids: list<string>,
+ *     why_not?: string
+ * }
+ */
 final readonly class LearningPrecedentExplainProjector
 {
     /**
      * @param list<array<string, mixed>> $facts
-     * @return list<array<string, mixed>>
+     * @return list<LearningExplainItem>
      */
     public function project(array $facts, RecallResult $result): array
     {
@@ -21,6 +37,7 @@ final readonly class LearningPrecedentExplainProjector
             }
         }
 
+        /** @var list<LearningExplainItem> $items */
         $items = [];
         foreach ($facts as $fact) {
             if (($fact['type'] ?? null) !== 'learning_precedent') {
@@ -58,7 +75,7 @@ final readonly class LearningPrecedentExplainProjector
                 ...($whyNot === null ? [] : ['why_not' => $whyNot]),
             ];
         }
-        usort($items, static fn (array $left, array $right): int => ($left['id'] ?? '') <=> ($right['id'] ?? ''));
+        usort($items, static fn (array $left, array $right): int => $left['id'] <=> $right['id']);
 
         return $items;
     }
