@@ -29,7 +29,7 @@ final readonly class AgentLearningNoteProjectionSource implements LearningNotePr
         return class_exists($this->serviceClass);
     }
 
-    public function active(string $learningRoot): array
+    public function active(string $learningRoot, ?string $projectRoot = null): array
     {
         if (!$this->isAvailable()) {
             return [];
@@ -41,7 +41,7 @@ final readonly class AgentLearningNoteProjectionSource implements LearningNotePr
             throw new RuntimeException('Installed Learning owner does not expose LearningNoteService::activeProjections().');
         }
 
-        $raw = $service->activeProjections($learningRoot);
+        $raw = $service->activeProjections($learningRoot, $projectRoot);
         if (!is_array($raw)) {
             throw new RuntimeException('LearningNoteService::activeProjections() must return a list.');
         }
