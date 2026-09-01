@@ -7,5 +7,5 @@ namespace voku\AgentRecallCompiler\Provider;
 interface LearningNoteProjectionSource
 {
     /** @return list<LearningNotePrecedentProjection> */
-    public function active(string $learningRoot): array;
+    public function active(string $learningRoot, ?string $projectRoot = null): array;
 }
