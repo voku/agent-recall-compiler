@@ -108,7 +108,10 @@ final readonly class LearningPrecedentRenderer
         return rtrim(implode("\n", $lines));
     }
 
-    /** @param array<string, mixed> $left @param array<string, mixed> $right */
+    /**
+     * @param array<string, mixed> $left
+     * @param array<string, mixed> $right
+     */
     private function compare(array $left, array $right): int
     {
         $leftPayload = is_array($left['payload'] ?? null) ? $left['payload'] : [];
@@ -152,13 +155,13 @@ final readonly class LearningPrecedentRenderer
         if (!is_array($value)) {
             return [];
         }
-        $result = [];
+        $strings = [];
         foreach ($value as $item) {
             if (is_string($item) && trim($item) !== '') {
-                $result[] = trim($item);
+                $strings[] = trim($item);
             }
         }
 
-        return array_values(array_unique($result));
+        return array_values(array_unique($strings));
     }
 }
