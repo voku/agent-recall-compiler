@@ -41,7 +41,7 @@ final class RecallCompilationService
     {
         $providers = array_values(array_filter(
             $this->providers,
-            static fn (RecallProvider $provider): bool => !$provider instanceof ConditionalRecallProvider || $provider->isAvailable(),
+            static fn (RecallProvider $provider): bool => !$provider instanceof ConditionalRecallProvider || $provider->isAvailable($rootConfig),
         ));
         usort($providers, static fn (RecallProvider $left, RecallProvider $right): int => strcmp($left->manifest()->id, $right->manifest()->id));
         $this->assertUniqueProviderIds($providers);
