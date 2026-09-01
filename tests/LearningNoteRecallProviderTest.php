@@ -133,7 +133,10 @@ final class LearningNoteRecallProviderTest extends TestCase
         return new LearningNoteRecallProvider($source);
     }
 
-    /** @param list<string> $scope @param list<string> $tags */
+    /**
+     * @param list<string> $scope
+     * @param list<string> $tags
+     */
     private function note(
         string $id,
         array $scope,
