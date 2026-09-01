@@ -18,6 +18,7 @@ use voku\AgentRecallCompiler\JsonTaskBriefResolver;
 use voku\AgentRecallCompiler\OperatingPromptOutcomeDraftAugmenter;
 use voku\AgentRecallCompiler\OperatingPromptRequest;
 use voku\AgentRecallCompiler\Provider\KanbanContextRecallProvider;
+use voku\AgentRecallCompiler\Provider\LearningNoteRecallProvider;
 use voku\AgentRecallCompiler\Provider\LearningRecallProvider;
 use voku\AgentRecallCompiler\Provider\MapRecallProvider;
 use voku\AgentRecallCompiler\Provider\MemoryRecallProvider;
@@ -31,6 +32,7 @@ use voku\AgentRecallCompiler\RecallRepository;
 use voku\AgentRecallCompiler\RecallResult;
 use voku\AgentRecallCompiler\RecallRootResolver;
 use voku\AgentRecallCompiler\Rendering\ContextExplainRenderer;
+use voku\AgentRecallCompiler\Rendering\LearningPrecedentRenderer;
 use voku\AgentRecallCompiler\Rendering\OperatingPromptRenderer;
 use voku\AgentRecallCompiler\TaskBrief;
 use voku\AgentRecallCompiler\Verification\CompiledVerificationPlan;
@@ -118,6 +120,7 @@ final class CompileCommand
                 new TaskContextRecallProvider(),
                 new MemoryRecallProvider($repository),
                 new LearningRecallProvider($repository),
+                new LearningNoteRecallProvider(),
             ];
             if ($rootConfig->projectRoot !== null && $this->hasProjectCapabilityEvidence($rootConfig->projectRoot)) {
                 $providers[] = new ProjectCapabilityRecallProvider($rootConfig->projectRoot);
@@ -194,6 +197,10 @@ final class CompileCommand
             $compilation->facts,
             $bundleDigest,
         );
+        $precedentContext = (new LearningPrecedentRenderer())->render($compilation->facts, $result);
+        if ($precedentContext !== '') {
+            $systemMd = rtrim($systemMd) . "\n\n" . $precedentContext;
+        }
         $contextExplainMd = (new ContextExplainRenderer())->render($contextExplain);
         if ($contextExplainMd !== '') {
             $systemMd = rtrim($systemMd) . "\n\n" . $contextExplainMd;
