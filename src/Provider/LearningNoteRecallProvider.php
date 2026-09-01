@@ -19,13 +19,13 @@ final readonly class LearningNoteRecallProvider implements ConditionalRecallProv
     ) {
     }
 
-    public function isAvailable(): bool
+    public function isAvailable(RecallRootConfig $rootConfig): bool
     {
-        if ($this->source instanceof AgentLearningNoteProjectionSource) {
-            return $this->source->isAvailable();
+        if ($this->source instanceof AgentLearningNoteProjectionSource && !$this->source->isAvailable()) {
+            return false;
         }
 
-        return true;
+        return $this->source->active($rootConfig->root, $rootConfig->projectRoot) !== [];
     }
 
     public function manifest(): RecallProviderManifest
@@ -36,7 +36,7 @@ final readonly class LearningNoteRecallProvider implements ConditionalRecallProv
     public function collect(TaskBrief $task, RecallRootConfig $rootConfig): RecallProviderResult
     {
         $eligible = [];
-        foreach ($this->source->active($rootConfig->root) as $note) {
+        foreach ($this->source->active($rootConfig->root, $rootConfig->projectRoot) as $note) {
             if ($note->evidenceState === 'source_missing') {
                 throw new RecallCompilationBlockedException(
                     'Compilation blocked: LearningNote ' . $note->id . ' references missing repository evidence.',
