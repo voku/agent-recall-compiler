@@ -51,7 +51,10 @@ final class LearningPrecedentExplainProjectorTest extends TestCase
         self::assertSame('machine_fact_only', $items[0]['use']);
     }
 
-    /** @param list<string> $reasons @return array<string, mixed> */
+    /**
+     * @param list<string> $reasons
+     * @return array<string, mixed>
+     */
     private function fact(array $reasons): array
     {
         return [
