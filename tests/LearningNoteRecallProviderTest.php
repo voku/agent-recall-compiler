@@ -124,7 +124,7 @@ final class LearningNoteRecallProviderTest extends TestCase
             {
             }
 
-            public function active(string $learningRoot): array
+            public function active(string $learningRoot, ?string $projectRoot = null): array
             {
                 return $this->notes;
             }
