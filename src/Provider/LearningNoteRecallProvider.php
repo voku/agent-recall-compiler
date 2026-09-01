@@ -193,7 +193,10 @@ final readonly class LearningNoteRecallProvider implements ConditionalRecallProv
         ];
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * @param array<string, mixed> $content
+     * @return array<string, mixed>
+     */
     private function boundedContent(array $content): array
     {
         $result = [];
@@ -261,7 +264,10 @@ final readonly class LearningNoteRecallProvider implements ConditionalRecallProv
         return ltrim(preg_replace('~/+~', '/', $path) ?? $path, './');
     }
 
-    /** @param list<string> $tags @return list<string> */
+    /**
+     * @param list<string> $tags
+     * @return list<string>
+     */
     private function canonicalTags(array $tags): array
     {
         $result = [];
