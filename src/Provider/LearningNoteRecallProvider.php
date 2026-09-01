@@ -9,7 +9,7 @@ use voku\AgentRecallCompiler\RecallCompilationBlockedException;
 use voku\AgentRecallCompiler\RecallRootConfig;
 use voku\AgentRecallCompiler\TaskBrief;
 
-final readonly class LearningNoteRecallProvider implements RecallProvider
+final readonly class LearningNoteRecallProvider implements ConditionalRecallProvider
 {
     private const int MAX_RENDERED_PRECEDENTS = 5;
     private const int MAX_CONTENT_CHARS = 1800;
@@ -17,6 +17,15 @@ final readonly class LearningNoteRecallProvider implements RecallProvider
     public function __construct(
         private LearningNoteProjectionSource $source = new AgentLearningNoteProjectionSource(),
     ) {
+    }
+
+    public function isAvailable(): bool
+    {
+        if ($this->source instanceof AgentLearningNoteProjectionSource) {
+            return $this->source->isAvailable();
+        }
+
+        return true;
     }
 
     public function manifest(): RecallProviderManifest
