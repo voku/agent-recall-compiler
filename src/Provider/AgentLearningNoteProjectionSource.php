@@ -17,18 +17,23 @@ use RuntimeException;
  */
 final readonly class AgentLearningNoteProjectionSource implements LearningNoteProjectionSource
 {
-    private const string SERVICE_CLASS = 'voku\\AgentLearning\\LearningNoteService';
+    private const string DEFAULT_SERVICE_CLASS = 'voku\\AgentLearning\\LearningNoteService';
+
+    /** @param class-string $serviceClass */
+    public function __construct(private string $serviceClass = self::DEFAULT_SERVICE_CLASS)
+    {
+    }
 
     public function active(string $learningRoot): array
     {
-        if (!class_exists(self::SERVICE_CLASS)) {
+        if (!class_exists($this->serviceClass)) {
             return [];
         }
 
-        $serviceClass = self::SERVICE_CLASS;
+        $serviceClass = $this->serviceClass;
         $service = new $serviceClass();
         if (!is_callable([$service, 'activeProjections'])) {
-            throw new RuntimeException('Installed agent-learning does not expose LearningNoteService::activeProjections().');
+            throw new RuntimeException('Installed Learning owner does not expose LearningNoteService::activeProjections().');
         }
 
         $raw = $service->activeProjections($learningRoot);
@@ -39,7 +44,7 @@ final readonly class AgentLearningNoteProjectionSource implements LearningNotePr
         $result = [];
         foreach ($raw as $projection) {
             if (!is_object($projection) || !is_callable([$projection, 'toArray'])) {
-                throw new RuntimeException('agent-learning returned an unsupported LearningNote projection.');
+                throw new RuntimeException('Learning owner returned an unsupported LearningNote projection.');
             }
             $data = $projection->toArray();
             if (!is_array($data)) {
