@@ -1,6 +1,6 @@
 # LearningNote precedents
 
-Recall can consume `voku/agent-learning` LearningNotes as deterministic solved-case precedent when the Learning owner is installed. The integration is optional: standalone Recall does not require Learning at runtime, and absence of the owner package contributes no precedent facts.
+Recall can consume `voku/agent-learning` LearningNotes as deterministic solved-case precedent when the Learning owner is installed. The integration is optional: standalone Recall does not require Learning at runtime, and absence of the owner package contributes no precedent facts. Merely installing Learning also does not activate the provider: when the owner returns no active LearningNote projections for the current root, Recall omits the optional provider so package presence alone cannot perturb compilation or provider snapshots.
 
 ## Ownership
 
