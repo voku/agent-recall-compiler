@@ -4,15 +4,24 @@ declare(strict_types=1);
 
 namespace voku\AgentRecallCompiler\Tests;
 
+use Composer\InstalledVersions;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
+use voku\AgentLearning\LearningNoteContent;
+use voku\AgentLearning\LearningNoteEvidenceState;
+use voku\AgentLearning\LearningNoteProjection;
+use voku\AgentLearning\LearningNoteStatus;
+use voku\AgentLearning\ValidationCase;
 use voku\AgentRecallCompiler\Provider\AgentLearningNoteProjectionSource;
 
 final class AgentLearningNoteProjectionSourceTest extends TestCase
 {
-    public function testMapsPublicOwnerProjectionWithoutPrivateStorageKnowledge(): void
+    public function testMapsReleasedPublicOwnerProjectionWithoutPrivateStorageKnowledge(): void
     {
-        $source = new AgentLearningNoteProjectionSource(FakeLearningNoteService::class);
+        self::assertSame('0.14.0', InstalledVersions::getPrettyVersion('voku/agent-learning'));
+        self::assertTrue((new AgentLearningNoteProjectionSource())->isAvailable());
+
+        $source = new AgentLearningNoteProjectionSource(ReleasedLearningNoteService::class);
         $notes = $source->active('/tmp/learning');
 
         self::assertCount(1, $notes);
@@ -39,61 +48,52 @@ final class AgentLearningNoteProjectionSourceTest extends TestCase
     }
 }
 
-final class FakeLearningNoteService
+final class ReleasedLearningNoteService
 {
-    /** @return list<FakeLearningNoteProjection> */
+    /** @return list<LearningNoteProjection> */
     public function activeProjections(string $learningRoot): array
     {
-        return [new FakeLearningNoteProjection(str_repeat('a', 64))];
+        return [ReleasedLearningNoteProjectionFixture::create(str_repeat('a', 64))];
     }
 }
 
 final class MalformedLearningNoteService
 {
-    /** @return list<FakeLearningNoteProjection> */
+    /** @return list<LearningNoteProjection> */
     public function activeProjections(string $learningRoot): array
     {
-        return [new FakeLearningNoteProjection('not-a-digest')];
+        return [ReleasedLearningNoteProjectionFixture::create('not-a-digest')];
     }
 }
 
-final readonly class FakeLearningNoteProjection
+final class ReleasedLearningNoteProjectionFixture
 {
-    public function __construct(private string $digest)
+    public static function create(string $digest): LearningNoteProjection
     {
-    }
-
-    /** @return array<string, mixed> */
-    public function toArray(): array
-    {
-        return [
-            'id' => 'learning-note.real',
-            'pattern_key' => 'pattern.real',
-            'status' => 'active',
-            'scope' => ['src/'],
-            'tags' => ['architecture'],
-            'source_findings' => ['finding.real.001'],
-            'source_proposals' => [],
-            'validation_case' => [
-                'given' => 'A relevant task.',
-                'when' => 'The prior case applies.',
-                'then' => 'The precedent is available.',
-            ],
-            'content' => [
-                'title' => 'Real owner projection',
-                'context' => 'Historical context.',
-                'guidance' => 'Prior guidance.',
-                'why_it_works' => 'Reason.',
-                'when_to_apply' => 'When relevant.',
-                'when_not_to_apply' => 'When stronger evidence differs.',
-                'verification' => 'Verify current source.',
-                'symptoms' => null,
-                'failed_approaches' => [],
-                'root_cause' => null,
-                'examples' => [],
-            ],
-            'digest' => $this->digest,
-            'evidence_state' => 'current',
-        ];
+        return new LearningNoteProjection(
+            id: 'learning-note.real',
+            patternKey: 'pattern.real',
+            status: LearningNoteStatus::ACTIVE,
+            scope: ['src/'],
+            tags: ['architecture'],
+            sourceFindings: ['finding.real.001'],
+            sourceProposals: [],
+            validationCase: new ValidationCase(
+                given: 'A relevant task.',
+                when: 'The prior case applies.',
+                then: 'The precedent is available.',
+            ),
+            content: new LearningNoteContent(
+                title: 'Real owner projection',
+                context: 'Historical context.',
+                guidance: 'Prior guidance.',
+                whyItWorks: 'Reason.',
+                whenToApply: 'When relevant.',
+                whenNotToApply: 'When stronger evidence differs.',
+                verification: 'Verify current source.',
+            ),
+            digest: $digest,
+            evidenceState: LearningNoteEvidenceState::CURRENT,
+        );
     }
 }
