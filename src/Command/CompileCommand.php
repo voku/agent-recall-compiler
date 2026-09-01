@@ -11,6 +11,7 @@ use voku\AgentMap\Context\EditContextPolicy;
 use voku\AgentRecallCompiler\CanonicalJson;
 use voku\AgentRecallCompiler\Compilation\RecallCompilationService;
 use voku\AgentRecallCompiler\Context\ContextExplainProjector;
+use voku\AgentRecallCompiler\Context\LearningPrecedentExplainProjector;
 use voku\AgentRecallCompiler\FeedbackAssessmentRenderer;
 use voku\AgentRecallCompiler\FeedbackParser;
 use voku\AgentRecallCompiler\InlineTaskBriefResolver;
@@ -173,6 +174,11 @@ final class CompileCommand
             $compilation->facts,
             $result,
         );
+        array_push(
+            $contextExplain,
+            ...(new LearningPrecedentExplainProjector())->project($compilation->facts, $result),
+        );
+        usort($contextExplain, static fn (array $left, array $right): int => ($left['id'] ?? '') <=> ($right['id'] ?? ''));
         $facts = [
             'schema_version' => '1.0',
             'bundle_sha256' => $bundleDigest,
@@ -317,8 +323,6 @@ final class CompileCommand
         ?string $mapRoot,
         EditContextPolicy $mapPolicy,
     ): ?CompiledVerificationPlan {
-        // The v1 schema has one canonical target. Existing repeatable target
-        // compilation remains compatible; it simply retains the pre-v1 artifact set.
         if ($mapIndex === null || count($task->targets) !== 1) {
             return null;
         }
