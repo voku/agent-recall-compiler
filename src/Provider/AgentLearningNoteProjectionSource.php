@@ -19,7 +19,7 @@ final readonly class AgentLearningNoteProjectionSource implements LearningNotePr
 {
     private const string DEFAULT_SERVICE_CLASS = 'voku\\AgentLearning\\LearningNoteService';
 
-    /** @param class-string $serviceClass */
+    /** @param string $serviceClass */
     public function __construct(private string $serviceClass = self::DEFAULT_SERVICE_CLASS)
     {
     }
