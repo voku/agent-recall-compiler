@@ -47,7 +47,7 @@ final class LearningPrecedentExplainProjectorTest extends TestCase
         ], new RecallResult([$guidance], [], []));
 
         self::assertFalse($items[0]['selected']);
-        self::assertSame('covered_by_active_guidance:proposal.active.001', $items[0]['why_not']);
+        self::assertSame('covered_by_active_guidance:proposal.active.001', $items[0]['why_not'] ?? null);
         self::assertSame('machine_fact_only', $items[0]['use']);
     }
 

@@ -178,7 +178,7 @@ final class CompileCommand
             $contextExplain,
             ...(new LearningPrecedentExplainProjector())->project($compilation->facts, $result),
         );
-        usort($contextExplain, static fn (array $left, array $right): int => ($left['id'] ?? '') <=> ($right['id'] ?? ''));
+        usort($contextExplain, static fn (array $left, array $right): int => $left['id'] <=> $right['id']);
         $facts = [
             'schema_version' => '1.0',
             'bundle_sha256' => $bundleDigest,
