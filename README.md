@@ -174,6 +174,16 @@ Outcome evidence is recorded separately as `applied` plus task-local outcomes su
 
 See [Guidance event history](docs/guidance-events.md).
 
+### LearningNote precedents are context, not guidance
+
+`voku/agent-learning` owns durable `LearningNote` records and their lifecycle. Recall reads the Learning-owned projection and may compile an active note into a `learning_precedent` fact when its scope and evidence are relevant to the current task.
+
+That fact is deliberately low-authority precedent, not an instruction: `learning_precedent` sits below `project_skill` and above legacy `repository_memory` in explicit fact-conflict precedence. It never widens task scope, satisfies validation, approves a lifecycle transition, or becomes durable guidance merely because Recall selected it.
+
+The compiled `learning_precedent` is derived and regenerable. Its provenance remains bound to the exact Learning projection used by that compilation; the `LearningNote` itself remains Learning-owned durable truth. When active guidance carries the same explicit `pattern_key`, Recall preserves lineage but suppresses duplicate precedent prose rather than inventing semantic equivalence from similar wording.
+
+See [LearningNote precedents](docs/learning-note-precedents.md).
+
 ### Review artifacts are evidence, not approval
 
 Recall can generate deterministic blind-spot reports and review prompts:
@@ -298,6 +308,7 @@ Important design and integration references:
 - [Context Explain](docs/context-explain.md)
 - [Recall provider architecture](docs/recall-provider-architecture.md)
 - [Guidance event history](docs/guidance-events.md)
+- [LearningNote precedents](docs/learning-note-precedents.md)
 - [Embedding Recall](docs/embedding.md)
 - [Public PHP API](docs/public-api.md)
 - [Dependency readiness](docs/dependency-readiness.md)
