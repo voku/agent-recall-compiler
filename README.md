@@ -257,6 +257,25 @@ In a governed Run, Recall consumes a small envelope that binds one `run_id` to o
 
 See [Operating prompt recipes: governed input](docs/operating-prompts.md#governed-input).
 
+### Shipped Assets & PackageResources
+
+`agent-recall-compiler` bundles its first-party operating-prompt recipe catalog and consumer skill under `resources/skills/agent-recall-consumer/`.
+
+Consumers and orchestrators can resolve asset paths programmatically via `voku\AgentRecallCompiler\PackageResources` instead of constructing fragile relative paths in `vendor/`:
+
+```php
+use voku\AgentRecallCompiler\PackageResources;
+
+// Path to bundled operating-prompts.json catalog
+$catalogPath = PackageResources::consumerOperatingPrompts();
+
+// Path to bundled operating-prompts.metadata.json
+$metadataPath = PackageResources::consumerOperatingPromptsMetadata();
+
+// Root directory for bundled skills (resources/skills/)
+$skillsRoot = PackageResources::skillsRoot();
+```
+
 ---
 
 ## Generated artifacts
