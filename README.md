@@ -3,7 +3,13 @@
 Deterministic context and L2 operational-prompt compiler for coding agents.
 
 [![Build Status](https://github.com/voku/agent-recall-compiler/actions/workflows/ci.yml/badge.svg)](https://github.com/voku/agent-recall-compiler/actions)
-[![License](https://img.shields.io/github/license/voku/agent-recall-compiler.svg)](LICENSE)
+[![Latest Stable Version](https://poser.pugx.org/voku/agent-recall-compiler/v/stable)](https://packagist.org/packages/voku/agent-recall-compiler)
+[![Total Downloads](https://poser.pugx.org/voku/agent-recall-compiler/downloads)](https://packagist.org/packages/voku/agent-recall-compiler)
+[![Monthly Downloads](https://poser.pugx.org/voku/agent-recall-compiler/d/monthly)](https://packagist.org/packages/voku/agent-recall-compiler)
+[![License](https://poser.pugx.org/voku/agent-recall-compiler/license)](https://packagist.org/packages/voku/agent-recall-compiler)
+[![PHP Version Require](https://poser.pugx.org/voku/agent-recall-compiler/require/php)](https://packagist.org/packages/voku/agent-recall-compiler)
+[![GitHub Stars](https://img.shields.io/github/stars/voku/agent-recall-compiler?style=flat-square)](https://github.com/voku/agent-recall-compiler/stargazers)
+[![GitHub Forks](https://img.shields.io/github/forks/voku/agent-recall-compiler?style=flat-square)](https://github.com/voku/agent-recall-compiler/network/members)
 
 `agent-recall-compiler` is the **recall layer** of a governed coding-agent workflow. It turns task intent plus bounded repository evidence into a replayable briefing, project-specific prompt inputs, validation obligations, review artifacts, and outcome evidence. In governed runs, the task input is a `governed_recall_input` envelope bound to one exact approved Contract revision and digest; standalone compilation can use inline or JSON task input without pretending that it is a governed Run.
 

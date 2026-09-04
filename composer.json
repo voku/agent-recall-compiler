@@ -8,10 +8,27 @@
     "issues": "https://github.com/voku/agent-recall-compiler/issues",
     "source": "https://github.com/voku/agent-recall-compiler"
   },
+  "keywords": [
+    "agent",
+    "coding-agent",
+    "recall",
+    "briefing",
+    "prompt",
+    "context-compiler",
+    "l2",
+    "ai",
+    "llm"
+  ],
   "authors": [
     {
       "name": "Lars Moelleken",
       "homepage": "https://github.com/voku"
+    }
+  ],
+  "funding": [
+    {
+      "type": "github",
+      "url": "https://github.com/voku"
     }
   ],
   "require": {

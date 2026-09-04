@@ -1,8 +1,11 @@
-* text=auto
+* text=auto eol=lf
 
-/tests/ export-ignore
+/.github export-ignore
+/tests export-ignore
+/phpunit.xml export-ignore
+/phpunit.xml.dist export-ignore
+/phpstan.neon export-ignore
+/phpstan.neon.dist export-ignore
 /.gitignore export-ignore
 /.gitattributes export-ignore
-/phpunit.xml export-ignore
-/phpstan.neon.dist export-ignore
-/Makefile export-ignore
+/.editorconfig export-ignore
