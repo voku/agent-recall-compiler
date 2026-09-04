@@ -122,11 +122,9 @@ final readonly class OperatingPromptCatalog
 
     public static function bundled(): self
     {
-        $root = dirname(__DIR__);
-
         return new self(
-            [$root . '/skills/agent-recall-consumer/operating-prompts.json'],
-            $root . '/skills/agent-recall-consumer/operating-prompts.metadata.json',
+            [PackageResources::consumerOperatingPrompts()],
+            PackageResources::consumerOperatingPromptsMetadata(),
         );
     }
 

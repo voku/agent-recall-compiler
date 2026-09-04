@@ -11,13 +11,13 @@ use RuntimeException;
  * installed Recall package.
  *
  * Consumers must not derive package paths from reflected source locations or
- * know the internal `skills/agent-recall-consumer` layout.
+ * know the internal `resources/skills/agent-recall-consumer` layout.
  */
 final readonly class BundledOperatingPromptManifest
 {
     public static function consumer(): string
     {
-        $path = dirname(__DIR__) . '/skills/agent-recall-consumer/operating-prompts.json';
+        $path = PackageResources::consumerOperatingPrompts();
         if (!is_file($path)) {
             throw new RuntimeException('Bundled agent-recall-consumer operating prompt manifest is missing.');
         }

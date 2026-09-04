@@ -14,13 +14,13 @@ This directory is the canonical home for instructions and reusable recipe assets
 The bundled manifest is:
 
 ```text
-skills/agent-recall-consumer/operating-prompts.json
+resources/skills/agent-recall-consumer/operating-prompts.json
 ```
 
 From an installed Composer dependency:
 
 ```text
-vendor/voku/agent-recall-compiler/skills/agent-recall-consumer/operating-prompts.json
+vendor/voku/agent-recall-compiler/resources/skills/agent-recall-consumer/operating-prompts.json
 ```
 
 Callers still select every recipe and provide every required argument explicitly. Bundling the catalog does not create hidden defaults.
@@ -86,7 +86,7 @@ vendor/bin/agent-recall-compiler compile \
   --task PROJECT-123 \
   --description "Review the current implementation as a first draft" \
   --file src/Navigation/Menu.php \
-  --operating-prompt-manifest vendor/voku/agent-recall-compiler/skills/agent-recall-consumer/operating-prompts.json \
+  --operating-prompt-manifest vendor/voku/agent-recall-compiler/resources/skills/agent-recall-consumer/operating-prompts.json \
   --operating-prompt '{"id":"adversarial-review","arguments":{"minimum_failure_modes":3}}'
 ```
 
@@ -124,7 +124,7 @@ vendor/bin/agent-recall-compiler compile \
   --task PROJECT-123 \
   --description "Prepare self-contained follow-up TODO cards for the next coding agent" \
   --file src/Navigation/Menu.php \
-  --operating-prompt-manifest vendor/voku/agent-recall-compiler/skills/agent-recall-consumer/operating-prompts.json \
+  --operating-prompt-manifest vendor/voku/agent-recall-compiler/resources/skills/agent-recall-consumer/operating-prompts.json \
   --operating-prompt '{"id":"todo-card-handoff","arguments":{}}'
 ```
 
@@ -141,7 +141,7 @@ vendor/bin/agent-recall-compiler compile \
   --task PROJECT-123 \
   --description "Dispatch the current authorized slice from the durable work package" \
   --file src/Navigation/Menu.php \
-  --operating-prompt-manifest vendor/voku/agent-recall-compiler/skills/agent-recall-consumer/operating-prompts.json \
+  --operating-prompt-manifest vendor/voku/agent-recall-compiler/resources/skills/agent-recall-consumer/operating-prompts.json \
   --operating-prompt '{"id":"execution-dispatch","arguments":{}}'
 ```
 

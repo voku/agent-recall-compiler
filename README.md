@@ -313,10 +313,10 @@ Important design and integration references:
 - [Public PHP API](docs/public-api.md)
 - [Dependency readiness](docs/dependency-readiness.md)
 
-Bundled package skills live under `skills/`:
+Bundled package skills live under `resources/skills/`:
 
-- [`agent-recall-consumer`](skills/agent-recall-consumer/SKILL.md) for consumers compiling Recall context and recording outcomes.
-- [`agent-recall-compiler-maintainer`](skills/agent-recall-compiler-maintainer/SKILL.md) for changes to this package.
+- [`agent-recall-consumer`](resources/skills/agent-recall-consumer/SKILL.md) for consumers compiling Recall context and recording outcomes.
+- [`agent-recall-compiler-maintainer`](resources/skills/agent-recall-compiler-maintainer/SKILL.md) for changes to this package.
 
 ---
 

@@ -46,7 +46,7 @@ final class TestDrivenDevelopmentPromptTest extends TestCase
 
     public function testBundledTddRecipeCompilesExplicitRedGreenRefactorSemantics(): void
     {
-        $manifest = dirname(__DIR__) . '/skills/agent-recall-consumer/operating-prompts.json';
+        $manifest = dirname(__DIR__) . '/resources/skills/agent-recall-consumer/operating-prompts.json';
         $output = $this->root . '/output';
         $request = json_encode([
             'id' => 'test-driven-development',

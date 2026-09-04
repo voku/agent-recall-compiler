@@ -16,8 +16,8 @@ Use the existing examples and shipped skills instead of embedding another long R
 
 - [`examples/agent-learning/config.json`](../examples/agent-learning/config.json) — starter Learning-root configuration for Recall-related policy.
 - [`examples/agents/skills/project-agent-recall/SKILL.md`](../examples/agents/skills/project-agent-recall/SKILL.md) — optional repository-local Recall wrapper.
-- [`skills/agent-recall-consumer/SKILL.md`](../skills/agent-recall-consumer/SKILL.md) — package-neutral consumer contract.
-- [`skills/agent-recall-compiler-maintainer/SKILL.md`](../skills/agent-recall-compiler-maintainer/SKILL.md) — maintainer workflow for this package.
+- [`resources/skills/agent-recall-consumer/SKILL.md`](../resources/skills/agent-recall-consumer/SKILL.md) — package-neutral consumer contract.
+- [`resources/skills/agent-recall-compiler-maintainer/SKILL.md`](../resources/skills/agent-recall-compiler-maintainer/SKILL.md) — maintainer workflow for this package.
 
 ## Context and compilation
 

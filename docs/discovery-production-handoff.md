@@ -129,7 +129,7 @@ vendor/bin/agent-recall-compiler compile \
   --task PROJECT-123 \
   --description "Inspect the current implementation and identify the smallest safe follow-up" \
   --file src/Example.php \
-  --operating-prompt-manifest vendor/voku/agent-recall-compiler/skills/agent-recall-consumer/operating-prompts.json \
+  --operating-prompt-manifest vendor/voku/agent-recall-compiler/resources/skills/agent-recall-consumer/operating-prompts.json \
   --operating-prompt '{"id":"discovery-first","arguments":{}}'
 ```
 
@@ -142,7 +142,7 @@ vendor/bin/agent-recall-compiler compile \
   --task PROJECT-123 \
   --description "Turn the verified discovery into one bounded production-ready execution prompt" \
   --file src/Example.php \
-  --operating-prompt-manifest vendor/voku/agent-recall-compiler/skills/agent-recall-consumer/operating-prompts.json \
+  --operating-prompt-manifest vendor/voku/agent-recall-compiler/resources/skills/agent-recall-consumer/operating-prompts.json \
   --operating-prompt '{"id":"production-ready-handoff","arguments":{}}'
 ```
 
@@ -153,7 +153,7 @@ vendor/bin/agent-recall-compiler compile \
   --task PROJECT-123 \
   --description "Dispatch the current authorized slice from the durable work package" \
   --file src/Example.php \
-  --operating-prompt-manifest vendor/voku/agent-recall-compiler/skills/agent-recall-consumer/operating-prompts.json \
+  --operating-prompt-manifest vendor/voku/agent-recall-compiler/resources/skills/agent-recall-consumer/operating-prompts.json \
   --operating-prompt '{"id":"execution-dispatch","arguments":{}}'
 ```
 

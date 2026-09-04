@@ -93,7 +93,7 @@ final class DiscoveryProductionHandoffPromptTest extends TestCase
 
     private function compileRecipe(string $id, string $task, string $description): string
     {
-        $manifest = dirname(__DIR__) . '/skills/agent-recall-consumer/operating-prompts.json';
+        $manifest = dirname(__DIR__) . '/resources/skills/agent-recall-consumer/operating-prompts.json';
         self::assertFileExists($manifest);
 
         $output = $this->root . '/output-' . strtolower($task);

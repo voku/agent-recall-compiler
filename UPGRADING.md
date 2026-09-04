@@ -1,5 +1,15 @@
 # Upgrading
 
+## Packaged skills and prompt assets move to `resources/skills/`
+
+Skills and operating-prompt catalogs shipped by this package have moved from the repository root `skills/` to `resources/skills/`:
+
+```text
+skills/ -> resources/skills/
+```
+
+Runtime code can use `PackageResources` (e.g. `PackageResources::skillsRoot()`, `PackageResources::consumerOperatingPrompts()`) or `BundledOperatingPromptManifest::consumer()` rather than hardcoding internal paths.
+
 ## Default recall state moves below `.agent-loop/`
 
 This release changes the standalone defaults used by `agent-recall-compiler`.

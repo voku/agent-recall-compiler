@@ -8,7 +8,9 @@ use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use ReflectionClass;
+use voku\AgentRecallCompiler\BundledOperatingPromptManifest;
 use voku\AgentRecallCompiler\Cli;
+use voku\AgentRecallCompiler\PackageResources;
 use voku\AgentRecallCompiler\OutcomeLogger;
 use voku\AgentRecallCompiler\RecallSelectionEvent;
 use voku\AgentRecallCompiler\Reflection\GuidanceGapPromptBuilder;
@@ -50,7 +52,7 @@ final class BundledOperatingPromptCatalogTest extends TestCase
 
     public function testBundledAdversarialReviewCompilesThroughTheRealCli(): void
     {
-        $manifest = dirname(__DIR__) . '/skills/agent-recall-consumer/operating-prompts.json';
+        $manifest = dirname(__DIR__) . '/resources/skills/agent-recall-consumer/operating-prompts.json';
         self::assertFileExists($manifest);
 
         $output = $this->root . '/output';
@@ -89,7 +91,7 @@ final class BundledOperatingPromptCatalogTest extends TestCase
 
     public function testBundledTodoCardHandoffCompilesSelfContainedHandoffContractThroughTheRealCli(): void
     {
-        $manifest = dirname(__DIR__) . '/skills/agent-recall-consumer/operating-prompts.json';
+        $manifest = dirname(__DIR__) . '/resources/skills/agent-recall-consumer/operating-prompts.json';
         self::assertFileExists($manifest);
 
         $output = $this->root . '/handoff-output';
@@ -132,7 +134,7 @@ final class BundledOperatingPromptCatalogTest extends TestCase
 
     public function testConsumerSkillMatchesCurrentCliDefaultsAndCommands(): void
     {
-        $skill = (string) file_get_contents(dirname(__DIR__) . '/skills/agent-recall-consumer/SKILL.md');
+        $skill = (string) file_get_contents(dirname(__DIR__) . '/resources/skills/agent-recall-consumer/SKILL.md');
 
         self::assertStringNotContainsString('infra/doc/agent-learning', $skill);
         self::assertStringNotContainsString('.agent-recall-output', $skill);
@@ -155,7 +157,7 @@ final class BundledOperatingPromptCatalogTest extends TestCase
 
     public function testConsumerSkillMatchesGuidanceGapPromptContract(): void
     {
-        $skill = (string) file_get_contents(dirname(__DIR__) . '/skills/agent-recall-consumer/SKILL.md');
+        $skill = (string) file_get_contents(dirname(__DIR__) . '/resources/skills/agent-recall-consumer/SKILL.md');
         $prompt = (new GuidanceGapPromptBuilder())->build();
 
         foreach (['implementation-notes.html', 'HUMAN_DECISION_REQUIRED'] as $needle) {
@@ -173,7 +175,7 @@ final class BundledOperatingPromptCatalogTest extends TestCase
 
     public function testConsumerSkillMatchesOutcomeHonestyContract(): void
     {
-        $skill = (string) file_get_contents(dirname(__DIR__) . '/skills/agent-recall-consumer/SKILL.md');
+        $skill = (string) file_get_contents(dirname(__DIR__) . '/resources/skills/agent-recall-consumer/SKILL.md');
 
         $loggerFile = (new ReflectionClass(OutcomeLogger::class))->getFileName();
         self::assertIsString($loggerFile);
@@ -197,5 +199,18 @@ final class BundledOperatingPromptCatalogTest extends TestCase
         self::assertStringContainsString('An explicit `unknown` outcome requires a non-empty comment', $skill);
         self::assertStringContainsString('do not manufacture `not_used` or `irrelevant`', $skill);
         self::assertStringContainsString('Silent omission without that declared withholding fails', $skill);
+    }
+
+    public function testPackageResourcesResolvesShippedAssets(): void
+    {
+        self::assertSame('resources/skills', PackageResources::SKILLS);
+        self::assertDirectoryExists(PackageResources::skillsRoot());
+        self::assertDirectoryExists(PackageResources::consumerSkillRoot());
+        self::assertFileExists(PackageResources::consumerOperatingPrompts());
+        self::assertFileExists(PackageResources::consumerOperatingPromptsMetadata());
+        self::assertSame(
+            PackageResources::consumerOperatingPrompts(),
+            BundledOperatingPromptManifest::consumer(),
+        );
     }
 }

@@ -11,7 +11,7 @@ final class PlanAsDraftPromptTest extends TestCase
     public function testExistingPlanIsTreatedAsMinimumFloorWithoutInventingScope(): void
     {
         $manifest = json_decode(
-            (string) file_get_contents(dirname(__DIR__) . '/skills/agent-recall-consumer/operating-prompts.json'),
+            (string) file_get_contents(dirname(__DIR__) . '/resources/skills/agent-recall-consumer/operating-prompts.json'),
             true,
             512,
             JSON_THROW_ON_ERROR,

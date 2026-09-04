@@ -15,7 +15,7 @@ const TARGET_DIR = 'build/context-explain-targeted';
 $agentLoopBin = envOr('AGENT_LOOP_BIN', 'build/agent-loop/bin/agent-loop');
 $agentMapBin = envOr('AGENT_MAP_BIN', 'build/agent-loop/vendor/bin/agent-map');
 $agentRecallBin = envOr('AGENT_RECALL_BIN', 'build/agent-loop/vendor/bin/agent-recall-compiler');
-$promptManifest = envOr('PROMPT_MANIFEST', 'skills/agent-recall-consumer/operating-prompts.json');
+$promptManifest = envOr('PROMPT_MANIFEST', 'resources/skills/agent-recall-consumer/operating-prompts.json');
 
 removeTree(STATE_ROOT);
 removeTree(REPORT_DIR);

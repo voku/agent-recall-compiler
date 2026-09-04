@@ -11,7 +11,7 @@ Most reusable engineering advice belongs at L2. The reusable part is the method 
 
 The caller selects prompt requests. The compiler validates and resolves the selected recipe, substitutes explicit parameters, records provenance, and renders the result beside the task-specific context in `system.md`. The manifest owns the reusable prompt semantics.
 
-Recall ships its first-party tool-coupled recipe catalog beside the consumer skill at `skills/agent-recall-consumer/operating-prompts.json`. Installed Composer consumers can reference `vendor/voku/agent-recall-compiler/skills/agent-recall-consumer/operating-prompts.json`. Bundling that catalog does not make selection implicit: callers still select recipe IDs and supply every required argument explicitly.
+Recall ships its first-party tool-coupled recipe catalog beside the consumer skill at `resources/skills/agent-recall-consumer/operating-prompts.json`. Installed Composer consumers can reference `vendor/voku/agent-recall-compiler/resources/skills/agent-recall-consumer/operating-prompts.json`. Bundling that catalog does not make selection implicit: callers still select recipe IDs and supply every required argument explicitly.
 
 ## The target shape
 

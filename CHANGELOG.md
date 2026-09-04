@@ -6,6 +6,10 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+### Changed
+
+- Move package-owned skills and operating-prompt catalog from root `skills/` to `resources/skills/` following the shared repository layout convention. Introduce `PackageResources` as the single owner of package-shipped asset paths.
+
 ## [0.14.0] - 2026-09-04
 
 ### Added

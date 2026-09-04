@@ -101,7 +101,7 @@ final class DelegationArtifactShapeContractTest extends TestCase
 
     public function testConsumerSkillPublishesExplicitExecutionDispatchWithoutMovingOwnerAuthority(): void
     {
-        $skill = file_get_contents(dirname(__DIR__) . '/skills/agent-recall-consumer/SKILL.md');
+        $skill = file_get_contents(dirname(__DIR__) . '/resources/skills/agent-recall-consumer/SKILL.md');
         self::assertIsString($skill);
 
         self::assertStringContainsString('"id":"execution-dispatch","arguments":{}', $skill);
@@ -111,7 +111,7 @@ final class DelegationArtifactShapeContractTest extends TestCase
 
     private function template(string $id): string
     {
-        $path = dirname(__DIR__) . '/skills/agent-recall-consumer/operating-prompts.json';
+        $path = dirname(__DIR__) . '/resources/skills/agent-recall-consumer/operating-prompts.json';
         $json = file_get_contents($path);
         if ($json === false) {
             throw new RuntimeException(sprintf('Unable to read operating prompt manifest at %s.', $path));

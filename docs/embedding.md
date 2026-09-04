@@ -18,7 +18,7 @@ $result = (new RecallCompiler())->compile(new CompileRequest(
     taskBrief: '/project/.agent-loop/runs/PROJECT-123/recall-input.json',
     outputDirectory: '/project/.agent-loop/recall/PROJECT-123',
     operatingPromptManifests: [
-        '/project/vendor/voku/agent-recall-compiler/skills/agent-recall-consumer/operating-prompts.json',
+        '/project/vendor/voku/agent-recall-compiler/resources/skills/agent-recall-consumer/operating-prompts.json',
     ],
     documentManifests: [
         '/project/.agent-loop/recall-documents.json',
