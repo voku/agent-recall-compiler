@@ -6,9 +6,22 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-09-04
+
 ### Changed
 
+- Require `voku/agent-map ^0.10.0`, which moves its Make include to
+  `resources/make/agent-map.mk` and introduces `PackageResources`.
 - Move package-owned skills and operating-prompt catalog from root `skills/` to `resources/skills/` following the shared repository layout convention. Introduce `PackageResources` as the single owner of package-shipped asset paths.
+
+### Fixed
+
+- Type the anonymous `LearningNoteProjectionSource` in the test suite explicitly.
+  PHPStan does not apply a constructor `@param` docblock to a promoted property,
+  so `active()` was reported as returning `array` rather than
+  `list<LearningNotePrecedentProjection>`; 0.14.0 shipped with `composer ci` red.
+- Widen `VerificationPlan` analysis fingerprint parameter type to `array<string, mixed>|null`
+  for `agent-map 0.10.0` `AnalysisFingerprint` compatibility.
 
 ## [0.14.0] - 2026-09-04
 
