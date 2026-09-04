@@ -6,6 +6,31 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-09-04
+
+### Added
+
+- Compile active `voku/agent-learning` LearningNotes as deterministic, low-authority precedents through the Learning owner's public projection API. Recall selects only explicit scope/tag matches, keeps precedent prose bounded, preserves replay identity, and exposes selection, omission, suppression, and review-needed reasons without treating solved cases as current task authority.
+- Publish `ReviewAuditPreparer` as the typed Recall-owned boundary for deterministic review evidence preparation, so embedding hosts no longer need to reproduce CLI/private review preparation behavior.
+- Publish `BundledOperatingPromptManifest` so hosts can locate the shipped operating-prompt manifest through a Recall-owned API instead of reconstructing package paths.
+
+### Changed
+
+- Treat the LearningNote capability as optional per project root: merely installing `agent-learning` does not change provider snapshots when no active owner projections exist for the current repository.
+- Keep LearningNote precedence explicit below active project skills and above legacy repository memory, and document the distinction between precedent context and active authority.
+- Clarify that the deterministic review audit and semantic L2 review are separate concerns; an audit result does not imply semantic review completion or acceptance.
+
+### Fixed
+
+- Ground optional LearningNote projection in the current project root and omit unavailable/empty optional providers instead of introducing unrelated compilation drift.
+- Preserve exact context-explain shapes and typed LearningNote/provider data under PHPStan while keeping unsupported or malformed owner evidence fail-closed.
+
+### Validation
+
+- Current pre-release `main` head `39d44d519b7c7301f769c2a37935675513070edb` passed repository CI in Actions run `33581972446`.
+- PR #146 exact head `c9f0ea5a4fdf9083d46b14e1bbc0a0478fefa9fc` passed PHP 8.3/8.4/8.5 PHPUnit + PHPStan, governed context-explain dogfood, released `voku/agent-learning 0.14.0` compatibility, and completed review with all threads resolved.
+- The release PR must rerun the full PHP 8.3/8.4/8.5 matrix plus PR-only governed `agent-loop` context-explain dogfood on its exact head before merge.
+
 ## [0.13.16] - 2026-08-31
 
 ### Changed
