@@ -91,6 +91,43 @@ final class DiscoveryProductionHandoffPromptTest extends TestCase
         self::assertStringContainsString('not a summary, TODO card, implementation, or claim of verification', $system);
     }
 
+    public function testTodoCardHandoffCompilesDurableWorkPackagePlanningContract(): void
+    {
+        $system = $this->compileRecipe(
+            'todo-card-handoff',
+            'TODO-HANDOFF-1',
+            'Create durable TODO card guidance from current discovery evidence.',
+        );
+
+        self::assertStringContainsString('### todo-card-handoff (L2)', $system);
+        self::assertStringContainsString('self-contained TODO or work cards for a coding agent', $system);
+        self::assertStringContainsString('no access to the current chat, Session-private context', $system);
+        self::assertStringContainsString('Treat the generated cards as work-package candidates, not approved Contract/Run authority', $system);
+        self::assertStringContainsString('VERIFIED current state and already-completed work', $system);
+        self::assertStringContainsString('exact repository anchors needed to resume', $system);
+        self::assertStringContainsString('smallest concrete next implementation steps', $system);
+        self::assertStringContainsString('observable acceptance criteria and Done When', $system);
+        self::assertStringContainsString('final host-specific execution belongs in a later explicit dispatch step', $system);
+    }
+
+    public function testExecutionDispatchCompilesBoundedSliceContract(): void
+    {
+        $system = $this->compileRecipe(
+            'execution-dispatch',
+            'DISPATCH-1',
+            'Create a short execution prompt for the next bounded slice.',
+        );
+
+        self::assertStringContainsString('### execution-dispatch (L2)', $system);
+        self::assertStringContainsString('exactly one current bounded execution slice that already has a durable task or work-package owner', $system);
+        self::assertStringContainsString('Require exact lineage to the selected durable task/work-package revision and the current approved Contract/Run/stage authority', $system);
+        self::assertStringContainsString('a durable card is not approval, and a generated dispatch prompt is not workflow authority', $system);
+        self::assertStringContainsString('Re-ground current repository anchors at dispatch time and include only the current slice', $system);
+        self::assertStringContainsString('Do not copy the entire durable backlog, issue history, prior chat, Session-private context', $system);
+        self::assertStringContainsString('Current repository, Contract/Run/stage, and bounded environment evidence win over stale dispatch text', $system);
+        self::assertStringContainsString('copy-paste-ready L1 prompt for the current slice only', $system);
+    }
+
     private function compileRecipe(string $id, string $task, string $description): string
     {
         $manifest = dirname(__DIR__) . '/resources/skills/agent-recall-consumer/operating-prompts.json';

@@ -119,16 +119,16 @@ final class LearningNoteRecallProviderTest extends TestCase
     private function provider(array $notes): LearningNoteRecallProvider
     {
         $source = new class($notes) implements LearningNoteProjectionSource {
-            /** @var list<LearningNotePrecedentProjection> */
+            /** @var list<\voku\AgentRecallCompiler\Provider\LearningNotePrecedentProjection> */
             private readonly array $notes;
 
-            /** @param list<LearningNotePrecedentProjection> $notes */
+            /** @param list<\voku\AgentRecallCompiler\Provider\LearningNotePrecedentProjection> $notes */
             public function __construct(array $notes)
             {
                 $this->notes = $notes;
             }
 
-            /** @return list<LearningNotePrecedentProjection> */
+            /** @return list<\voku\AgentRecallCompiler\Provider\LearningNotePrecedentProjection> */
             public function active(string $learningRoot, ?string $projectRoot = null): array
             {
                 return $this->notes;

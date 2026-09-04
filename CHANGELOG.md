@@ -6,6 +6,14 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+### Added
+
+- Add unit test assertions for `todo-card-handoff` and `execution-dispatch` operating prompt recipes in `DiscoveryProductionHandoffPromptTest` (Recall #110 work-package / dispatch lifecycle proof).
+
+### Fixed
+
+- Fully qualify anonymous class types in `LearningNoteRecallProviderTest` so Level Max PHPStan passes cleanly without iterable warnings.
+
 ## [0.15.0] - 2026-09-04
 
 ### Changed
