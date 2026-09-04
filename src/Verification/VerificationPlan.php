@@ -7,7 +7,7 @@ namespace voku\AgentRecallCompiler\Verification;
 final readonly class VerificationPlan
 {
     /**
-     * @param array<string, string>|null $analysisFingerprint
+     * @param array<string, mixed>|null $analysisFingerprint
      * @param list<KnowledgeProbe> $knowledgeProbes
      * @param list<array{kind: string, evidence_ids: non-empty-list<string>, source_ref: string, reason: string}> $omittedProbeCandidates
      * @param list<ChecklistItem> $checklist
