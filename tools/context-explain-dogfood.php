@@ -27,7 +27,11 @@ ensureDirectory(TASKS_ROOT);
 ensureDirectory(LEARNING_ROOT);
 writeText(TASKS_ROOT . '/' . TASK_ID . '.md', "# " . TASK_ID . "\n\nGovern context-explain implementation through the real agent-loop workflow.\n");
 run([PHP_BINARY, $agentLoopBin, 'board', 'card', 'create', TASK_ID,
-    '--title=Explain why and how recall context was selected', '--lane=READY', '--status=Selected']);
+    '--title=Explain why and how recall context was selected',
+    '--lane=READY',
+    '--status=Selected',
+    '--summary=Exercise governed Recall context explanation through the released consumer set.',
+    '--brief=Explain why and how Recall context was selected from deterministic repository evidence.']);
 
 writeJson(LEARNING_ROOT . '/recall-documents.json', [
     'schema_version' => '1.0',
