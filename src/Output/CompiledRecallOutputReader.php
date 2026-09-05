@@ -27,6 +27,8 @@ final readonly class CompiledRecallOutputReader
      */
     public function readForTask(string $recallRoot, string $taskId): ?CompiledRecallOutput
     {
+        $this->assertValidTaskId($taskId);
+
         $root = rtrim($recallRoot, '/\\');
         $canonical = $this->read($root . '/' . $taskId);
         if ($canonical !== null) {
@@ -196,6 +198,16 @@ final readonly class CompiledRecallOutputReader
         }
 
         return !in_array('..', $segments, true);
+    }
+
+    private function assertValidTaskId(string $taskId): void
+    {
+        if ($taskId === ''
+            || preg_match('/\A[A-Za-z0-9][A-Za-z0-9._-]*\z/', $taskId) !== 1
+            || str_contains($taskId, '..')
+        ) {
+            throw new RuntimeException('Invalid task id.');
+        }
     }
 
     /** @return array<string, mixed> */
