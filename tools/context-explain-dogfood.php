@@ -22,7 +22,7 @@ removeTree(REPORT_DIR);
 removeTree(TARGET_DIR);
 ensureDirectory(REPORT_DIR);
 
-run([PHP_BINARY, $agentLoopBin, 'init', 'scaffold']);
+run([PHP_BINARY, $agentLoopBin, 'init', 'scaffold', '--prefix=ARC']);
 ensureDirectory(TASKS_ROOT);
 ensureDirectory(LEARNING_ROOT);
 writeText(TASKS_ROOT . '/' . TASK_ID . '.md', "# " . TASK_ID . "\n\nGovern context-explain implementation through the real agent-loop workflow.\n");
