@@ -58,6 +58,7 @@ run([PHP_BINARY, $agentLoopBin, 'workflow', 'plan', TASK_ID,
     '--operating-prompt-manifest', $promptManifest,
     '--operating-prompt', '{"id":"multi-pass-correctness-simplify","arguments":{}}']);
 run([PHP_BINARY, $agentLoopBin, 'workflow', 'approve', TASK_ID, '--by', ACTOR]);
+run([PHP_BINARY, $agentLoopBin, 'enter', TASK_ID]);
 run([PHP_BINARY, $agentLoopBin, 'workflow', 'context', TASK_ID], REPORT_DIR . '/workflow-context.txt');
 
 $selectionReport = findFirstFile(RECALL_ROOT, static fn (string $path): bool =>
