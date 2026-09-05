@@ -22,19 +22,28 @@ removeTree(REPORT_DIR);
 removeTree(TARGET_DIR);
 ensureDirectory(REPORT_DIR);
 
-run([PHP_BINARY, $agentLoopBin, 'init', 'scaffold']);
+run([PHP_BINARY, $agentLoopBin, 'init', 'scaffold', '--prefix=ARC']);
+writeJson(STATE_ROOT . '/init.json', [
+    'version' => 1,
+    'recall' => ['document_manifests' => ['docs/recall-documents.json']],
+]);
 ensureDirectory(TASKS_ROOT);
 ensureDirectory(LEARNING_ROOT);
+ensureDirectory('docs');
 writeText(TASKS_ROOT . '/' . TASK_ID . '.md', "# " . TASK_ID . "\n\nGovern context-explain implementation through the real agent-loop workflow.\n");
 run([PHP_BINARY, $agentLoopBin, 'board', 'card', 'create', TASK_ID,
-    '--title=Explain why and how recall context was selected', '--lane=READY', '--status=Selected']);
+    '--title=Explain why and how recall context was selected',
+    '--lane=READY',
+    '--status=Selected',
+    '--summary=Exercise governed Recall context explanation through the released consumer set.',
+    '--brief=Explain why and how Recall context was selected from deterministic repository evidence.']);
 
-writeJson(LEARNING_ROOT . '/recall-documents.json', [
+writeJson('docs/recall-documents.json', [
     'schema_version' => '1.0',
     'documents' => [[
         'id' => 'project.operating-prompts',
         'type' => 'adr',
-        'source' => '../../docs/operating-prompts.md',
+        'source' => 'operating-prompts.md',
         'scope' => ['src/'],
         'tags' => ['recall', 'prompting'],
         'max_chars' => 2400,
@@ -54,6 +63,14 @@ run([PHP_BINARY, $agentLoopBin, 'workflow', 'plan', TASK_ID,
     '--operating-prompt-manifest', $promptManifest,
     '--operating-prompt', '{"id":"multi-pass-correctness-simplify","arguments":{}}']);
 run([PHP_BINARY, $agentLoopBin, 'workflow', 'approve', TASK_ID, '--by', ACTOR]);
+$enterExit = run([PHP_BINARY, $agentLoopBin, 'enter', TASK_ID, '--format=json'], REPORT_DIR . '/enter.json', true);
+$enter = readJson(REPORT_DIR . '/enter.json');
+if ($enterExit !== 1
+    || ($enter['mutation_ready'] ?? null) !== false
+    || !str_contains((string) ($enter['next_action'] ?? ''), 'workflow contract ' . TASK_ID . ' --status ready')
+) {
+    fail('context explain dogfood: enter did not return the expected fail-closed L1 contract action', 41);
+}
 run([PHP_BINARY, $agentLoopBin, 'workflow', 'context', TASK_ID], REPORT_DIR . '/workflow-context.txt');
 
 $selectionReport = findFirstFile(RECALL_ROOT, static fn (string $path): bool =>

@@ -55,6 +55,67 @@ final class CompiledRecallOutputReaderTest extends TestCase
         self::assertSame([], $output->integrityFailures());
     }
 
+    public function testCompiledBriefingIsProjectedWithOwnerPathDigestAndContent(): void
+    {
+        $root = $this->dir . '/root';
+        mkdir($root . '/ABC-123', 0o775, true);
+        $content = "# Briefing\n\nUse owner facts.\n";
+        file_put_contents($root . '/ABC-123/meta.json', json_encode([
+            'schema_version' => '1.0',
+            'task_id' => 'ABC-123',
+            'compilation_id' => 'c-briefing',
+            'output_hashes' => [],
+        ], JSON_THROW_ON_ERROR));
+        file_put_contents($root . '/ABC-123/system.md', $content);
+
+        $briefing = (new CompiledRecallOutputReader())->briefingForTask($root, 'ABC-123');
+
+        self::assertNotNull($briefing);
+        self::assertSame($root . '/ABC-123/system.md', $briefing->path);
+        self::assertSame('sha256:' . hash('sha256', $content), $briefing->sha256);
+        self::assertSame($content, $briefing->content);
+    }
+
+    public function testCompiledBriefingUsesOwnerTaskResolutionWithoutFallingPastCanonicalOutput(): void
+    {
+        $root = $this->dir . '/root';
+        mkdir($root . '/ABC-123', 0o775, true);
+        mkdir($root . '/current', 0o775, true);
+        foreach ([
+            $root . '/ABC-123/meta.json' => 'canonical',
+            $root . '/current/meta.json' => 'current',
+        ] as $path => $compilationId) {
+            file_put_contents($path, json_encode([
+                'schema_version' => '1.0',
+                'task_id' => 'ABC-123',
+                'compilation_id' => $compilationId,
+                'output_hashes' => [],
+            ], JSON_THROW_ON_ERROR));
+        }
+        file_put_contents($root . '/current/system.md', 'legacy briefing');
+
+        self::assertNull((new CompiledRecallOutputReader())->briefingForTask($root, 'ABC-123'));
+    }
+
+    public function testCompiledBriefingCanUseExplicitLegacyCurrentTaskProjection(): void
+    {
+        $root = $this->dir . '/root';
+        mkdir($root . '/current', 0o775, true);
+        file_put_contents($root . '/current/meta.json', json_encode([
+            'schema_version' => '1.0',
+            'task_id' => 'ABC-123',
+            'compilation_id' => 'c-current',
+            'output_hashes' => [],
+        ], JSON_THROW_ON_ERROR));
+        file_put_contents($root . '/current/system.md', 'legacy briefing');
+
+        $briefing = (new CompiledRecallOutputReader())->briefingForTask($root, 'ABC-123');
+
+        self::assertNotNull($briefing);
+        self::assertSame('legacy briefing', $briefing->content);
+        self::assertNull((new CompiledRecallOutputReader())->briefingForTask($root, 'OTHER-9'));
+    }
+
     public function testMetadataNamingAnotherTaskIsDetectedSeparatelyFromBinding(): void
     {
         $this->writeMeta(['task_id' => 'OTHER-9']);
