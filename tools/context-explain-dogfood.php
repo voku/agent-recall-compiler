@@ -58,7 +58,14 @@ run([PHP_BINARY, $agentLoopBin, 'workflow', 'plan', TASK_ID,
     '--operating-prompt-manifest', $promptManifest,
     '--operating-prompt', '{"id":"multi-pass-correctness-simplify","arguments":{}}']);
 run([PHP_BINARY, $agentLoopBin, 'workflow', 'approve', TASK_ID, '--by', ACTOR]);
-run([PHP_BINARY, $agentLoopBin, 'enter', TASK_ID]);
+$enterExit = run([PHP_BINARY, $agentLoopBin, 'enter', TASK_ID, '--format=json'], REPORT_DIR . '/enter.json', true);
+$enter = readJson(REPORT_DIR . '/enter.json');
+if ($enterExit !== 1
+    || ($enter['mutation_ready'] ?? null) !== false
+    || !str_contains((string) ($enter['next_action'] ?? ''), 'workflow contract ' . TASK_ID . ' --status ready')
+) {
+    fail('context explain dogfood: enter did not return the expected fail-closed L1 contract action', 41);
+}
 run([PHP_BINARY, $agentLoopBin, 'workflow', 'context', TASK_ID], REPORT_DIR . '/workflow-context.txt');
 
 $selectionReport = findFirstFile(RECALL_ROOT, static fn (string $path): bool =>
