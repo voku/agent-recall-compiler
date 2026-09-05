@@ -41,6 +41,34 @@ final readonly class CompiledRecallOutputReader
         return null;
     }
 
+    /**
+     * Return the compiled developer briefing for one task without exposing its
+     * owner-private filename to the host.
+     */
+    public function briefingForTask(string $recallRoot, string $taskId): ?CompiledRecallBriefing
+    {
+        $output = $this->readForTask($recallRoot, $taskId);
+        if ($output === null) {
+            return null;
+        }
+
+        $path = dirname($output->identityPath()) . '/system.md';
+        if (!is_file($path)) {
+            return null;
+        }
+
+        $content = file_get_contents($path);
+        if (!is_string($content)) {
+            throw new RuntimeException('Unable to read compiled Recall briefing: ' . $path);
+        }
+
+        return new CompiledRecallBriefing(
+            $path,
+            'sha256:' . hash('sha256', $content),
+            $content,
+        );
+    }
+
     public function read(string $outputDirectory): ?CompiledRecallOutput
     {
         $directory = rtrim($outputDirectory, '/\\');
