@@ -23,8 +23,13 @@ removeTree(TARGET_DIR);
 ensureDirectory(REPORT_DIR);
 
 run([PHP_BINARY, $agentLoopBin, 'init', 'scaffold', '--prefix=ARC']);
+writeJson(STATE_ROOT . '/init.json', [
+    'version' => 1,
+    'recall' => ['document_manifests' => ['docs/recall-documents.json']],
+]);
 ensureDirectory(TASKS_ROOT);
 ensureDirectory(LEARNING_ROOT);
+ensureDirectory('docs');
 writeText(TASKS_ROOT . '/' . TASK_ID . '.md', "# " . TASK_ID . "\n\nGovern context-explain implementation through the real agent-loop workflow.\n");
 run([PHP_BINARY, $agentLoopBin, 'board', 'card', 'create', TASK_ID,
     '--title=Explain why and how recall context was selected',
@@ -33,12 +38,12 @@ run([PHP_BINARY, $agentLoopBin, 'board', 'card', 'create', TASK_ID,
     '--summary=Exercise governed Recall context explanation through the released consumer set.',
     '--brief=Explain why and how Recall context was selected from deterministic repository evidence.']);
 
-writeJson(LEARNING_ROOT . '/recall-documents.json', [
+writeJson('docs/recall-documents.json', [
     'schema_version' => '1.0',
     'documents' => [[
         'id' => 'project.operating-prompts',
         'type' => 'adr',
-        'source' => '../../docs/operating-prompts.md',
+        'source' => 'operating-prompts.md',
         'scope' => ['src/'],
         'tags' => ['recall', 'prompting'],
         'max_chars' => 2400,
