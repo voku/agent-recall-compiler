@@ -5,10 +5,13 @@
 Stable host-facing Recall compilation uses:
 
 - `voku\AgentRecallCompiler\CompileRequest`
+- `voku\AgentRecallCompiler\InlineCompileTask` for bounded inline/target-aware host input
 - `voku\AgentRecallCompiler\RecallCompiler`
 - `voku\AgentRecallCompiler\CompileResult`
 
-Command classes, CLI option arrays, provider construction, and console output are implementation details. See `embedding.md` for the integration contract.
+A `CompileRequest` provides exactly one task source: either `taskBrief` for the persisted/governed brief path or `inlineTask` for a host that already owns the bounded task id, description, and concrete target list. Both forms enter the same Recall compilation pipeline and return the same `CompileResult` contract.
+
+Command classes, CLI option arrays, `InlineTaskBriefResolver`, provider construction, and console output are implementation details. Hosts must not construct `CompileCommand` token arrays merely to use inline task input. See `embedding.md` for the integration contract.
 
 ## Review audit preparation
 
