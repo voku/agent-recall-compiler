@@ -316,11 +316,13 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 - Allow `voku/agent-map` `^0.8.0` in addition to the existing 0.5, 0.6, and
   0.7 lines. This is a compatibility-only release: Recall providers, facts,
-  bundle digests, and rendered prompts are unchanged.
+  bundle digests, prompt rendering, and outcome semantics are unchanged.
 
 ### Validation
 
-- The package's normal Composer install resolves against the published `agent-map 0.8.0` line before this compatibility release is tagged; no path repository or development-branch alias is used.
+- The package's normal Composer install and PHPUnit/PHPStan matrix must resolve
+  against the published `agent-map 0.8.0` line before this compatibility release
+  is tagged; no path repository or development-branch alias is used.
 
 ## [0.12.3] - 2026-08-14
 
