@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace voku\AgentRecallCompiler;
 
 use JsonException;
+use LogicException;
 use RuntimeException;
 use voku\AgentRecallCompiler\Command\CompileCommand;
 
@@ -31,10 +32,26 @@ final readonly class RecallCompiler
     {
         $tokens = [
             '--root', $request->learningRoot,
-            '--task-brief', $request->taskBrief,
             '--output-dir', $request->outputDirectory,
             '--map-search-limit', (string) $request->mapSearchLimit,
         ];
+
+        if ($request->taskBrief !== null) {
+            array_push($tokens, '--task-brief', $request->taskBrief);
+        } else {
+            $inlineTask = $request->inlineTask;
+            if (!$inlineTask instanceof InlineCompileTask) {
+                throw new LogicException('CompileRequest must contain a validated task input.');
+            }
+
+            array_push($tokens, '--task', $inlineTask->taskId);
+            if ($inlineTask->description !== '') {
+                array_push($tokens, '--description', $inlineTask->description);
+            }
+            foreach ($inlineTask->targets as $target) {
+                array_push($tokens, '--target', $target);
+            }
+        }
 
         if ($request->compilationId !== null) {
             array_push($tokens, '--compilation-id', $request->compilationId);
