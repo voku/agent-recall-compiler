@@ -316,13 +316,11 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 - Allow `voku/agent-map` `^0.8.0` in addition to the existing 0.5, 0.6, and
   0.7 lines. This is a compatibility-only release: Recall providers, facts,
-  bundle digests, prompt rendering, and outcome semantics are unchanged.
+  bundle digests, and rendered prompts are unchanged.
 
 ### Validation
 
-- The package's normal Composer install and PHPUnit/PHPStan matrix must resolve
-  against the published `agent-map 0.8.0` line before this compatibility release
-  is tagged; no path repository or development-branch alias is used.
+- The package's normal Composer install resolves against the published `agent-map 0.8.0` line before this compatibility release is tagged; no path repository or development-branch alias is used.
 
 ## [0.12.3] - 2026-08-14
 
@@ -550,7 +548,7 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 - Allow `voku/agent-map` `^0.7.0` in addition to the existing 0.5 and 0.6 lines.
   This is a compatibility-only release: recall semantics, provider contracts, facts,
-  bundle digests, prompt rendering, and outcome semantics are unchanged.
+  bundle digests, and rendered prompts are unchanged.
 
 ### Validation
 
@@ -988,7 +986,7 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ### Added
 
-- Add constraint manifest parsing, carry, and apply strict validation through generated rule manifests.
+- Add constraint manifest parsing for active hard constraints.
 - Select active constraints deterministically by scope overlap and include global constraints for `*` or `/` scopes.
 - Include selected constraint IDs, rule identifiers, validation commands, and source proposal provenance in compiler outputs.
 - Support generated-rule outcome result types such as `violation_detected`, `false_positive`, `rule_suppressed`, and `rule_disabled`.
@@ -1023,6 +1021,6 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 - Initial release of L2 Meta-Prompt Compiler and Briefing Manager for coding agents.
 - Deterministic scope matching for MEMORY.md and specific active skills/constraints.
 - Rejection warnings to notify the agent of previously proposed and rejected designs.
-- Outcome-driven warnings to notify the agent when previously selected guidance was later marked `HARMFUL` or repeatedly `IRRELEVANT`.
+- Outcome-driven warnings to flag rules marked as `HARMFUL` or `IRRELEVANT` in past sessions.
 - Dynamic validation plan compiler that lists verification tests for loaded active rules.
 - Draft outcome log generation to close the feedback loop.
