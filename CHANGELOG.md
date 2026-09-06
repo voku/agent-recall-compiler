@@ -6,13 +6,27 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-09-06
+
 ### Added
 
+- Publish `CompiledRecallBriefing` through `CompiledRecallOutputReader::briefingForTask()` so lifecycle hosts can consume the canonical task briefing with exact path/content/SHA-256 identity without knowing Recall's private `system.md` layout.
+- Add typed inline compilation through `InlineCompileTask -> CompileRequest -> RecallCompiler -> CompileResult`, allowing embedding hosts such as `agent-loop edit` to compile task id, description, and concrete targets without constructing Recall CLI tokens or stabilizing `Command\\CompileCommand`.
 - Add unit test assertions for `todo-card-handoff` and `execution-dispatch` operating prompt recipes in `DiscoveryProductionHandoffPromptTest` (Recall #110 work-package / dispatch lifecycle proof).
+
+### Changed
+
+- `CompileRequest` now accepts exactly one task source: a persisted task-brief path or a typed inline task. Both routes continue through the same existing Recall compilation semantics.
 
 ### Fixed
 
 - Fully qualify anonymous class types in `LearningNoteRecallProviderTest` so Level Max PHPStan passes cleanly without iterable warnings.
+
+### Validation
+
+- PR #151 landed the compiled-briefing owner projection with its owner-side regressions and governed consumer dogfood.
+- PR #153 exact head `f84eff255c9f72c4edcca7ae3c003db6412f9424` passed repository CI before merge, including the typed target-aware inline compilation regression.
+- This release PR must rerun the full PHP 8.3/8.4/8.5 PHPUnit + PHPStan matrix plus PR-only governed `agent-loop` dogfood on its exact head before merge.
 
 ## [0.15.0] - 2026-09-04
 
@@ -151,7 +165,7 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ### Fixed
 
-- Stop a file's navigation fact from absorbing the relation graph of every sibling that shares an inherited base class. A map file entry also lists the parents its own symbols extend, so an external base such as `PHPUnit\Framework\TestCase` is attributed to every file inheriting it; matching incoming relations against those shared ids grew with the square of the inheriting files. On a 311-file repository one test file's fact carried 88,179 relations (33.7 MB) instead of 949 (0.39 MB), and the compiled bundle reached 124 MB. Symbols listed under more than one file are now excluded from that matching, since a symbol listed by several files is declared by none of them. Files that declare their own symbols are unaffected.
+- Stop a file's navigation fact from absorbing the relation graph of every sibling that shares an inherited base class. A map file entry also lists the parents its own symbols extend, so an external base such as `PHPUnit\\Framework\\TestCase` is attributed to every file inheriting it; matching incoming relations against those shared ids grew with the square of the inheriting files. On a 311-file repository one test file's fact carried 88,179 relations (33.7 MB) instead of 949 (0.39 MB), and the compiled bundle reached 124 MB. Symbols listed under more than one file are now excluded from that matching, since a symbol listed by several files is declared by none of them. Files that declare their own symbols are unaffected.
 
 ### Validation
 
