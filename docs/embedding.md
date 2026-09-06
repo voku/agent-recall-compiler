@@ -4,6 +4,8 @@ Use the public PHP API when another package owns orchestration and needs Recall 
 
 ## Public contract
 
+### Persisted or governed task brief
+
 ```php
 <?php
 
@@ -47,7 +49,38 @@ $result->metaPath();
 $result->bundlePath();
 ```
 
-`CompileRequest` deliberately models only owner inputs needed by an embedding host. The task brief may be a normal task brief or the governed `governed_recall_input` envelope. Recall still verifies the governed Run/Contract binding through `TaskBriefParser`; the caller must not parse or recreate that rule.
+### Bounded inline/target-aware host input
+
+A host such as `agent-loop edit` that already owns the concrete task identity and target should use the typed inline input rather than constructing Recall CLI tokens:
+
+```php
+<?php
+
+declare(strict_types=1);
+
+use voku\AgentRecallCompiler\CompileRequest;
+use voku\AgentRecallCompiler\InlineCompileTask;
+use voku\AgentRecallCompiler\RecallCompiler;
+
+$result = (new RecallCompiler())->compile(new CompileRequest(
+    learningRoot: '/project/.agent-loop/learning',
+    taskBrief: null,
+    outputDirectory: '/project/.agent-loop/recall/edit.PROJECT-123',
+    mapIndex: '/project/.agent-loop/map/php-symbols.json',
+    mapRoot: '/project',
+    editFocus: ['invoice reminder'],
+    compilationId: 'edit.PROJECT-123',
+    inlineTask: new InlineCompileTask(
+        taskId: 'PROJECT-123',
+        description: 'Adjust the overdue invoice reminder.',
+        targets: ['App\\Mail\\DunningMailer::sendReminder'],
+    ),
+));
+```
+
+`CompileRequest` accepts exactly one task source: `taskBrief` or `inlineTask`. Both enter the same owner compilation pipeline and return the same `CompileResult`. `InlineCompileTask` is deliberately bounded to the current host use case; internal CLI parsing/resolution classes do not become part of the public integration contract.
+
+The task brief path may point to a normal task brief or the governed `governed_recall_input` envelope. Recall still verifies the governed Run/Contract binding through `TaskBriefParser`; the caller must not parse or recreate that rule.
 
 Embedding hosts that already obtained a typed board card from its owner should use `KanbanContextProjection`. It carries only the bounded fields Recall consumes plus the semantic source path and exact card revision, and it does not require the host to persist a second context file. The legacy `kanbanContext` path remains available for standalone/file-oriented callers; a request may not provide both forms.
 
@@ -55,7 +88,7 @@ Embedding hosts that already obtained a typed board card from its owner should u
 
 The embedded API owns:
 
-- task-brief and governed-envelope parsing;
+- resolving persisted/governed or bounded inline task input;
 - Recall provider composition;
 - operating-prompt, document, Kanban, and map inputs;
 - compilation and conflict handling;
@@ -77,6 +110,7 @@ The embedded API emits no CLI success report to `STDOUT`. This matters for hosts
 PHP hosts should not depend on:
 
 - `Command\CompileCommand`;
+- `InlineTaskBriefResolver`;
 - CLI option ordering or spelling;
 - incidental success prose;
 - the internal provider list;
