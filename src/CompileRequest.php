@@ -9,8 +9,8 @@ use InvalidArgumentException;
 /**
  * Typed input for embedding Recall compilation from another PHP package.
  *
- * Paths remain caller-selected. Recall still owns parsing the governed task
- * brief, provider composition, compilation semantics, and generated artifacts.
+ * Paths remain caller-selected. Recall still owns resolving the selected task
+ * input, provider composition, compilation semantics, and generated artifacts.
  */
 final readonly class CompileRequest
 {
@@ -21,7 +21,7 @@ final readonly class CompileRequest
      */
     public function __construct(
         public string $learningRoot,
-        public string $taskBrief,
+        public ?string $taskBrief,
         public string $outputDirectory,
         public array $operatingPromptManifests = [],
         public array $documentManifests = [],
@@ -34,9 +34,10 @@ final readonly class CompileRequest
         public ?string $compilationId = null,
         public ?string $feedback = null,
         public ?KanbanContextProjection $kanbanContextProjection = null,
+        public ?InlineCompileTask $inlineTask = null,
     ) {
         $this->assertNonEmpty($this->learningRoot, 'learningRoot');
-        $this->assertNonEmpty($this->taskBrief, 'taskBrief');
+        $this->assertOptionalNonEmpty($this->taskBrief, 'taskBrief');
         $this->assertNonEmpty($this->outputDirectory, 'outputDirectory');
         $this->assertOptionalNonEmpty($this->kanbanContext, 'kanbanContext');
         $this->assertOptionalNonEmpty($this->mapIndex, 'mapIndex');
@@ -48,6 +49,12 @@ final readonly class CompileRequest
         $this->assertStringList($this->documentManifests, 'documentManifests');
         $this->assertStringList($this->editFocus, 'editFocus');
 
+        if ($this->taskBrief !== null && $this->inlineTask !== null) {
+            throw new InvalidArgumentException('taskBrief and inlineTask are mutually exclusive.');
+        }
+        if ($this->taskBrief === null && $this->inlineTask === null) {
+            throw new InvalidArgumentException('one of taskBrief or inlineTask is required.');
+        }
         if ($this->kanbanContext !== null && $this->kanbanContextProjection !== null) {
             throw new InvalidArgumentException('kanbanContext and kanbanContextProjection are mutually exclusive.');
         }
