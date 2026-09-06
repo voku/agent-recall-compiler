@@ -137,7 +137,7 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 ### Changed
 
 - Multi-item delegated execution now defines bounded executable slices before implementation, validates each slice, continues still-authorized independent work past dependency-local blockers, distinguishes `PRE_EXISTING`, `INTRODUCED`, and `UNKNOWN_ORIGIN` validation failures when practical, and reconciles final completion claims against actual artifacts and evidence.
-- Project future-work reflection now exploits still-hot repository context to identify one highest-leverage future investment with concrete evidence, semantic owner, prerequisite, expected leverage, validation approach, and smallest independent follow-up slice while preserving `NO_FURTHER_INVESTMENT` and authority boundaries.
+- Project future-work reflection now exploits still-hot repository context to identify one highest-leverage next investment with concrete evidence, semantic owner, prerequisite, expected leverage, validation approach, and smallest independent follow-up slice while preserving `NO_FURTHER_INVESTMENT` and authority boundaries.
 - Prompt-primitives documentation now routes recurring natural-language continuation and future-investment intents to their existing semantic owners instead of encouraging duplicate prompt recipes.
 
 ### Validation
@@ -550,7 +550,7 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 - Allow `voku/agent-map` `^0.7.0` in addition to the existing 0.5 and 0.6 lines.
   This is a compatibility-only release: recall semantics, provider contracts, facts,
-  bundle digests, and rendered prompts are unchanged.
+  bundle digests, prompt rendering, and outcome semantics are unchanged.
 
 ### Validation
 
@@ -988,7 +988,7 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ### Added
 
-- Add constraint manifest parsing for active hard constraints.
+- Add constraint manifest parsing, carry, and apply strict validation through generated rule manifests.
 - Select active constraints deterministically by scope overlap and include global constraints for `*` or `/` scopes.
 - Include selected constraint IDs, rule identifiers, validation commands, and source proposal provenance in compiler outputs.
 - Support generated-rule outcome result types such as `violation_detected`, `false_positive`, `rule_suppressed`, and `rule_disabled`.
@@ -1023,6 +1023,6 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 - Initial release of L2 Meta-Prompt Compiler and Briefing Manager for coding agents.
 - Deterministic scope matching for MEMORY.md and specific active skills/constraints.
 - Rejection warnings to notify the agent of previously proposed and rejected designs.
-- Outcome-driven warnings to flag rules marked as `HARMFUL` or `IRRELEVANT` in past sessions.
+- Outcome-driven warnings to notify the agent when previously selected guidance was later marked `HARMFUL` or repeatedly `IRRELEVANT`.
 - Dynamic validation plan compiler that lists verification tests for loaded active rules.
 - Draft outcome log generation to close the feedback loop.
