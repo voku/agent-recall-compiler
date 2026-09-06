@@ -11,7 +11,7 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 ### Added
 
 - Publish `CompiledRecallBriefing` through `CompiledRecallOutputReader::briefingForTask()` so lifecycle hosts can consume the canonical task briefing with exact path/content/SHA-256 identity without knowing Recall's private `system.md` layout.
-- Add typed inline compilation through `InlineCompileTask -> CompileRequest -> RecallCompiler -> CompileResult`, allowing embedding hosts such as `agent-loop edit` to compile task id, description, and concrete targets without constructing Recall CLI tokens or stabilizing `Command\\CompileCommand`.
+- Add typed inline compilation through `InlineCompileTask -> CompileRequest -> RecallCompiler -> CompileResult`, allowing embedding hosts such as `agent-loop edit` to compile task id, description, and concrete targets without constructing Recall CLI tokens or stabilizing `Command\CompileCommand`.
 - Add unit test assertions for `todo-card-handoff` and `execution-dispatch` operating prompt recipes in `DiscoveryProductionHandoffPromptTest` (Recall #110 work-package / dispatch lifecycle proof).
 
 ### Changed
@@ -137,7 +137,7 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 ### Changed
 
 - Multi-item delegated execution now defines bounded executable slices before implementation, validates each slice, continues still-authorized independent work past dependency-local blockers, distinguishes `PRE_EXISTING`, `INTRODUCED`, and `UNKNOWN_ORIGIN` validation failures when practical, and reconciles final completion claims against actual artifacts and evidence.
-- Project future-work reflection now exploits still-hot repository context to identify one highest-leverage next investment with concrete evidence, semantic owner, prerequisite, expected leverage, validation approach, and smallest independent follow-up slice while preserving `NO_FURTHER_INVESTMENT` and authority boundaries.
+- Project future-work reflection now exploits still-hot repository context to identify one highest-leverage future investment with concrete evidence, semantic owner, prerequisite, expected leverage, validation approach, and smallest independent follow-up slice while preserving `NO_FURTHER_INVESTMENT` and authority boundaries.
 - Prompt-primitives documentation now routes recurring natural-language continuation and future-investment intents to their existing semantic owners instead of encouraging duplicate prompt recipes.
 
 ### Validation
@@ -165,7 +165,7 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ### Fixed
 
-- Stop a file's navigation fact from absorbing the relation graph of every sibling that shares an inherited base class. A map file entry also lists the parents its own symbols extend, so an external base such as `PHPUnit\\Framework\\TestCase` is attributed to every file inheriting it; matching incoming relations against those shared ids grew with the square of the inheriting files. On a 311-file repository one test file's fact carried 88,179 relations (33.7 MB) instead of 949 (0.39 MB), and the compiled bundle reached 124 MB. Symbols listed under more than one file are now excluded from that matching, since a symbol listed by several files is declared by none of them. Files that declare their own symbols are unaffected.
+- Stop a file's navigation fact from absorbing the relation graph of every sibling that shares an inherited base class. A map file entry also lists the parents its own symbols extend, so an external base such as `PHPUnit\Framework\TestCase` is attributed to every file inheriting it; matching incoming relations against those shared ids grew with the square of the inheriting files. On a 311-file repository one test file's fact carried 88,179 relations (33.7 MB) instead of 949 (0.39 MB), and the compiled bundle reached 124 MB. Symbols listed under more than one file are now excluded from that matching, since a symbol listed by several files is declared by none of them. Files that declare their own symbols are unaffected.
 
 ### Validation
 
