@@ -48,6 +48,11 @@ final class AgentLearningNoteProjectionSourceTest extends TestCase
         self::assertFalse($source->isAvailable());
     }
 
+    public function testConfiguredOwnerWithoutTaskPrecedentApiIsUnavailableCapability(): void
+    {
+        self::assertFalse((new AgentLearningNoteProjectionSource(LearningOwnerWithoutTaskPrecedentApi::class))->isAvailable());
+    }
+
     public function testMismatchedOwnerTaskBindingFailsExplicitly(): void
     {
         $this->expectException(RuntimeException::class);
@@ -80,6 +85,32 @@ final class AgentLearningNoteProjectionSourceTest extends TestCase
             'TASK-123',
         );
     }
+
+    public function testOwnerCannotReturnMorePrecedentsThanBoundedLineageIdentities(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('more precedents than bounded lineage identities');
+
+        (new AgentLearningNoteProjectionSource(OverflowLearningLineageService::class))->forTask(
+            '/tmp/learning',
+            'TASK-123',
+        );
+    }
+
+    public function testOwnerCannotReturnPrecedentOutsideBoundedLineageIdentities(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('precedent outside the bounded lineage identities: learning-note.real');
+
+        (new AgentLearningNoteProjectionSource(OutOfLineageLearningLineageService::class))->forTask(
+            '/tmp/learning',
+            'TASK-123',
+        );
+    }
+}
+
+final class LearningOwnerWithoutTaskPrecedentApi
+{
 }
 
 final class StaleOwnerLearningLineageService
@@ -123,6 +154,55 @@ final class MalformedLearningLineageService
         ?string $projectRoot = null,
     ): LearningTaskPrecedentResult {
         return ReleasedLearningTaskPrecedentFixture::create($taskId, 'not-a-digest');
+    }
+}
+
+final class OverflowLearningLineageService
+{
+    public function precedentsForTask(
+        string $learningRoot,
+        string $taskId,
+        ?string $projectRoot = null,
+    ): LearningTaskPrecedentResult {
+        return new LearningTaskPrecedentResult(
+            taskId: $taskId,
+            precedents: [ReleasedLearningNoteProjectionFixture::create(str_repeat('a', 64))],
+            lineage: new LearningLineageResult(
+                identityId: $taskId,
+                identityIds: [],
+                depthByIdentityId: [$taskId => 0],
+                relations: [],
+                maximumDepth: 3,
+                maximumResults: 100,
+                truncated: false,
+            ),
+        );
+    }
+}
+
+final class OutOfLineageLearningLineageService
+{
+    public function precedentsForTask(
+        string $learningRoot,
+        string $taskId,
+        ?string $projectRoot = null,
+    ): LearningTaskPrecedentResult {
+        return new LearningTaskPrecedentResult(
+            taskId: $taskId,
+            precedents: [ReleasedLearningNoteProjectionFixture::create(str_repeat('a', 64))],
+            lineage: new LearningLineageResult(
+                identityId: $taskId,
+                identityIds: ['finding.real.001'],
+                depthByIdentityId: [
+                    $taskId => 0,
+                    'finding.real.001' => 1,
+                ],
+                relations: [],
+                maximumDepth: 3,
+                maximumResults: 100,
+                truncated: false,
+            ),
+        );
     }
 }
 
