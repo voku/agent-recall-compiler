@@ -6,13 +6,27 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-09-06
+
 ### Added
 
+- Publish `CompiledRecallBriefing` through `CompiledRecallOutputReader::briefingForTask()` so lifecycle hosts can consume the canonical task briefing with exact path/content/SHA-256 identity without knowing Recall's private `system.md` layout.
+- Add typed inline compilation through `InlineCompileTask -> CompileRequest -> RecallCompiler -> CompileResult`, allowing embedding hosts such as `agent-loop edit` to compile task id, description, and concrete targets without constructing Recall CLI tokens or stabilizing `Command\CompileCommand`.
 - Add unit test assertions for `todo-card-handoff` and `execution-dispatch` operating prompt recipes in `DiscoveryProductionHandoffPromptTest` (Recall #110 work-package / dispatch lifecycle proof).
+
+### Changed
+
+- `CompileRequest` now accepts exactly one task source: a persisted task-brief path or a typed inline task. Both routes continue through the same existing Recall compilation semantics.
 
 ### Fixed
 
 - Fully qualify anonymous class types in `LearningNoteRecallProviderTest` so Level Max PHPStan passes cleanly without iterable warnings.
+
+### Validation
+
+- PR #151 landed the compiled-briefing owner projection with its owner-side regressions and governed consumer dogfood.
+- PR #153 exact head `f84eff255c9f72c4edcca7ae3c003db6412f9424` passed repository CI before merge, including the typed target-aware inline compilation regression.
+- This release PR must rerun the full PHP 8.3/8.4/8.5 PHPUnit + PHPStan matrix plus PR-only governed `agent-loop` dogfood on its exact head before merge.
 
 ## [0.15.0] - 2026-09-04
 
