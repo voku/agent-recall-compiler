@@ -1061,6 +1061,7 @@ final class RecallCompilerTest extends TestCase
     public function testCompileCommandUsesCallerSuppliedCompilationId(): void
     {
         $this->writeProposal('proposal.2026-06-18.001', 'skill', ['src/Auth']);
+        $this->prepareLearningLineageFixture();
         $outputDir = $this->root . '/out';
 
         $exitCode = (new \voku\AgentRecallCompiler\Cli())->run([
@@ -1096,6 +1097,7 @@ final class RecallCompilerTest extends TestCase
     public function testCompileCommandGeneratesCompilationIdWhenOmitted(): void
     {
         $this->writeProposal('proposal.2026-06-18.001', 'skill', ['src/Auth']);
+        $this->prepareLearningLineageFixture();
         $outputDir = $this->root . '/out-generated';
 
         $exitCode = (new \voku\AgentRecallCompiler\Cli())->run([
@@ -1554,6 +1556,10 @@ final class RecallCompilerTest extends TestCase
             'approved_at' => '2026-06-18T10:10:00+00:00',
         ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
 
+    }
+
+    private function prepareLearningLineageFixture(): void
+    {
         $findingDirectory = $this->root . '/findings/validated';
         if (!is_dir($findingDirectory) && !mkdir($findingDirectory, 0777, true) && !is_dir($findingDirectory)) {
             self::fail('Unable to create Learning finding fixture directory.');
@@ -1581,7 +1587,6 @@ final class RecallCompilerTest extends TestCase
 
         (new LearningLineageService())->rebuild($this->root, $this->root);
     }
-
     private function buildEventDraft(string $compilationId): string
     {
         $result = (new RecallDecisionEngine())->decide(
