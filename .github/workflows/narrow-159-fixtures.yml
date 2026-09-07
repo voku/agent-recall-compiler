@@ -1,4 +1,4 @@
-name: Narrow bounded Learning fixture setup
+name: Apply narrow Learning fixture patch
 
 on:
   push:
@@ -15,93 +15,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - name: Scope Learning lineage setup to CLI integration fixtures
+      - name: Apply patch
+        run: php tools/patch-159-fixtures.php
+      - name: Commit patch
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-          path = Path('tests/RecallCompilerTest.php')
-          text = path.read_text()
-
-          for out in ["/out';", "/out-generated';"]:
-              needle = "$this->writeProposal('proposal.2026-06-18.001', 'skill', ['src/Auth']);\n        $outputDir = $this->root . '" + out
-              replacement = "$this->writeProposal('proposal.2026-06-18.001', 'skill', ['src/Auth']);\n        $this->prepareLearningLineageFixture();\n        $outputDir = $this->root . '" + out
-              if needle not in text:
-                  raise SystemExit(f'targeted compile fixture anchor not found: {out}')
-              text = text.replace(needle, replacement, 1)
-
-          block = """\n        $findingDirectory = $this->root . '/findings/validated';
-        if (!is_dir($findingDirectory) && !mkdir($findingDirectory, 0777, true) && !is_dir($findingDirectory)) {
-            self::fail('Unable to create Learning finding fixture directory.');
-        }
-        file_put_contents($findingDirectory . '/finding.2026-06-18.001.json', json_encode([
-            'id' => 'finding.2026-06-18.001',
-            'task_id' => 'PROJECT-123',
-            'session' => 'session_recall_fixture',
-            'created_at' => '2026-06-18T09:00:00+00:00',
-            'created_by' => 'test',
-            'scope' => ['src/Auth'],
-            'observation' => 'The Recall fixture carries one approved auth guidance proposal.',
-            'evidence' => [[
-                'type' => 'file_reference',
-                'path' => 'src/Auth/UserService.php',
-                'line' => 1,
-            ]],
-            'hypothesis' => 'The approved proposal should remain eligible for the matching auth task.',
-            'validated_conclusion' => 'The fixture represents one validated Learning source for the approved proposal.',
-            'confidence' => 'high',
-            'validation_status' => 'validated',
-            'status' => 'validated',
-            'sensitivity' => 'public',
-        ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
-
-        (new LearningLineageService())->rebuild($this->root, $this->root);
-"""
-          if block not in text:
-              raise SystemExit('generic Learning fixture block not found')
-          text = text.replace(block, '', 1)
-
-          method = """
-    private function prepareLearningLineageFixture(): void
-    {
-        $findingDirectory = $this->root . '/findings/validated';
-        if (!is_dir($findingDirectory) && !mkdir($findingDirectory, 0777, true) && !is_dir($findingDirectory)) {
-            self::fail('Unable to create Learning finding fixture directory.');
-        }
-        file_put_contents($findingDirectory . '/finding.2026-06-18.001.json', json_encode([
-            'id' => 'finding.2026-06-18.001',
-            'task_id' => 'PROJECT-123',
-            'session' => 'session_recall_fixture',
-            'created_at' => '2026-06-18T09:00:00+00:00',
-            'created_by' => 'test',
-            'scope' => ['src/Auth'],
-            'observation' => 'The Recall fixture carries one approved auth guidance proposal.',
-            'evidence' => [[
-                'type' => 'file_reference',
-                'path' => 'src/Auth/UserService.php',
-                'line' => 1,
-            ]],
-            'hypothesis' => 'The approved proposal should remain eligible for the matching auth task.',
-            'validated_conclusion' => 'The fixture represents one validated Learning source for the approved proposal.',
-            'confidence' => 'high',
-            'validation_status' => 'validated',
-            'status' => 'validated',
-            'sensitivity' => 'public',
-        ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
-
-        (new LearningLineageService())->rebuild($this->root, $this->root);
-    }
-
-"""
-          anchor = "    private function buildEventDraft(string $compilationId): string\n"
-          if anchor not in text:
-              raise SystemExit('buildEventDraft anchor not found')
-          text = text.replace(anchor, method + anchor, 1)
-          path.write_text(text)
-          PY
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add tests/RecallCompilerTest.php
+          if test -z "$(git status --porcelain -- tests/RecallCompilerTest.php)"; then
+            exit 0
+          fi
           git commit -m 'test(learning): scope lineage setup to compile fixtures'
           git push origin HEAD:pre-1.0/152-bounded-learning-precedent
