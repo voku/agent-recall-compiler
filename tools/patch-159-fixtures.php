@@ -9,17 +9,27 @@ if (!is_string($text)) {
 }
 
 $targets = [
-    "$this->writeProposal('proposal.2026-06-18.001', 'skill', ['src/Auth']);\n        $outputDir = $this->root . '/out';",
-    "$this->writeProposal('proposal.2026-06-18.001', 'skill', ['src/Auth']);\n        $outputDir = $this->root . '/out-generated';",
+    <<<'PHP'
+        $this->writeProposal('proposal.2026-06-18.001', 'skill', ['src/Auth']);
+        $outputDir = $this->root . '/out';
+PHP,
+    <<<'PHP'
+        $this->writeProposal('proposal.2026-06-18.001', 'skill', ['src/Auth']);
+        $outputDir = $this->root . '/out-generated';
+PHP,
 ];
 foreach ($targets as $target) {
     if (!str_contains($text, $target)) {
-        throw new RuntimeException('Targeted compile fixture anchor not found: ' . $target);
+        throw new RuntimeException('Targeted compile fixture anchor not found.');
     }
-    $replacement = str_replace("\n        $outputDir", "\n        $this->prepareLearningLineageFixture();\n        $outputDir", $target);
-    $text = preg_replace('/' . preg_quote($target, '/') . '/', str_replace('\\', '\\\\', $replacement), $text, 1, $count) ?? $text;
+    $replacement = str_replace(
+        "\n        \$outputDir",
+        "\n        \$this->prepareLearningLineageFixture();\n        \$outputDir",
+        $target,
+    );
+    $text = str_replace($target, $replacement, $text, $count);
     if ($count !== 1) {
-        throw new RuntimeException('Unable to patch targeted compile fixture.');
+        throw new RuntimeException('Unexpected targeted compile fixture anchor count: ' . $count);
     }
 }
 
@@ -52,7 +62,6 @@ $genericBlock = <<<'PHP'
 
         (new LearningLineageService())->rebuild($this->root, $this->root);
 PHP;
-
 if (!str_contains($text, $genericBlock)) {
     throw new RuntimeException('Generic Learning fixture block not found.');
 }
@@ -93,7 +102,6 @@ $helper = <<<'PHP'
     }
 
 PHP;
-
 $anchor = '    private function buildEventDraft(string $compilationId): string' . "\n";
 if (!str_contains($text, $anchor)) {
     throw new RuntimeException('buildEventDraft anchor not found.');
