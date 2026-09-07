@@ -7,17 +7,17 @@ namespace voku\AgentRecallCompiler\Provider;
 use RuntimeException;
 
 /**
- * Optional adapter over voku/agent-learning's public LearningNote projection.
+ * Optional adapter over voku/agent-learning's public bounded task-precedent projection.
  *
  * Recall deliberately does not require agent-learning as a standalone package
  * dependency. Hosts that already install the Learning owner gain precedent
  * context; standalone Recall remains usable without it. Once the owner class is
  * present, owner failures are allowed to propagate rather than being rewritten
- * as an empty catalog.
+ * as an empty observation.
  */
 final readonly class AgentLearningNoteProjectionSource implements LearningNoteProjectionSource
 {
-    private const string DEFAULT_SERVICE_CLASS = 'voku\\AgentLearning\\LearningNoteService';
+    private const string DEFAULT_SERVICE_CLASS = 'voku\\AgentLearning\\LearningLineageService';
 
     /** @param string $serviceClass */
     public function __construct(private string $serviceClass = self::DEFAULT_SERVICE_CLASS)
@@ -29,45 +29,75 @@ final readonly class AgentLearningNoteProjectionSource implements LearningNotePr
         return class_exists($this->serviceClass);
     }
 
-    public function active(string $learningRoot, ?string $projectRoot = null): array
-    {
+    public function forTask(
+        string $learningRoot,
+        string $taskId,
+        ?string $projectRoot = null,
+    ): LearningTaskPrecedentProjection {
         if (!$this->isAvailable()) {
-            return [];
+            throw new RuntimeException('Installed Learning owner does not expose LearningLineageService.');
         }
 
         $serviceClass = $this->serviceClass;
         $service = new $serviceClass();
-        if (!is_callable([$service, 'activeProjections'])) {
-            throw new RuntimeException('Installed Learning owner does not expose LearningNoteService::activeProjections().');
+        if (!is_callable([$service, 'precedentsForTask'])) {
+            throw new RuntimeException('Installed Learning owner does not expose LearningLineageService::precedentsForTask().');
         }
 
-        $raw = $service->activeProjections($learningRoot, $projectRoot);
-        if (!is_array($raw)) {
-            throw new RuntimeException('LearningNoteService::activeProjections() must return a list.');
+        $raw = $service->precedentsForTask($learningRoot, $taskId, $projectRoot);
+        if (!is_object($raw) || !is_callable([$raw, 'toArray'])) {
+            throw new RuntimeException('LearningLineageService::precedentsForTask() must return a typed projection.');
+        }
+        $data = $raw->toArray();
+        if (!is_array($data)) {
+            throw new RuntimeException('Learning task-precedent projection toArray() must return an array.');
+        }
+        /** @var array<string, mixed> $data */
+
+        $ownerTaskId = $this->string($data, 'task_id', 'Learning task-precedent projection');
+        if ($ownerTaskId !== $taskId) {
+            throw new RuntimeException('Learning task-precedent projection is bound to a different task id.');
         }
 
-        $result = [];
-        foreach ($raw as $projection) {
-            if (!is_object($projection) || !is_callable([$projection, 'toArray'])) {
-                throw new RuntimeException('Learning owner returned an unsupported LearningNote projection.');
+        $precedents = $data['precedents'] ?? null;
+        if (!is_array($precedents)) {
+            throw new RuntimeException('Learning task-precedent projection requires a precedents list.');
+        }
+        $notes = [];
+        foreach ($precedents as $precedent) {
+            if (!is_array($precedent)) {
+                throw new RuntimeException('Learning task-precedent projection contains an unsupported precedent.');
             }
-            $data = $projection->toArray();
-            if (!is_array($data)) {
-                throw new RuntimeException('LearningNote projection toArray() must return an array.');
-            }
-            /** @var array<string, mixed> $data */
-            $result[] = $this->fromArray($data);
+            /** @var array<string, mixed> $precedent */
+            $notes[] = $this->fromArray($precedent);
         }
 
-        usort($result, static fn (LearningNotePrecedentProjection $left, LearningNotePrecedentProjection $right): int => $left->id <=> $right->id);
+        $lineage = $data['lineage'] ?? null;
+        if (!is_array($lineage)) {
+            throw new RuntimeException('Learning task-precedent projection requires a lineage envelope.');
+        }
+        /** @var array<string, mixed> $lineage */
+        $identityId = $this->string($lineage, 'identity_id', 'Learning lineage envelope');
+        if ($identityId !== $taskId) {
+            throw new RuntimeException('Learning lineage envelope is bound to a different task id.');
+        }
 
-        return $result;
+        return new LearningTaskPrecedentProjection(
+            taskId: $ownerTaskId,
+            precedents: $notes,
+            identityIds: $this->strings($lineage['identity_ids'] ?? null, 'identity_ids'),
+            depthByIdentityId: $this->depths($lineage['depth_by_identity_id'] ?? null),
+            relations: $this->relations($lineage['relations'] ?? null),
+            maximumDepth: $this->positiveInteger($lineage, 'maximum_depth'),
+            maximumResults: $this->positiveInteger($lineage, 'maximum_results'),
+            truncated: $this->boolean($lineage, 'truncated'),
+        );
     }
 
     /** @param array<string, mixed> $data */
     private function fromArray(array $data): LearningNotePrecedentProjection
     {
-        $status = $this->string($data, 'status');
+        $status = $this->string($data, 'status', 'LearningNote owner projection');
         if ($status !== 'active') {
             throw new RuntimeException('LearningNote owner projection returned non-active status: ' . $status);
         }
@@ -78,24 +108,24 @@ final readonly class AgentLearningNoteProjectionSource implements LearningNotePr
         /** @var array<string, mixed> $content */
 
         return new LearningNotePrecedentProjection(
-            id: $this->string($data, 'id'),
-            patternKey: $this->string($data, 'pattern_key'),
+            id: $this->string($data, 'id', 'LearningNote owner projection'),
+            patternKey: $this->string($data, 'pattern_key', 'LearningNote owner projection'),
             scope: $this->strings($data['scope'] ?? null, 'scope'),
             tags: $this->strings($data['tags'] ?? null, 'tags'),
             sourceFindings: $this->strings($data['source_findings'] ?? null, 'source_findings'),
             sourceProposals: $this->strings($data['source_proposals'] ?? [], 'source_proposals'),
             content: $content,
             digest: $this->sha256($data, 'digest'),
-            evidenceState: $this->string($data, 'evidence_state'),
+            evidenceState: $this->string($data, 'evidence_state', 'LearningNote owner projection'),
         );
     }
 
     /** @param array<string, mixed> $data */
-    private function string(array $data, string $key): string
+    private function string(array $data, string $key, string $owner): string
     {
         $value = $data[$key] ?? null;
         if (!is_string($value) || trim($value) === '') {
-            throw new RuntimeException('LearningNote owner projection requires non-empty ' . $key . '.');
+            throw new RuntimeException($owner . ' requires non-empty ' . $key . '.');
         }
 
         return trim($value);
@@ -104,7 +134,7 @@ final readonly class AgentLearningNoteProjectionSource implements LearningNotePr
     /** @param array<string, mixed> $data */
     private function sha256(array $data, string $key): string
     {
-        $value = strtolower($this->string($data, $key));
+        $value = strtolower($this->string($data, $key, 'LearningNote owner projection'));
         if (preg_match('/^[a-f0-9]{64}$/D', $value) !== 1) {
             throw new RuntimeException('LearningNote owner projection requires canonical SHA-256 ' . $key . '.');
         }
@@ -116,16 +146,77 @@ final readonly class AgentLearningNoteProjectionSource implements LearningNotePr
     private function strings(mixed $value, string $key): array
     {
         if (!is_array($value)) {
-            throw new RuntimeException('LearningNote owner projection requires array ' . $key . '.');
+            throw new RuntimeException('Learning owner projection requires array ' . $key . '.');
         }
         $result = [];
         foreach ($value as $item) {
             if (!is_string($item) || trim($item) === '') {
-                throw new RuntimeException('LearningNote owner projection ' . $key . ' entries must be non-empty strings.');
+                throw new RuntimeException('Learning owner projection ' . $key . ' entries must be non-empty strings.');
             }
             $result[] = trim($item);
         }
 
         return array_values(array_unique($result));
+    }
+
+    /** @return array<string, int> */
+    private function depths(mixed $value): array
+    {
+        if (!is_array($value)) {
+            throw new RuntimeException('Learning lineage envelope requires depth_by_identity_id.');
+        }
+        $result = [];
+        foreach ($value as $identityId => $depth) {
+            if (!is_string($identityId) || trim($identityId) === '' || !is_int($depth) || $depth < 0) {
+                throw new RuntimeException('Learning lineage envelope contains an invalid identity depth.');
+            }
+            $result[trim($identityId)] = $depth;
+        }
+
+        return $result;
+    }
+
+    /** @return list<array{source_id: string, kind: string, target_id: string}> */
+    private function relations(mixed $value): array
+    {
+        if (!is_array($value)) {
+            throw new RuntimeException('Learning lineage envelope requires a relations list.');
+        }
+        $result = [];
+        foreach ($value as $relation) {
+            if (!is_array($relation)) {
+                throw new RuntimeException('Learning lineage envelope contains an invalid relation.');
+            }
+            /** @var array<string, mixed> $relation */
+            $result[] = [
+                'source_id' => $this->string($relation, 'source_id', 'Learning lineage relation'),
+                'kind' => $this->string($relation, 'kind', 'Learning lineage relation'),
+                'target_id' => $this->string($relation, 'target_id', 'Learning lineage relation'),
+            ];
+        }
+
+        return $result;
+    }
+
+    /** @param array<string, mixed> $data */
+    private function positiveInteger(array $data, string $key): int
+    {
+        $value = $data[$key] ?? null;
+        if (!is_int($value) || $value < 1) {
+            throw new RuntimeException('Learning lineage envelope requires positive integer ' . $key . '.');
+        }
+
+        return $value;
+    }
+
+    /** @param array<string, mixed> $data */
+    private function boolean(array $data, string $key): bool
+    {
+        $value = $data[$key] ?? null;
+        if (!is_bool($value)) {
+            throw new RuntimeException('Learning lineage envelope requires boolean ' . $key . '.');
+        }
+
+        return $value;
     }
 }
