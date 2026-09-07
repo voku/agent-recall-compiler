@@ -23,6 +23,7 @@ final class OperatingPromptCatalogApiTest extends TestCase
         self::assertSame($sorted, $ids);
         self::assertContains('discovery-first', $ids);
         self::assertContains('execute-plan-with-blind-spot-check', $ids);
+        self::assertContains('refine-l1-contract', $ids);
         self::assertContains('reproduce-before-fix', $ids);
         self::assertContains('regression-hunt', $ids);
 
@@ -50,6 +51,20 @@ final class OperatingPromptCatalogApiTest extends TestCase
         self::assertSame($first->templateSha256, $second->templateSha256);
         self::assertNotNull($first->content);
         self::assertStringContainsString('at least 3 concrete high-risk regression hypotheses', $first->content);
+    }
+
+    public function testRefineL1ContractRecipeKeepsRefinementLocal(): void
+    {
+        $preview = OperatingPromptCatalog::bundled()->preview(new OperatingPromptRequest('refine-l1-contract'));
+
+        self::assertTrue($preview->validation->valid);
+        self::assertNotNull($preview->content);
+        self::assertStringContainsString('semantic delta, not a fresh planning pass', $preview->content);
+        self::assertStringContainsString('brevity budget', $preview->content);
+        self::assertStringContainsString(
+            'Never let a subordinate artifact become more specified than the executable decision it exists to support.',
+            $preview->content,
+        );
     }
 
     public function testValidationFailsClosedForMissingExtraWrongTypeAndBounds(): void
