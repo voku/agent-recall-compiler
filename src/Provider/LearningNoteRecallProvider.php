@@ -21,7 +21,7 @@ final readonly class LearningNoteRecallProvider implements ConditionalRecallProv
 
     public function isAvailable(RecallRootConfig $rootConfig): bool
     {
-        return $this->source->isAvailable();
+        return $this->source->isAvailable() && is_dir($rootConfig->root);
     }
 
     public function manifest(): RecallProviderManifest

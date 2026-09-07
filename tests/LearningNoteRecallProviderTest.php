@@ -202,7 +202,7 @@ final class LearningNoteRecallProviderTest extends TestCase
 
         $provider = new LearningNoteRecallProvider($source);
         $task = new TaskBrief('TASK-CANONICAL-456', 'Description', ['src/File.php']);
-        $root = new RecallRootConfig('/tmp/learning', 'constraints/active');
+        $root = new RecallRootConfig(__DIR__, 'constraints/active');
 
         self::assertTrue($provider->isAvailable($root));
         $result = $provider->collect($task, $root);
