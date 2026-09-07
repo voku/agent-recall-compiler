@@ -11,32 +11,63 @@ use voku\AgentLearning\LearningNoteContent;
 use voku\AgentLearning\LearningNoteEvidenceState;
 use voku\AgentLearning\LearningNoteProjection;
 use voku\AgentLearning\LearningNoteStatus;
+use voku\AgentLearning\Lineage\LearningLineageResult;
+use voku\AgentLearning\Lineage\LearningTaskPrecedentResult;
 use voku\AgentLearning\ValidationCase;
 use voku\AgentRecallCompiler\Provider\AgentLearningNoteProjectionSource;
 
 final class AgentLearningNoteProjectionSourceTest extends TestCase
 {
-    public function testMapsReleasedPublicOwnerProjectionWithoutPrivateStorageKnowledge(): void
+    public function testMapsReleasedBoundedOwnerProjectionWithoutPrivateStorageKnowledge(): void
     {
-        self::assertSame('0.14.0', InstalledVersions::getPrettyVersion('voku/agent-learning'));
+        self::assertSame('0.18.1', InstalledVersions::getPrettyVersion('voku/agent-learning'));
         self::assertTrue((new AgentLearningNoteProjectionSource())->isAvailable());
 
-        $source = new AgentLearningNoteProjectionSource(ReleasedLearningNoteService::class);
-        $notes = $source->active('/tmp/learning');
+        $selection = (new AgentLearningNoteProjectionSource(ReleasedLearningLineageService::class))->forTask(
+            '/tmp/learning',
+            'TASK-123',
+        );
 
-        self::assertCount(1, $notes);
-        self::assertSame('learning-note.real', $notes[0]->id);
-        self::assertSame('pattern.real', $notes[0]->patternKey);
-        self::assertSame(['src/'], $notes[0]->scope);
-        self::assertSame('current', $notes[0]->evidenceState);
-        self::assertSame('Real owner projection', $notes[0]->content['title']);
+        self::assertSame('TASK-123', $selection->taskId);
+        self::assertCount(1, $selection->precedents);
+        self::assertSame('learning-note.real', $selection->precedents[0]->id);
+        self::assertSame('pattern.real', $selection->precedents[0]->patternKey);
+        self::assertSame(['src/'], $selection->precedents[0]->scope);
+        self::assertSame('current', $selection->precedents[0]->evidenceState);
+        self::assertSame('Real owner projection', $selection->precedents[0]->content['title']);
+        self::assertSame(['finding.real.001', 'learning-note.real'], $selection->identityIds);
+        self::assertSame(3, $selection->maximumDepth);
+        self::assertSame(100, $selection->maximumResults);
+        self::assertTrue($selection->truncated);
     }
 
-    public function testMissingOptionalOwnerPackageIsEmptyCapability(): void
+    public function testMissingOptionalOwnerPackageIsUnavailableCapability(): void
     {
         $source = new AgentLearningNoteProjectionSource('voku\\AgentRecallCompiler\\Tests\\DefinitelyMissingLearningService');
 
-        self::assertSame([], $source->active('/tmp/learning'));
+        self::assertFalse($source->isAvailable());
+    }
+
+    public function testMismatchedOwnerTaskBindingFailsExplicitly(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('bound to a different task id');
+
+        (new AgentLearningNoteProjectionSource(MismatchedLearningLineageService::class))->forTask(
+            '/tmp/learning',
+            'TASK-123',
+        );
+    }
+
+    public function testOwnerFailureOrStaleStatePropagatesExplicitly(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Learning state changed during task precedent query; retry from one owner generation.');
+
+        (new AgentLearningNoteProjectionSource(StaleOwnerLearningLineageService::class))->forTask(
+            '/tmp/learning',
+            'TASK-123',
+        );
     }
 
     public function testMalformedConfiguredOwnerProjectionFailsExplicitly(): void
@@ -44,25 +75,78 @@ final class AgentLearningNoteProjectionSourceTest extends TestCase
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('requires canonical SHA-256 digest');
 
-        (new AgentLearningNoteProjectionSource(MalformedLearningNoteService::class))->active('/tmp/learning');
+        (new AgentLearningNoteProjectionSource(MalformedLearningLineageService::class))->forTask(
+            '/tmp/learning',
+            'TASK-123',
+        );
     }
 }
 
-final class ReleasedLearningNoteService
+final class StaleOwnerLearningLineageService
 {
-    /** @return list<LearningNoteProjection> */
-    public function activeProjections(string $learningRoot): array
-    {
-        return [ReleasedLearningNoteProjectionFixture::create(str_repeat('a', 64))];
+    public function precedentsForTask(
+        string $learningRoot,
+        string $taskId,
+        ?string $projectRoot = null,
+    ): LearningTaskPrecedentResult {
+        throw new RuntimeException('Learning state changed during task precedent query; retry from one owner generation.');
     }
 }
 
-final class MalformedLearningNoteService
+final class ReleasedLearningLineageService
 {
-    /** @return list<LearningNoteProjection> */
-    public function activeProjections(string $learningRoot): array
+    public function precedentsForTask(
+        string $learningRoot,
+        string $taskId,
+        ?string $projectRoot = null,
+    ): LearningTaskPrecedentResult {
+        return ReleasedLearningTaskPrecedentFixture::create($taskId, str_repeat('a', 64));
+    }
+}
+
+final class MismatchedLearningLineageService
+{
+    public function precedentsForTask(
+        string $learningRoot,
+        string $taskId,
+        ?string $projectRoot = null,
+    ): LearningTaskPrecedentResult {
+        return ReleasedLearningTaskPrecedentFixture::create('OTHER-999', str_repeat('a', 64));
+    }
+}
+
+final class MalformedLearningLineageService
+{
+    public function precedentsForTask(
+        string $learningRoot,
+        string $taskId,
+        ?string $projectRoot = null,
+    ): LearningTaskPrecedentResult {
+        return ReleasedLearningTaskPrecedentFixture::create($taskId, 'not-a-digest');
+    }
+}
+
+final class ReleasedLearningTaskPrecedentFixture
+{
+    public static function create(string $taskId, string $digest): LearningTaskPrecedentResult
     {
-        return [ReleasedLearningNoteProjectionFixture::create('not-a-digest')];
+        return new LearningTaskPrecedentResult(
+            taskId: $taskId,
+            precedents: [ReleasedLearningNoteProjectionFixture::create($digest)],
+            lineage: new LearningLineageResult(
+                identityId: $taskId,
+                identityIds: ['finding.real.001', 'learning-note.real'],
+                depthByIdentityId: [
+                    $taskId => 0,
+                    'finding.real.001' => 1,
+                    'learning-note.real' => 2,
+                ],
+                relations: [],
+                maximumDepth: 3,
+                maximumResults: 100,
+                truncated: true,
+            ),
+        );
     }
 }
 

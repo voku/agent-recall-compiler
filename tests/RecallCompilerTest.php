@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace voku\AgentRecallCompiler\Tests;
 
 use PHPUnit\Framework\TestCase;
+use voku\AgentLearning\LearningLineageService;
 use voku\AgentRecallCompiler\TaskBrief;
 use voku\AgentRecallCompiler\TaskBriefParser;
 use voku\AgentRecallCompiler\RecallRepository;
@@ -141,7 +142,7 @@ final class RecallCompilerTest extends TestCase
         self::assertSame('approved', $bundle['task']['status']);
         self::assertSame(['modules/ExampleView.php'], $bundle['task']['files']);
         self::assertSame(
-            ['agent-learning', 'memory', 'task-context'],
+            ['agent-learning', 'agent-learning-notes', 'memory', 'task-context'],
             array_map(static fn (array $provider): string => $provider['manifest']['id'], $bundle['snapshot']['providers']),
         );
 
@@ -1060,6 +1061,7 @@ final class RecallCompilerTest extends TestCase
     public function testCompileCommandUsesCallerSuppliedCompilationId(): void
     {
         $this->writeProposal('proposal.2026-06-18.001', 'skill', ['src/Auth']);
+        $this->prepareLearningLineageFixture();
         $outputDir = $this->root . '/out';
 
         $exitCode = (new \voku\AgentRecallCompiler\Cli())->run([
@@ -1095,6 +1097,7 @@ final class RecallCompilerTest extends TestCase
     public function testCompileCommandGeneratesCompilationIdWhenOmitted(): void
     {
         $this->writeProposal('proposal.2026-06-18.001', 'skill', ['src/Auth']);
+        $this->prepareLearningLineageFixture();
         $outputDir = $this->root . '/out-generated';
 
         $exitCode = (new \voku\AgentRecallCompiler\Cli())->run([
@@ -1552,8 +1555,38 @@ final class RecallCompilerTest extends TestCase
             'approved_by' => 'test',
             'approved_at' => '2026-06-18T10:10:00+00:00',
         ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+
     }
 
+    private function prepareLearningLineageFixture(): void
+    {
+        $findingDirectory = $this->root . '/findings/validated';
+        if (!is_dir($findingDirectory) && !mkdir($findingDirectory, 0777, true) && !is_dir($findingDirectory)) {
+            self::fail('Unable to create Learning finding fixture directory.');
+        }
+        file_put_contents($findingDirectory . '/finding.2026-06-18.001.json', json_encode([
+            'id' => 'finding.2026-06-18.001',
+            'task_id' => 'PROJECT-123',
+            'session' => 'session_recall_fixture',
+            'created_at' => '2026-06-18T09:00:00+00:00',
+            'created_by' => 'test',
+            'scope' => ['src/Auth'],
+            'observation' => 'The Recall fixture carries one approved auth guidance proposal.',
+            'evidence' => [[
+                'type' => 'file_reference',
+                'path' => 'src/Auth/UserService.php',
+                'line' => 1,
+            ]],
+            'hypothesis' => 'The approved proposal should remain eligible for the matching auth task.',
+            'validated_conclusion' => 'The fixture represents one validated Learning source for the approved proposal.',
+            'confidence' => 'high',
+            'validation_status' => 'validated',
+            'status' => 'validated',
+            'sensitivity' => 'public',
+        ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+
+        (new LearningLineageService())->rebuild($this->root, $this->root);
+    }
     private function buildEventDraft(string $compilationId): string
     {
         $result = (new RecallDecisionEngine())->decide(
