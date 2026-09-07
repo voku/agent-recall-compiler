@@ -6,6 +6,18 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.17.1] - 2026-09-07
+
+### Fixed
+
+- Keep the optional LearningNote precedent provider unavailable when the configured project Learning root does not exist. Recall 0.17.0 treated the installed `voku/agent-learning` class alone as provider availability, then called the bounded owner lineage API with a missing root and broke clean consumers with `Learning root must be an existing directory.` Existing Learning roots still flow through the owner API and retain fail-closed stale/corrupt-state behavior.
+- Add a focused regression proving an absent project Learning root never invokes the owner projection, and make the positive installed-owner fixture use an actually existing root.
+
+### Validation
+
+- PR #161 exact head `a45ee40b207807c6ad54fe304a5a4515a2a1d3ae` passed PHPUnit and PHPStan on PHP 8.3, 8.4, and 8.5 plus the governed installed `agent-loop` consumer dogfood before merge.
+- The owner fix merged as `a69112e1cab536e30a9fff0ff985ea6b90a7ca13`; this release candidate reruns the repository release gates on top of that exact fix.
+
 ## [0.17.0] - 2026-09-07
 
 ### Added
