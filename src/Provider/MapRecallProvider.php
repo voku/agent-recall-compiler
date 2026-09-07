@@ -307,53 +307,14 @@ final readonly class MapRecallProvider implements RecallProvider
             ? $map->root
             : rtrim($this->sourceRoot, '/\\');
 
-        $files = [];
-        foreach ($map->files as $file) {
-            $files[] = $this->upgradeLegacyHash($file, $root);
-        }
-
         return new AgentMapIndex(
             schemaVersion: $map->schemaVersion,
             root: $root,
             backend: $map->backend,
-            files: $files,
+            files: $map->files,
             relations: $map->relations,
             diagnostics: $map->diagnostics,
             fingerprint: $map->fingerprint,
-        );
-    }
-
-    /**
-     * agent-map can decode schema-1 entries, but its freshness check is
-     * intentionally SHA-256-only. Keep recall's existing file-only contract by
-     * upgrading a verified legacy SHA-1 entry in memory. New maps never enter
-     * this compatibility path.
-     */
-    private function upgradeLegacyHash(FileEntry $file, string $root): FileEntry
-    {
-        $prefix = 'legacy-sha1:';
-        if (!str_starts_with($file->sha256, $prefix)) {
-            return $file;
-        }
-
-        $absolute = $root . '/' . $file->path;
-        $expectedSha1 = substr($file->sha256, strlen($prefix));
-        $actualSha1 = is_file($absolute) ? sha1_file($absolute) : false;
-        if (!is_string($actualSha1) || !hash_equals($expectedSha1, $actualSha1)) {
-            return $file;
-        }
-
-        $sha256 = hash_file('sha256', $absolute);
-        if (!is_string($sha256)) {
-            throw new RuntimeException('cannot hash mapped source file: ' . $absolute);
-        }
-
-        return new FileEntry(
-            path: $file->path,
-            sha256: 'sha256:' . $sha256,
-            namespace: $file->namespace,
-            symbols: $file->symbols,
-            semanticStatus: $file->semanticStatus,
         );
     }
 
