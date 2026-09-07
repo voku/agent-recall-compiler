@@ -21,11 +21,7 @@ final readonly class LearningNoteRecallProvider implements ConditionalRecallProv
 
     public function isAvailable(RecallRootConfig $rootConfig): bool
     {
-        if ($this->source instanceof AgentLearningNoteProjectionSource && !$this->source->isAvailable()) {
-            return false;
-        }
-
-        return $this->source->active($rootConfig->root, $rootConfig->projectRoot) !== [];
+        return $this->source->isAvailable();
     }
 
     public function manifest(): RecallProviderManifest
@@ -35,8 +31,14 @@ final readonly class LearningNoteRecallProvider implements ConditionalRecallProv
 
     public function collect(TaskBrief $task, RecallRootConfig $rootConfig): RecallProviderResult
     {
+        $selection = $this->source->forTask(
+            $rootConfig->root,
+            $task->id,
+            $rootConfig->projectRoot,
+        );
+
         $eligible = [];
-        foreach ($this->source->active($rootConfig->root, $rootConfig->projectRoot) as $note) {
+        foreach ($selection->precedents as $note) {
             if ($note->evidenceState === 'source_missing') {
                 throw new RecallCompilationBlockedException(
                     'Compilation blocked: LearningNote ' . $note->id . ' references missing repository evidence.',
@@ -81,7 +83,19 @@ final readonly class LearningNoteRecallProvider implements ConditionalRecallProv
             return $leftNote->id <=> $rightNote->id;
         });
 
-        $facts = [];
+        $facts = [new RecallFact(
+            id: 'learning-precedent-observation.' . substr(hash('sha256', $selection->taskId), 0, 16),
+            type: 'learning_precedent_observation',
+            authority: 'derived_navigation',
+            sourceRef: 'agent-learning:task:' . $selection->taskId,
+            scope: [],
+            payload: [
+                ...$selection->observation(),
+                'observation_scope' => 'exact_task_lineage',
+            ],
+            lifecycle: 'active',
+        )];
+
         $renderedCurrent = 0;
         foreach ($eligible as $candidate) {
             /** @var LearningNotePrecedentProjection $note */
@@ -130,7 +144,7 @@ final readonly class LearningNoteRecallProvider implements ConditionalRecallProv
         return new RecallProviderResult(
             sourceDigest: CanonicalJson::digest([
                 'provider' => $this->manifest()->id,
-                'eligible' => array_map(static fn (RecallFact $fact): array => $fact->toArray(), $facts),
+                'facts' => array_map(static fn (RecallFact $fact): array => $fact->toArray(), $facts),
             ]),
             facts: $facts,
         );
