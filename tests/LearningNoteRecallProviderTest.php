@@ -145,6 +145,137 @@ final class LearningNoteRecallProviderTest extends TestCase
         );
     }
 
+    public function testStandaloneRecallBehaviorRemainsValidWhenLearningIsAbsent(): void
+    {
+        $source = new class implements LearningNoteProjectionSource {
+            public function isAvailable(): bool
+            {
+                return false;
+            }
+
+            public function forTask(
+                string $learningRoot,
+                string $taskId,
+                ?string $projectRoot = null,
+            ): LearningTaskPrecedentProjection {
+                throw new \RuntimeException('Should not be called when unavailable');
+            }
+        };
+
+        $provider = new LearningNoteRecallProvider($source);
+        $rootConfig = new RecallRootConfig('/tmp/learning', 'constraints/active');
+        self::assertFalse($provider->isAvailable($rootConfig));
+    }
+
+    public function testBoundedOwnerApiIsUsedWhenLearningIsInstalled(): void
+    {
+        $requestedTaskId = null;
+        $source = new class($requestedTaskId) implements LearningNoteProjectionSource {
+            public function __construct(public ?string &$requestedTaskId)
+            {
+            }
+
+            public function isAvailable(): bool
+            {
+                return true;
+            }
+
+            public function forTask(
+                string $learningRoot,
+                string $taskId,
+                ?string $projectRoot = null,
+            ): LearningTaskPrecedentProjection {
+                $this->requestedTaskId = $taskId;
+
+                return new LearningTaskPrecedentProjection(
+                    taskId: $taskId,
+                    precedents: [],
+                    identityIds: [],
+                    depthByIdentityId: [$taskId => 0],
+                    relations: [],
+                    maximumDepth: 3,
+                    maximumResults: 100,
+                    truncated: false,
+                );
+            }
+        };
+
+        $provider = new LearningNoteRecallProvider($source);
+        $task = new TaskBrief('TASK-CANONICAL-456', 'Description', ['src/File.php']);
+        $root = new RecallRootConfig('/tmp/learning', 'constraints/active');
+
+        self::assertTrue($provider->isAvailable($root));
+        $result = $provider->collect($task, $root);
+        self::assertSame('TASK-CANONICAL-456', $requestedTaskId);
+        self::assertCount(1, $result->facts);
+        self::assertSame('learning_precedent_observation', $result->facts[0]->type);
+    }
+
+    public function testOwnerFailurePropagatesOutThroughRecall(): void
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Owner state is stale');
+
+        $source = new class implements LearningNoteProjectionSource {
+            public function isAvailable(): bool
+            {
+                return true;
+            }
+
+            public function forTask(
+                string $learningRoot,
+                string $taskId,
+                ?string $projectRoot = null,
+            ): LearningTaskPrecedentProjection {
+                throw new \RuntimeException('Owner state is stale');
+            }
+        };
+
+        (new LearningNoteRecallProvider($source))->collect(
+            new TaskBrief('TASK-145', 'Change', ['src/File.php']),
+            new RecallRootConfig('/tmp/learning', 'constraints/active'),
+        );
+    }
+
+    public function testUnrelatedLearningNoteOutsideTaskLineageIsNotConsideredByRecall(): void
+    {
+        $inLineageNote = $this->note('learning-note.in-lineage', ['src/'], []);
+        $result = $this->provider([$inLineageNote])->collect(
+            new TaskBrief('TASK-145', 'Change', ['src/File.php']),
+            new RecallRootConfig('/tmp/learning', 'constraints/active'),
+        );
+
+        $precedentIds = [];
+        foreach ($result->facts as $fact) {
+            if ($fact->type === 'learning_precedent') {
+                $precedentIds[] = $fact->payload['note_id'];
+            }
+        }
+        self::assertSame(['learning-note.in-lineage'], $precedentIds);
+    }
+
+    public function testInstrumentationExposesCandidateAndSelectionCounts(): void
+    {
+        $eligible1 = $this->note('learning-note.eligible-1', ['src/Auth/'], ['auth']);
+        $eligible2 = $this->note('learning-note.eligible-2', ['src/Auth/'], ['auth']);
+        $unrelated = $this->note('learning-note.unrelated', ['docs/'], ['other']);
+
+        $result = $this->provider([$eligible1, $eligible2, $unrelated])->collect(
+            new TaskBrief('TASK-145', 'Auth change', ['src/Auth/Login.php'], tags: ['auth']),
+            new RecallRootConfig('/tmp/learning', 'constraints/active'),
+        );
+
+        $observation = $result->facts[0];
+        self::assertSame('learning_precedent_observation', $observation->type);
+        self::assertSame(3, $observation->payload['candidates_returned']);
+        self::assertSame(2, $observation->payload['candidates_considered']);
+        self::assertSame(2, $observation->payload['precedents_selected']);
+        self::assertSame(
+            ['learning-note.eligible-1', 'learning-note.eligible-2'],
+            $observation->payload['selected_precedent_ids'],
+        );
+    }
+
     /** @param list<LearningNotePrecedentProjection> $notes */
     private function provider(array $notes, bool $truncated = false): LearningNoteRecallProvider
     {

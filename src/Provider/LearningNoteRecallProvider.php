@@ -83,20 +83,9 @@ final readonly class LearningNoteRecallProvider implements ConditionalRecallProv
             return $leftNote->id <=> $rightNote->id;
         });
 
-        $facts = [new RecallFact(
-            id: 'learning-precedent-observation.' . substr(hash('sha256', $selection->taskId), 0, 16),
-            type: 'learning_precedent_observation',
-            authority: 'derived_navigation',
-            sourceRef: 'agent-learning:task:' . $selection->taskId,
-            scope: [],
-            payload: [
-                ...$selection->observation(),
-                'observation_scope' => 'exact_task_lineage',
-            ],
-            lifecycle: 'active',
-        )];
-
+        $precedentFacts = [];
         $renderedCurrent = 0;
+        $selectedPrecedentIds = [];
         foreach ($eligible as $candidate) {
             /** @var LearningNotePrecedentProjection $note */
             $note = $candidate['note'];
@@ -113,9 +102,10 @@ final readonly class LearningNoteRecallProvider implements ConditionalRecallProv
             }
             if ($render) {
                 ++$renderedCurrent;
+                $selectedPrecedentIds[] = $note->id;
             }
 
-            $facts[] = new RecallFact(
+            $precedentFacts[] = new RecallFact(
                 id: 'learning-precedent.' . $note->id,
                 type: 'learning_precedent',
                 authority: 'learning_precedent',
@@ -140,6 +130,25 @@ final readonly class LearningNoteRecallProvider implements ConditionalRecallProv
                 lifecycle: $note->evidenceState === 'current' ? 'active' : 'historical',
             );
         }
+
+        $observationFact = new RecallFact(
+            id: 'learning-precedent-observation.' . substr(hash('sha256', $selection->taskId), 0, 16),
+            type: 'learning_precedent_observation',
+            authority: 'derived_navigation',
+            sourceRef: 'agent-learning:task:' . $selection->taskId,
+            scope: [],
+            payload: [
+                ...$selection->observation(),
+                'observation_scope' => 'exact_task_lineage',
+                'candidates_returned' => count($selection->precedents),
+                'candidates_considered' => count($eligible),
+                'precedents_selected' => count($selectedPrecedentIds),
+                'selected_precedent_ids' => $selectedPrecedentIds,
+            ],
+            lifecycle: 'active',
+        );
+
+        $facts = [$observationFact, ...$precedentFacts];
 
         return new RecallProviderResult(
             sourceDigest: CanonicalJson::digest([

@@ -59,6 +59,17 @@ final class AgentLearningNoteProjectionSourceTest extends TestCase
         );
     }
 
+    public function testOwnerFailureOrStaleStatePropagatesExplicitly(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Learning state changed during task precedent query; retry from one owner generation.');
+
+        (new AgentLearningNoteProjectionSource(StaleOwnerLearningLineageService::class))->forTask(
+            '/tmp/learning',
+            'TASK-123',
+        );
+    }
+
     public function testMalformedConfiguredOwnerProjectionFailsExplicitly(): void
     {
         $this->expectException(RuntimeException::class);
@@ -68,6 +79,17 @@ final class AgentLearningNoteProjectionSourceTest extends TestCase
             '/tmp/learning',
             'TASK-123',
         );
+    }
+}
+
+final class StaleOwnerLearningLineageService
+{
+    public function precedentsForTask(
+        string $learningRoot,
+        string $taskId,
+        ?string $projectRoot = null,
+    ): LearningTaskPrecedentResult {
+        throw new RuntimeException('Learning state changed during task precedent query; retry from one owner generation.');
     }
 }
 
