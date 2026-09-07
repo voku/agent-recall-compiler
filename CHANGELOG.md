@@ -6,6 +6,32 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-09-07
+
+### Added
+
+- Replace the broad `LearningNote` candidate acquisition path with the bounded task-precedent query consuming `voku/agent-learning` `0.18.1` (`LearningLineageService::precedentsForTask()`). Precedent discovery is now scoped to the canonical task identity (`TaskBrief::$id`) rather than scanning all active notes repository-wide.
+- Introduce `LearningTaskPrecedentProjection` modeling the bounded lineage envelope (`taskId`, `precedents`, `identityIds`, `depthByIdentityId`, `relations`, `maximumDepth`, `maximumResults`, `truncated`).
+- Enrich `learning_precedent_observation` facts with query and selection telemetry (`candidates_returned`, `candidates_considered`, `precedents_selected`, `selected_precedent_ids`).
+- Support adaptive rolling plan horizons in operating prompts (#158).
+- Support semantic delta refinement for L1 prompt contracts (#157).
+
+### Changed
+
+- Update `voku/agent-learning` dev dependency to `0.18.1`.
+- Preserve deterministic precedent ranking (state rank > specificity > tag overlap > note ID) within the bounded task lineage set returned by Learning.
+- Propagate owner exceptions and stale states from `voku/agent-learning` explicitly through Recall instead of falling back to global absence claims.
+
+### Removed
+
+- Drop dead legacy SHA-1 repair paths in map integration.
+
+### Validation
+
+- Repository CI passing on PHP 8.3 with 306 tests and 1712 assertions.
+- PHPStan Level Max static analysis passing with zero errors.
+- Strict Composer validation passing.
+
 ## [0.16.0] - 2026-09-06
 
 ### Added
