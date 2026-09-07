@@ -6,6 +6,11 @@ namespace voku\AgentRecallCompiler\Provider;
 
 interface LearningNoteProjectionSource
 {
-    /** @return list<LearningNotePrecedentProjection> */
-    public function active(string $learningRoot, ?string $projectRoot = null): array;
+    public function isAvailable(): bool;
+
+    public function forTask(
+        string $learningRoot,
+        string $taskId,
+        ?string $projectRoot = null,
+    ): LearningTaskPrecedentProjection;
 }
