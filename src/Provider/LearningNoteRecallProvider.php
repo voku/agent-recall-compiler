@@ -289,6 +289,7 @@ final readonly class LearningNoteRecallProvider implements ConditionalRecallProv
 
     /**
      * @param list<string> $tags
+     * @return list<string>
      */
     private function canonicalTags(array $tags): array
     {
