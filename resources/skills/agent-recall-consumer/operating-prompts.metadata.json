@@ -141,6 +141,13 @@
       "arguments": []
     },
     {
+      "id": "refine-l1-contract",
+      "title": "Refine an L1 contract",
+      "description": "Apply the smallest semantic delta to an existing L1 without scope or detail inflation.",
+      "purpose": "plan",
+      "arguments": []
+    },
+    {
       "id": "regression-hunt",
       "title": "Hunt regressions",
       "description": "Investigate a bounded number of high-risk regression hypotheses with concrete evidence.",
