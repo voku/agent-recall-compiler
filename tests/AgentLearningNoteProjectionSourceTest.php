@@ -20,7 +20,7 @@ final class AgentLearningNoteProjectionSourceTest extends TestCase
 {
     public function testMapsReleasedBoundedOwnerProjectionWithoutPrivateStorageKnowledge(): void
     {
-        self::assertSame('0.18.0', InstalledVersions::getPrettyVersion('voku/agent-learning'));
+        self::assertSame('0.18.1', InstalledVersions::getPrettyVersion('voku/agent-learning'));
         self::assertTrue((new AgentLearningNoteProjectionSource())->isAvailable());
 
         $selection = (new AgentLearningNoteProjectionSource(ReleasedLearningLineageService::class))->forTask(
