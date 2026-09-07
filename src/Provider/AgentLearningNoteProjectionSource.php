@@ -11,9 +11,9 @@ use RuntimeException;
  *
  * Recall deliberately does not require agent-learning as a standalone package
  * dependency. Hosts that already install the Learning owner gain precedent
- * context; standalone Recall remains usable without it. Once the owner class is
- * present, owner failures are allowed to propagate rather than being rewritten
- * as an empty observation.
+ * context; standalone Recall remains usable without it. Once the compatible
+ * owner API is present, owner failures are allowed to propagate rather than
+ * being rewritten as an empty observation.
  */
 final readonly class AgentLearningNoteProjectionSource implements LearningNoteProjectionSource
 {
@@ -26,7 +26,14 @@ final readonly class AgentLearningNoteProjectionSource implements LearningNotePr
 
     public function isAvailable(): bool
     {
-        return class_exists($this->serviceClass);
+        if (!class_exists($this->serviceClass)) {
+            return false;
+        }
+
+        $serviceClass = $this->serviceClass;
+        $service = new $serviceClass();
+
+        return is_callable([$service, 'precedentsForTask']);
     }
 
     public function forTask(
@@ -35,15 +42,11 @@ final readonly class AgentLearningNoteProjectionSource implements LearningNotePr
         ?string $projectRoot = null,
     ): LearningTaskPrecedentProjection {
         if (!$this->isAvailable()) {
-            throw new RuntimeException('Installed Learning owner does not expose LearningLineageService.');
+            throw new RuntimeException('Installed Learning owner does not expose LearningLineageService::precedentsForTask().');
         }
 
         $serviceClass = $this->serviceClass;
         $service = new $serviceClass();
-        if (!is_callable([$service, 'precedentsForTask'])) {
-            throw new RuntimeException('Installed Learning owner does not expose LearningLineageService::precedentsForTask().');
-        }
-
         $raw = $service->precedentsForTask($learningRoot, $taskId, $projectRoot);
         if (!is_object($raw) || !is_callable([$raw, 'toArray'])) {
             throw new RuntimeException('LearningLineageService::precedentsForTask() must return a typed projection.');
@@ -59,19 +62,6 @@ final readonly class AgentLearningNoteProjectionSource implements LearningNotePr
             throw new RuntimeException('Learning task-precedent projection is bound to a different task id.');
         }
 
-        $precedents = $data['precedents'] ?? null;
-        if (!is_array($precedents)) {
-            throw new RuntimeException('Learning task-precedent projection requires a precedents list.');
-        }
-        $notes = [];
-        foreach ($precedents as $precedent) {
-            if (!is_array($precedent)) {
-                throw new RuntimeException('Learning task-precedent projection contains an unsupported precedent.');
-            }
-            /** @var array<string, mixed> $precedent */
-            $notes[] = $this->fromArray($precedent);
-        }
-
         $lineage = $data['lineage'] ?? null;
         if (!is_array($lineage)) {
             throw new RuntimeException('Learning task-precedent projection requires a lineage envelope.');
@@ -81,11 +71,34 @@ final readonly class AgentLearningNoteProjectionSource implements LearningNotePr
         if ($identityId !== $taskId) {
             throw new RuntimeException('Learning lineage envelope is bound to a different task id.');
         }
+        $identityIds = $this->strings($lineage['identity_ids'] ?? null, 'identity_ids');
+        $identityLookup = array_fill_keys($identityIds, true);
+
+        $precedents = $data['precedents'] ?? null;
+        if (!is_array($precedents)) {
+            throw new RuntimeException('Learning task-precedent projection requires a precedents list.');
+        }
+        if (count($precedents) > count($identityIds)) {
+            throw new RuntimeException('Learning task-precedent projection contains more precedents than bounded lineage identities.');
+        }
+
+        $notes = [];
+        foreach ($precedents as $precedent) {
+            if (!is_array($precedent)) {
+                throw new RuntimeException('Learning task-precedent projection contains an unsupported precedent.');
+            }
+            /** @var array<string, mixed> $precedent */
+            $note = $this->fromArray($precedent);
+            if (!isset($identityLookup[$note->id])) {
+                throw new RuntimeException('Learning task-precedent projection contains a precedent outside the bounded lineage identities: ' . $note->id);
+            }
+            $notes[] = $note;
+        }
 
         return new LearningTaskPrecedentProjection(
             taskId: $ownerTaskId,
             precedents: $notes,
-            identityIds: $this->strings($lineage['identity_ids'] ?? null, 'identity_ids'),
+            identityIds: $identityIds,
             depthByIdentityId: $this->depths($lineage['depth_by_identity_id'] ?? null),
             relations: $this->relations($lineage['relations'] ?? null),
             maximumDepth: $this->positiveInteger($lineage, 'maximum_depth'),
