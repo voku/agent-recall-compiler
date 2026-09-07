@@ -6,6 +6,12 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.17.2] - 2026-09-07
+
+### Changed
+
+- Widen dependency constraint to support `voku/agent-map` `^0.10.0 || ^0.11.0` and `voku/agent-learning` `^0.18.1`.
+
 ## [0.17.1] - 2026-09-07
 
 ### Fixed
