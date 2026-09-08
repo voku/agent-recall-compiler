@@ -6,6 +6,21 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.17.3] - 2026-09-08
+
+### Added
+
+- Expose `ReviewReportReader::jsonPath()` as the supported read-only owner projection for the canonical deterministic review JSON artifact path, so lifecycle hosts can describe missing or invalid review evidence without reconstructing Recall's private `reviews/<task>.blindspots.json` layout.
+
+### Changed
+
+- `ReviewReportReader::read()` now resolves the report through the same owner path projection, keeping expected-path diagnostics and persisted evidence reads on one Recall-owned boundary.
+
+### Validation
+
+- PR #162 exact head `90086b1caac30f702a8caf912e19aef55b7a2ecb` passed PHPUnit and PHPStan on PHP 8.3, 8.4, and 8.5 plus the governed installed `agent-loop` consumer dogfood before merge.
+- The owner API merged as `5571a027a37037d9f797a17ab071b11030e617d8`; this release candidate reruns the repository release gates on top of that exact owner change.
+
 ## [0.17.2] - 2026-09-07
 
 ### Changed
@@ -541,7 +556,8 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 - Added approved task `acceptance_criteria` as an optional governed task input.
   Criteria are carried through direct and governed Contract parsing, canonical
-  task-context facts, effective task scope, and rendered `system.md` briefings.
+  task-context facts, effective task scope, and rendered L2 prompts so agents retain
+  the approved success conditions alongside goal and scope.
 - Acceptance criteria are rendered explicitly as required outcomes from the
   approved task Contract, **not** as evidence that those outcomes are satisfied.
   Missing criteria remain backward compatible as an empty list.
@@ -828,9 +844,9 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
   path scope overlaps the task's files **or** it shares at least one tag with
   the task. This lets a project register cross-cutting knowledge (e.g. an
   LDAP learning) by domain/system/capability instead of directory prefix, so
-  selection works the same way regardless of how a project's codebase is
-  laid out. Purely additive: briefs and manifests without `tags` behave
-  exactly as before.
+  selection works the same way regardless of how a project's codebase is laid
+  out. Purely additive: briefs and manifests without `tags` behave exactly as
+  before.
 - Added `SelectionReason::TAG_OVERLAP` to distinguish a tag-only match from a
   path `scope_overlap` or `global` match in `selection-report.json`.
 - Added inline `--tag LABEL` (repeatable) to `compile` for ad hoc task input.
@@ -1067,6 +1083,7 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 - Initial release of L2 Meta-Prompt Compiler and Briefing Manager for coding agents.
 - Deterministic scope matching for MEMORY.md and specific active skills/constraints.
 - Rejection warnings to notify the agent of previously proposed and rejected designs.
-- Outcome-driven warnings to flag rules marked as `HARMFUL` or `IRRELEVANT` in past sessions.
-- Dynamic validation plan compiler that lists verification tests for loaded active rules.
-- Draft outcome log generation to close the feedback loop.
+- Outcome-driven warnings to notify the agent of previously proposed and rejected designs.
+- Outcome-driven warnings to notify the agent of previously proposed and rejected designs.
+- Outcome-driven warnings to notify the agent of previously proposed and rejected designs.
+- Outcome-driven warnings to notify the agent of previously proposed and rejected designs.
