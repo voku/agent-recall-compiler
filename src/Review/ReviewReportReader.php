@@ -19,9 +19,20 @@ final readonly class ReviewReportReader
         $this->paths = new ReviewReportPaths($workspacePath);
     }
 
+    /**
+     * Return the canonical JSON artifact path without requiring the report to exist.
+     *
+     * Lifecycle hosts use this for missing/invalid evidence diagnostics instead of
+     * reconstructing Recall's private review directory and filename convention.
+     */
+    public function jsonPath(string $taskId, string $outputDir): string
+    {
+        return $this->paths->json($taskId, $outputDir);
+    }
+
     public function read(string $taskId, string $outputDir): ?ReviewReportArtifact
     {
-        $path = $this->paths->json($taskId, $outputDir);
+        $path = $this->jsonPath($taskId, $outputDir);
         if (!is_file($path)) {
             return null;
         }
