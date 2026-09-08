@@ -556,8 +556,7 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 - Added approved task `acceptance_criteria` as an optional governed task input.
   Criteria are carried through direct and governed Contract parsing, canonical
-  task-context facts, effective task scope, and rendered L2 prompts so agents retain
-  the approved success conditions alongside goal and scope.
+  task-context facts, effective task scope, and rendered `system.md` briefings.
 - Acceptance criteria are rendered explicitly as required outcomes from the
   approved task Contract, **not** as evidence that those outcomes are satisfied.
   Missing criteria remain backward compatible as an empty list.
@@ -844,9 +843,9 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
   path scope overlaps the task's files **or** it shares at least one tag with
   the task. This lets a project register cross-cutting knowledge (e.g. an
   LDAP learning) by domain/system/capability instead of directory prefix, so
-  selection works the same way regardless of how a project's codebase is laid
-  out. Purely additive: briefs and manifests without `tags` behave exactly as
-  before.
+  selection works the same way regardless of how a project's codebase is
+  laid out. Purely additive: briefs and manifests without `tags` behave
+  exactly as before.
 - Added `SelectionReason::TAG_OVERLAP` to distinguish a tag-only match from a
   path `scope_overlap` or `global` match in `selection-report.json`.
 - Added inline `--tag LABEL` (repeatable) to `compile` for ad hoc task input.
@@ -1083,7 +1082,6 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 - Initial release of L2 Meta-Prompt Compiler and Briefing Manager for coding agents.
 - Deterministic scope matching for MEMORY.md and specific active skills/constraints.
 - Rejection warnings to notify the agent of previously proposed and rejected designs.
-- Outcome-driven warnings to notify the agent of previously proposed and rejected designs.
-- Outcome-driven warnings to notify the agent of previously proposed and rejected designs.
-- Outcome-driven warnings to notify the agent of previously proposed and rejected designs.
-- Outcome-driven warnings to notify the agent of previously proposed and rejected designs.
+- Outcome-driven warnings to flag rules marked as `HARMFUL` or `IRRELEVANT` in past sessions.
+- Dynamic validation plan compiler that lists verification tests for loaded active rules.
+- Draft outcome log generation to close the feedback loop.
