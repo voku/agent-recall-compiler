@@ -37,6 +37,8 @@ Lifecycle hosts that only need the current persisted deterministic audit result 
 
 `ReviewReportReader::read()` returns `null` when no report exists. A present but invalid, mismatched, or internally inconsistent report fails explicitly. A valid result includes the typed report, canonical JSON path, and SHA-256 identity of the exact persisted JSON bytes.
 
+`ReviewReportReader::jsonPath()` returns that same canonical JSON artifact path without requiring the report to exist or creating state. Lifecycle hosts may use it for missing/invalid evidence diagnostics while keeping Recall's review directory and filename convention owner-private.
+
 The report digest is evidence identity only. A lifecycle host may bind its own acknowledgement or close-out decision to that identity, but Recall does not manufacture acknowledgement authority merely because a report exists.
 
-Hosts should not reconstruct the `reviews/<task>.blindspots.json` path, parse its JSON schema, validate its Contract/snapshot binding, or compute its digest independently.
+Hosts should not reconstruct the `reviews/<task>.blindspots.json` path, parse its JSON schema, validate its Contract/snapshot binding, or compute its digest independently. Use `ReviewReportReader::jsonPath()` when the expected path itself is needed and `ReviewReportReader::read()` when report evidence is needed.

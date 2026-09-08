@@ -32,6 +32,10 @@ final class ReviewReportReaderTest extends TestCase
     {
         $reader = new ReviewReportReader($this->root);
 
+        self::assertSame(
+            $this->root . '/.agent-recall/current/reviews/ABC-123.blindspots.json',
+            $reader->jsonPath('ABC-123', '.agent-recall/current'),
+        );
         self::assertNull($reader->read('ABC-123', '.agent-recall/current'));
         self::assertDirectoryDoesNotExist($this->root . '/.agent-recall/current/reviews');
     }
