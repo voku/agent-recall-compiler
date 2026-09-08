@@ -6,6 +6,21 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.17.3] - 2026-09-08
+
+### Added
+
+- Expose `ReviewReportReader::jsonPath()` as the supported read-only owner projection for the canonical deterministic review JSON artifact path, so lifecycle hosts can describe missing or invalid review evidence without reconstructing Recall's private `reviews/<task>.blindspots.json` layout.
+
+### Changed
+
+- `ReviewReportReader::read()` now resolves the report through the same owner path projection, keeping expected-path diagnostics and persisted evidence reads on one Recall-owned boundary.
+
+### Validation
+
+- PR #162 exact head `90086b1caac30f702a8caf912e19aef55b7a2ecb` passed PHPUnit and PHPStan on PHP 8.3, 8.4, and 8.5 plus the governed installed `agent-loop` consumer dogfood before merge.
+- The owner API merged as `5571a027a37037d9f797a17ab071b11030e617d8`; this release candidate reruns the repository release gates on top of that exact owner change.
+
 ## [0.17.2] - 2026-09-07
 
 ### Changed
