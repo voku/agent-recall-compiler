@@ -266,7 +266,7 @@ PHP);
         'query_median_ms' => round(median($queryTimes), 3),
         'query_peak_bytes' => max($queryPeaks),
         'query_deterministic' => count(array_unique($queryDigests)) === 1,
-        'lineage_identities' => count($selection->lineage->identities),
+        'lineage_identities' => count($selection->lineage->identityIds),
         'relations_traversed' => count($selection->lineage->relations),
         'candidates_returned' => count($selection->precedents),
         'lineage_truncated' => $selection->lineage->truncated,
