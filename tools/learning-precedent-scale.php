@@ -12,6 +12,12 @@ use voku\AgentLearning\LearningNoteRepository;
 use voku\AgentLearning\LearningNoteRepositoryEvidence;
 use voku\AgentLearning\LearningNoteStatus;
 use voku\AgentLearning\ValidationCase;
+use voku\AgentMap\Index\AgentMapIndex;
+use voku\AgentMap\Index\AnalysisFingerprint;
+use voku\AgentMap\Index\FileEntry;
+use voku\AgentMap\Index\IndexWriter;
+use voku\AgentMap\Index\MethodEntry;
+use voku\AgentMap\Index\SymbolEntry;
 use voku\AgentRecallCompiler\CompileRequest;
 use voku\AgentRecallCompiler\InlineCompileTask;
 use voku\AgentRecallCompiler\RecallCompiler;
@@ -34,14 +40,69 @@ $projectRoot = sys_get_temp_dir() . '/recall-learning-scale-152-' . $records . '
 $learningRoot = $projectRoot . '/.agent-loop/learning';
 $outputRoot = $projectRoot . '/.agent-loop/recall/scale-152';
 $sourcePath = $projectRoot . '/src/Unit1.php';
+$mapPath = $projectRoot . '/.agent-loop/map/php-symbols.json';
 
 try {
     mkdir($projectRoot . '/src', 0o775, true);
-    file_put_contents($sourcePath, "<?php\n\ndeclare(strict_types=1);\n\nfinal class Unit1 {}\n");
+    file_put_contents($sourcePath, <<<'PHP'
+<?php
+
+declare(strict_types=1);
+
+final class Unit1
+{
+    public function run(): void
+    {
+    }
+}
+PHP);
     $sourceHash = hash_file('sha256', $sourcePath);
     if (!is_string($sourceHash)) {
         throw new RuntimeException('Unable to hash scale source fixture.');
     }
+
+    mkdir(dirname($mapPath), 0o775, true);
+    (new IndexWriter())->write(new AgentMapIndex(
+        schemaVersion: AgentMapIndex::SCHEMA_VERSION,
+        root: $projectRoot,
+        backend: 'scale-evidence',
+        files: [
+            new FileEntry(
+                path: 'src/Unit1.php',
+                sha256: 'sha256:' . $sourceHash,
+                namespace: '',
+                symbols: [
+                    new SymbolEntry(
+                        kind: 'class',
+                        name: 'Unit1',
+                        fqn: 'Unit1',
+                        lineStart: 5,
+                        lineEnd: 10,
+                        methods: [
+                            new MethodEntry(
+                                name: 'run',
+                                visibility: 'public',
+                                lineStart: 7,
+                                lineEnd: 9,
+                                nativeReturnType: 'void',
+                                resolvedReturnType: 'void',
+                                reconciliationStatus: 'confirmed',
+                            ),
+                        ],
+                        reconciliationStatus: 'confirmed',
+                    ),
+                ],
+                semanticStatus: 'analysed',
+            ),
+        ],
+        relations: [],
+        fingerprint: new AnalysisFingerprint(
+            phpStanVersion: 'none',
+            phpStanConfigSha256: 'sha256:scale-config',
+            composerLockSha256: 'sha256:scale-lock',
+            sourceDigest: 'sha256:' . $sourceHash,
+        ),
+    ), $mapPath, 'json');
 
     $creator = new FindingCreator();
     $repository = new LearningNoteRepository();
@@ -147,7 +208,7 @@ try {
     $inlineTask = new InlineCompileTask(
         'SCALE-152',
         'Change the target unit through the bounded owner path.',
-        ['src/Unit1.php'],
+        ['Unit1::run'],
     );
 
     for ($run = 0; $run < 3; ++$run) {
@@ -158,6 +219,8 @@ try {
             learningRoot: $learningRoot,
             taskBrief: null,
             outputDirectory: $outputRoot,
+            mapIndex: $mapPath,
+            mapRoot: $projectRoot,
             compilationId: 'scale.SCALE-152',
             inlineTask: $inlineTask,
         ));
