@@ -39,6 +39,33 @@ final class AgentLearningNoteProjectionSourceTest extends TestCase
         self::assertSame(3, $selection->maximumDepth);
         self::assertSame(100, $selection->maximumResults);
         self::assertTrue($selection->truncated);
+        self::assertNull($selection->precedentsTruncated);
+        self::assertArrayHasKey('precedents_truncated', $selection->observation());
+        self::assertNull($selection->observation()['precedents_truncated']);
+    }
+
+    public function testPreservesOwnerReportedPrecedentTruncationSeparatelyFromLineageTruncation(): void
+    {
+        $selection = (new AgentLearningNoteProjectionSource(ReportedTruncationLearningLineageService::class))->forTask(
+            '/tmp/learning',
+            'TASK-123',
+        );
+
+        self::assertFalse($selection->truncated);
+        self::assertTrue($selection->precedentsTruncated);
+        self::assertFalse($selection->observation()['truncated']);
+        self::assertTrue($selection->observation()['precedents_truncated']);
+    }
+
+    public function testMalformedOwnerPrecedentTruncationFailsExplicitly(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('requires boolean precedents_truncated');
+
+        (new AgentLearningNoteProjectionSource(MalformedTruncationLearningLineageService::class))->forTask(
+            '/tmp/learning',
+            'TASK-123',
+        );
     }
 
     public function testMissingOptionalOwnerPackageIsUnavailableCapability(): void
@@ -104,6 +131,28 @@ final class ReleasedLearningLineageService
     }
 }
 
+final class ReportedTruncationLearningLineageService
+{
+    public function precedentsForTask(
+        string $learningRoot,
+        string $taskId,
+        ?string $projectRoot = null,
+    ): ReportedTruncationLearningTaskPrecedentResult {
+        return new ReportedTruncationLearningTaskPrecedentResult($taskId, true);
+    }
+}
+
+final class MalformedTruncationLearningLineageService
+{
+    public function precedentsForTask(
+        string $learningRoot,
+        string $taskId,
+        ?string $projectRoot = null,
+    ): ReportedTruncationLearningTaskPrecedentResult {
+        return new ReportedTruncationLearningTaskPrecedentResult($taskId, 'yes');
+    }
+}
+
 final class MismatchedLearningLineageService
 {
     public function precedentsForTask(
@@ -123,6 +172,28 @@ final class MalformedLearningLineageService
         ?string $projectRoot = null,
     ): LearningTaskPrecedentResult {
         return ReleasedLearningTaskPrecedentFixture::create($taskId, 'not-a-digest');
+    }
+}
+
+final readonly class ReportedTruncationLearningTaskPrecedentResult
+{
+    public function __construct(
+        private string $taskId,
+        private mixed $precedentsTruncated,
+    ) {
+    }
+
+    /** @return array<string, mixed> */
+    public function toArray(): array
+    {
+        return [
+            ...ReleasedLearningTaskPrecedentFixture::create($this->taskId, str_repeat('a', 64))->toArray(),
+            'lineage' => [
+                ...ReleasedLearningTaskPrecedentFixture::create($this->taskId, str_repeat('a', 64))->toArray()['lineage'],
+                'truncated' => false,
+            ],
+            'precedents_truncated' => $this->precedentsTruncated,
+        ];
     }
 }
 
