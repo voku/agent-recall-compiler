@@ -20,7 +20,10 @@ final class AgentLearningNoteProjectionSourceTest extends TestCase
 {
     public function testMapsReleasedBoundedOwnerProjectionWithoutPrivateStorageKnowledge(): void
     {
-        self::assertContains(InstalledVersions::getPrettyVersion('voku/agent-learning'), ['0.18.1', '0.18.2', '0.18.3']);
+        $learningVersion = InstalledVersions::getPrettyVersion('voku/agent-learning');
+        self::assertContains($learningVersion, ['0.18.1', '0.18.2', '0.18.3']);
+        $expectedPrecedentsTruncated = $learningVersion === '0.18.3' ? false : null;
+
         self::assertTrue((new AgentLearningNoteProjectionSource())->isAvailable());
 
         $selection = (new AgentLearningNoteProjectionSource(ReleasedLearningLineageService::class))->forTask(
@@ -39,9 +42,9 @@ final class AgentLearningNoteProjectionSourceTest extends TestCase
         self::assertSame(3, $selection->maximumDepth);
         self::assertSame(100, $selection->maximumResults);
         self::assertTrue($selection->truncated);
-        self::assertNull($selection->precedentsTruncated);
+        self::assertSame($expectedPrecedentsTruncated, $selection->precedentsTruncated);
         self::assertArrayHasKey('precedents_truncated', $selection->observation());
-        self::assertNull($selection->observation()['precedents_truncated']);
+        self::assertSame($expectedPrecedentsTruncated, $selection->observation()['precedents_truncated']);
     }
 
     public function testPreservesOwnerReportedPrecedentTruncationSeparatelyFromLineageTruncation(): void
