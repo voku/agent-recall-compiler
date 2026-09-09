@@ -22,6 +22,7 @@ final readonly class LearningTaskPrecedentProjection
         public int $maximumDepth,
         public int $maximumResults,
         public bool $truncated,
+        public ?bool $precedentsTruncated = null,
     ) {
     }
 
@@ -33,7 +34,8 @@ final readonly class LearningTaskPrecedentProjection
      *   relations: list<array{source_id: string, kind: string, target_id: string}>,
      *   maximum_depth: int,
      *   maximum_results: int,
-     *   truncated: bool
+     *   truncated: bool,
+     *   precedents_truncated: bool|null
      * }
      */
     public function observation(): array
@@ -46,6 +48,7 @@ final readonly class LearningTaskPrecedentProjection
             'maximum_depth' => $this->maximumDepth,
             'maximum_results' => $this->maximumResults,
             'truncated' => $this->truncated,
+            'precedents_truncated' => $this->precedentsTruncated,
         ];
     }
 }
