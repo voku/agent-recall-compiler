@@ -82,6 +82,11 @@ final readonly class AgentLearningNoteProjectionSource implements LearningNotePr
             throw new RuntimeException('Learning lineage envelope is bound to a different task id.');
         }
 
+        $precedentsTruncated = null;
+        if (array_key_exists('precedents_truncated', $data)) {
+            $precedentsTruncated = $this->boolean($data, 'precedents_truncated');
+        }
+
         return new LearningTaskPrecedentProjection(
             taskId: $ownerTaskId,
             precedents: $notes,
@@ -91,6 +96,7 @@ final readonly class AgentLearningNoteProjectionSource implements LearningNotePr
             maximumDepth: $this->positiveInteger($lineage, 'maximum_depth'),
             maximumResults: $this->positiveInteger($lineage, 'maximum_results'),
             truncated: $this->boolean($lineage, 'truncated'),
+            precedentsTruncated: $precedentsTruncated,
         );
     }
 
@@ -214,7 +220,7 @@ final readonly class AgentLearningNoteProjectionSource implements LearningNotePr
     {
         $value = $data[$key] ?? null;
         if (!is_bool($value)) {
-            throw new RuntimeException('Learning lineage envelope requires boolean ' . $key . '.');
+            throw new RuntimeException('Learning owner projection requires boolean ' . $key . '.');
         }
 
         return $value;
