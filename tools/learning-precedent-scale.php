@@ -13,8 +13,8 @@ use voku\AgentLearning\LearningNoteRepositoryEvidence;
 use voku\AgentLearning\LearningNoteStatus;
 use voku\AgentLearning\ValidationCase;
 use voku\AgentRecallCompiler\CompileRequest;
-use voku\AgentRecallCompiler\InlineCompileTask;
 use voku\AgentRecallCompiler\RecallCompiler;
+use voku\AgentRecallCompiler\TaskBrief;
 
 require dirname(__DIR__) . '/vendor/autoload.php';
 
@@ -57,13 +57,14 @@ try {
         $noteId = 'learning-note.2026-09-09.' . $suffix;
         $patternKey = 'scale.precedent.n' . $suffix;
         $relevant = $i === 1;
+        $scope = $relevant ? ['src/'] : ['unrelated/'];
 
         $finding = $creator->createValidated(
             root: $learningRoot,
             taskId: $relevant ? 'SCALE-152' : 'OTHER-152',
             session: 'session:scale-152',
             createdBy: 'scale-evidence',
-            scope: $relevant ? [] : ['unrelated/'],
+            scope: $scope,
             observation: 'A deterministic synthetic precedent record exists for bounded scale evidence.',
             evidence: [[
                 'type' => 'manual_verification',
@@ -83,7 +84,7 @@ try {
             id: $noteId,
             patternKey: $patternKey,
             status: LearningNoteStatus::ACTIVE,
-            scope: $relevant ? [] : ['unrelated/'],
+            scope: $scope,
             tags: ['bounded-precedent'],
             sourceFindings: [$finding->finding->id],
             sourceProposals: [],
@@ -143,6 +144,11 @@ try {
     $bundleDigests = [];
     $promptBytes = [];
     $observations = [];
+    $taskBrief = new TaskBrief(
+        'SCALE-152',
+        'Change the target unit through the bounded owner path.',
+        ['src/Unit1.php'],
+    );
 
     for ($run = 0; $run < 3; ++$run) {
         removeDirectory($outputRoot);
@@ -150,14 +156,10 @@ try {
         $started = hrtime(true);
         $result = (new RecallCompiler())->compile(new CompileRequest(
             learningRoot: $learningRoot,
-            taskBrief: null,
+            taskBrief: $taskBrief,
             outputDirectory: $outputRoot,
             compilationId: 'scale.SCALE-152',
-            inlineTask: new InlineCompileTask(
-                taskId: 'SCALE-152',
-                description: 'Change the target unit through the bounded owner path.',
-                targets: ['src/Unit1.php'],
-            ),
+            inlineTask: null,
         ));
         $compileTimes[] = elapsedMs($started);
         $compilePeaks[] = memory_get_peak_usage(true);
@@ -246,7 +248,8 @@ function median(array $values): float
     return $values[intdiv(count($values), 2)];
 }
 
-/** @param list<float> $values
+/**
+ * @param list<float> $values
  * @return list<float>
  */
 function rounded(array $values): array
