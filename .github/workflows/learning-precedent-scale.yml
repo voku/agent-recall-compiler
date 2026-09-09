@@ -1,0 +1,66 @@
+name: Learning precedent scale evidence
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  scale:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        records: [100, 500, 1000]
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          extensions: pdo_sqlite, sqlite3
+          tools: composer:v2
+
+      - name: Install Recall and exact released Learning owner
+        run: |
+          composer install --no-interaction --prefer-dist --no-progress
+          composer require --dev --no-interaction --prefer-dist --with-all-dependencies --no-progress voku/agent-learning:0.18.3
+
+      - name: Assert exact released owner
+        run: >-
+          php -r 'require "vendor/autoload.php";
+          $v=Composer\InstalledVersions::getPrettyVersion("voku/agent-learning");
+          if ($v !== "0.18.3") { fwrite(STDERR, "expected 0.18.3, got ".var_export($v,true).PHP_EOL); exit(1); }
+          echo "agent-learning {$v}".PHP_EOL;'
+
+      - name: Run ${{ matrix.records }}-record owner/query/full-compile evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          php tools/learning-precedent-scale.php --records=${{ matrix.records }} | tee build/learning-precedent-scale-${{ matrix.records }}.json
+          jq -e '
+            (.records == $records)
+            and (.installed_learning_version == "0.18.3")
+            and (.candidates_returned == 100)
+            and (.candidates_considered == 1)
+            and (.precedents_selected == 1)
+            and (.lineage_truncated == false)
+            and (.query_deterministic == true)
+            and (.compile_deterministic == true)
+            and (.observation_deterministic == true)
+          ' --argjson records '${{ matrix.records }}' build/learning-precedent-scale-${{ matrix.records }}.json >/dev/null
+
+      - name: Upload scale evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: learning-precedent-scale-${{ matrix.records }}-${{ github.sha }}
+          if-no-files-found: warn
+          path: build/learning-precedent-scale-${{ matrix.records }}.json
