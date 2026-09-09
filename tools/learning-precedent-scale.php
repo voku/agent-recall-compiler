@@ -13,8 +13,8 @@ use voku\AgentLearning\LearningNoteRepositoryEvidence;
 use voku\AgentLearning\LearningNoteStatus;
 use voku\AgentLearning\ValidationCase;
 use voku\AgentRecallCompiler\CompileRequest;
+use voku\AgentRecallCompiler\InlineCompileTask;
 use voku\AgentRecallCompiler\RecallCompiler;
-use voku\AgentRecallCompiler\TaskBrief;
 
 require dirname(__DIR__) . '/vendor/autoload.php';
 
@@ -144,7 +144,7 @@ try {
     $bundleDigests = [];
     $promptBytes = [];
     $observations = [];
-    $taskBrief = new TaskBrief(
+    $inlineTask = new InlineCompileTask(
         'SCALE-152',
         'Change the target unit through the bounded owner path.',
         ['src/Unit1.php'],
@@ -156,10 +156,10 @@ try {
         $started = hrtime(true);
         $result = (new RecallCompiler())->compile(new CompileRequest(
             learningRoot: $learningRoot,
-            taskBrief: $taskBrief,
+            taskBrief: null,
             outputDirectory: $outputRoot,
             compilationId: 'scale.SCALE-152',
-            inlineTask: null,
+            inlineTask: $inlineTask,
         ));
         $compileTimes[] = elapsedMs($started);
         $compilePeaks[] = memory_get_peak_usage(true);
