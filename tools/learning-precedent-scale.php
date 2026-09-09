@@ -55,7 +55,7 @@ try {
         $suffix = sprintf('%06x', $i);
         $findingId = 'finding.2026-09-09.' . $suffix;
         $noteId = 'learning-note.2026-09-09.' . $suffix;
-        $patternKey = 'scale.precedent.' . $suffix;
+        $patternKey = 'scale.precedent.n' . $suffix;
         $relevant = $i === 1;
 
         $finding = $creator->createValidated(
