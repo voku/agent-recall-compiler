@@ -21,8 +21,10 @@ final class AgentLearningNoteProjectionSourceTest extends TestCase
     public function testMapsReleasedBoundedOwnerProjectionWithoutPrivateStorageKnowledge(): void
     {
         $learningVersion = InstalledVersions::getPrettyVersion('voku/agent-learning');
-        self::assertContains($learningVersion, ['0.18.1', '0.18.2', '0.18.3']);
-        $expectedPrecedentsTruncated = $learningVersion === '0.18.3' ? false : null;
+        self::assertNotNull($learningVersion);
+        self::assertTrue(version_compare($learningVersion, '0.18.1', '>='));
+        self::assertTrue(version_compare($learningVersion, '0.19.0', '<'));
+        $expectedPrecedentsTruncated = version_compare($learningVersion, '0.18.3', '>=') ? false : null;
 
         self::assertTrue((new AgentLearningNoteProjectionSource())->isAvailable());
 
@@ -39,6 +41,15 @@ final class AgentLearningNoteProjectionSourceTest extends TestCase
         self::assertSame('current', $selection->precedents[0]->evidenceState);
         self::assertSame('Real owner projection', $selection->precedents[0]->content['title']);
         self::assertSame(['finding.real.001', 'learning-note.real'], $selection->identityIds);
+        self::assertSame(
+            [
+                ['identity_id' => 'TASK-123', 'depth' => 0],
+                ['identity_id' => 'finding.real.001', 'depth' => 1],
+                ['identity_id' => 'learning-note.real', 'depth' => 2],
+            ],
+            $selection->identityDepths,
+        );
+        self::assertSame($selection->identityDepths, $selection->observation()['identity_depths']);
         self::assertSame(3, $selection->maximumDepth);
         self::assertSame(100, $selection->maximumResults);
         self::assertTrue($selection->truncated);
