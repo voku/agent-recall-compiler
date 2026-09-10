@@ -10,8 +10,9 @@ final readonly class LearningTaskPrecedentProjection
     /**
      * @param list<LearningNotePrecedentProjection> $precedents
      * @param list<string> $identityIds
-     * @param array<string, int> $depthByIdentityId
+     * @param array<int|string, int> $depthByIdentityId
      * @param list<array{source_id: string, kind: string, target_id: string}> $relations
+     * @param list<array{identity_id: string, depth: int}> $identityDepths
      */
     public function __construct(
         public string $taskId,
@@ -23,6 +24,7 @@ final readonly class LearningTaskPrecedentProjection
         public int $maximumResults,
         public bool $truncated,
         public ?bool $precedentsTruncated = null,
+        public array $identityDepths = [],
     ) {
     }
 
@@ -30,7 +32,8 @@ final readonly class LearningTaskPrecedentProjection
      * @return array{
      *   task_id: string,
      *   identity_ids: list<string>,
-     *   depth_by_identity_id: array<string, int>,
+     *   depth_by_identity_id: array<int|string, int>,
+     *   identity_depths: list<array{identity_id: string, depth: int}>,
      *   relations: list<array{source_id: string, kind: string, target_id: string}>,
      *   maximum_depth: int,
      *   maximum_results: int,
@@ -44,11 +47,26 @@ final readonly class LearningTaskPrecedentProjection
             'task_id' => $this->taskId,
             'identity_ids' => $this->identityIds,
             'depth_by_identity_id' => $this->depthByIdentityId,
+            'identity_depths' => $this->identityDepths !== [] ? $this->identityDepths : $this->identityDepthsFromMap(),
             'relations' => $this->relations,
             'maximum_depth' => $this->maximumDepth,
             'maximum_results' => $this->maximumResults,
             'truncated' => $this->truncated,
             'precedents_truncated' => $this->precedentsTruncated,
         ];
+    }
+
+    /** @return list<array{identity_id: string, depth: int}> */
+    private function identityDepthsFromMap(): array
+    {
+        $result = [];
+        foreach ($this->depthByIdentityId as $identityId => $depth) {
+            $result[] = [
+                'identity_id' => (string) $identityId,
+                'depth' => $depth,
+            ];
+        }
+
+        return $result;
     }
 }

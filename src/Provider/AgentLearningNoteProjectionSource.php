@@ -81,6 +81,7 @@ final readonly class AgentLearningNoteProjectionSource implements LearningNotePr
         if ($identityId !== $taskId) {
             throw new RuntimeException('Learning lineage envelope is bound to a different task id.');
         }
+        $identityDepths = $this->identityDepths($lineage);
 
         $precedentsTruncated = null;
         if (array_key_exists('precedents_truncated', $data)) {
@@ -91,12 +92,13 @@ final readonly class AgentLearningNoteProjectionSource implements LearningNotePr
             taskId: $ownerTaskId,
             precedents: $notes,
             identityIds: $this->strings($lineage['identity_ids'] ?? null, 'identity_ids'),
-            depthByIdentityId: $this->depths($lineage['depth_by_identity_id'] ?? null),
+            depthByIdentityId: $this->depthMap($identityDepths),
             relations: $this->relations($lineage['relations'] ?? null),
             maximumDepth: $this->positiveInteger($lineage, 'maximum_depth'),
             maximumResults: $this->positiveInteger($lineage, 'maximum_results'),
             truncated: $this->boolean($lineage, 'truncated'),
             precedentsTruncated: $precedentsTruncated,
+            identityDepths: $identityDepths,
         );
     }
 
@@ -165,18 +167,87 @@ final readonly class AgentLearningNoteProjectionSource implements LearningNotePr
         return array_values(array_unique($result));
     }
 
-    /** @return array<string, int> */
-    private function depths(mixed $value): array
+    /**
+     * @param array<string, mixed> $lineage
+     * @return list<array{identity_id: string, depth: int}>
+     */
+    private function identityDepths(array $lineage): array
+    {
+        if (array_key_exists('identity_depths', $lineage)) {
+            return $this->losslessDepths($lineage['identity_depths']);
+        }
+
+        return $this->legacyDepths($lineage['depth_by_identity_id'] ?? null);
+    }
+
+    /** @return list<array{identity_id: string, depth: int}> */
+    private function losslessDepths(mixed $value): array
+    {
+        if (!is_array($value) || !array_is_list($value)) {
+            throw new RuntimeException('Learning lineage envelope requires identity_depths list.');
+        }
+
+        $result = [];
+        $seen = [];
+        foreach ($value as $entry) {
+            if (!is_array($entry)) {
+                throw new RuntimeException('Learning lineage envelope contains an invalid identity depth.');
+            }
+            /** @var array<string, mixed> $entry */
+            $identityId = $this->string($entry, 'identity_id', 'Learning lineage identity depth');
+            $depth = $entry['depth'] ?? null;
+            if (!is_int($depth) || $depth < 0) {
+                throw new RuntimeException('Learning lineage envelope contains an invalid identity depth.');
+            }
+            if (in_array($identityId, $seen, true)) {
+                throw new RuntimeException('Learning lineage envelope contains a duplicate identity depth.');
+            }
+            $seen[] = $identityId;
+            $result[] = [
+                'identity_id' => $identityId,
+                'depth' => $depth,
+            ];
+        }
+
+        return $result;
+    }
+
+    /** @return list<array{identity_id: string, depth: int}> */
+    private function legacyDepths(mixed $value): array
     {
         if (!is_array($value)) {
             throw new RuntimeException('Learning lineage envelope requires depth_by_identity_id.');
         }
+
         $result = [];
+        $seen = [];
         foreach ($value as $identityId => $depth) {
-            if (!is_string($identityId) || trim($identityId) === '' || !is_int($depth) || $depth < 0) {
+            $identityId = trim((string) $identityId);
+            if ($identityId === '' || !is_int($depth) || $depth < 0) {
                 throw new RuntimeException('Learning lineage envelope contains an invalid identity depth.');
             }
-            $result[trim($identityId)] = $depth;
+            if (in_array($identityId, $seen, true)) {
+                throw new RuntimeException('Learning lineage envelope contains a duplicate identity depth.');
+            }
+            $seen[] = $identityId;
+            $result[] = [
+                'identity_id' => $identityId,
+                'depth' => $depth,
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param list<array{identity_id: string, depth: int}> $identityDepths
+     * @return array<int|string, int>
+     */
+    private function depthMap(array $identityDepths): array
+    {
+        $result = [];
+        foreach ($identityDepths as $entry) {
+            $result[$entry['identity_id']] = $entry['depth'];
         }
 
         return $result;
