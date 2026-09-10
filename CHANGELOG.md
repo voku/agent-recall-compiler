@@ -146,11 +146,6 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 - PR #146 exact head `c9f0ea5a4fdf9083d46b14e1bbc0a0478fefa9fc` passed PHP 8.3/8.4/8.5 PHPUnit + PHPStan, governed context-explain dogfood, released `voku/agent-learning 0.14.0` compatibility, and completed review with all threads resolved.
 - The release PR must rerun the full PHP 8.3/8.4/8.5 matrix plus PR-only governed `agent-loop` context-explain dogfood on its exact head before merge.
 
-### Validation
-
-- PR #146 exact head `c9f0ea5a4fdf9083d46b14e1bbc0a0478fefa9fc` passed PHP 8.3/8.4/8.5 PHPUnit + PHPStan, governed context-explain dogfood, released `voku/agent-learning 0.14.0` compatibility, and completed review with all threads resolved.
-- The release PR must rerun the full PHP 8.3/8.4/8.5 matrix plus PR-only governed `agent-loop` context-explain dogfood on its exact head before merge.
-
 ## [0.13.16] - 2026-08-31
 
 ### Changed
@@ -259,7 +254,7 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ### Validation
 
-- PR #96 passed PHPUnit and PHPStan on PHP 8.3, 8.4, and 8.5 plus the governed `agent-loop` dogfood; CodeRabbit reported no actionable review thread on the final head.
+- PR #96 passed PHPUnit and PHPStan on PHP 8.3, 8.4, and 8.5 plus governed `agent-loop` dogfood; CodeRabbit reported no actionable review thread on the final head.
 ## [0.13.8] - 2026-08-19
 
 ### Added
@@ -339,7 +334,7 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ### Added
 
-- Added the bundled `todo-card-handoff` L2 recipe for self-contained durable task handoff to coding agents without chat, Session-private context, hidden reasoning, or prior-agent memory. The recipe requires repository anchors, verified/inferred separation, bounded next steps, observable acceptance, and the repository's existing task owner instead of inventing another backlog format.
+- Add the bundled `todo-card-handoff` L2 recipe for self-contained durable task handoff to coding agents without chat, Session-private context, hidden reasoning, or prior-agent memory. The recipe requires repository anchors, verified/inferred separation, bounded next steps, observable acceptance, and the repository's existing task owner instead of inventing another backlog format.
 
 ### Changed
 
@@ -376,7 +371,7 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ### Validation
 
-- The package CI matrix and pins the CLEAN/BLOCKED and
+- PR #74 passed the package CI matrix and pins the CLEAN/BLOCKED and
   anti-defect-quota contract in `RegressionHuntPromptContractTest`.
 
 ## [0.13.0] - 2026-08-15
@@ -401,9 +396,9 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ### Validation
 
-- Release remains gated on PHPUnit and PHPStan across PHP 8.3, 8.4, and 8.5.
-- The package's normal Composer install resolves against the published `agent-map 0.8.0`
-  line, proving the new constraint rather than testing an unreleased path dependency.
+- The package's normal Composer install and PHPUnit/PHPStan matrix must resolve
+  against the published `agent-map 0.8.0` line before this compatibility release
+  is tagged; no path repository or development-branch alias is used.
 
 ## [0.12.3] - 2026-08-14
 
@@ -445,7 +440,7 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 ### Changed
 
 - The journal is task-local working evidence and is not committed unless the
-  approved task or harness explicitly requires it. The technique remains opt-in:
+  approved task or harness explicitly requires the artifact. The technique remains opt-in:
   it does not add a workflow stage, mutate docs or skills, manufacture backlog,
   or promote notes to durable Learning automatically.
 
@@ -457,7 +452,7 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
   and the opt-in boundary. Regressions now bind those agent-facing surfaces.
 - PR #57 passed PHPUnit and PHPStan on PHP 8.3, 8.4 and 8.5 plus the governed
   agent-loop consumer dogfood, AccessLint and CodeRabbit; the exact merged commit
-  passed main-branch CI before this release candidate was prepared.
+  passed main-branch PHP/PHPStan CI before this release candidate was prepared.
 
 ## [0.12.1] - 2026-08-14
 
@@ -865,7 +860,9 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
   path scope overlaps the task's files **or** it shares at least one tag with
   the task. This lets a project register cross-cutting knowledge (e.g. an
   LDAP learning) by domain/system/capability instead of directory prefix, so
-  selection works the same way regardless of how a project's codebase is laid out. Purely additive: briefs and manifests without `tags` behave exactly as before.
+  selection works the same way regardless of how a project's codebase is
+  laid out. Purely additive: briefs and manifests without `tags` behave
+  exactly as before.
 - Added `SelectionReason::TAG_OVERLAP` to distinguish a tag-only match from a
   path `scope_overlap` or `global` match in `selection-report.json`.
 - Added inline `--tag LABEL` (repeatable) to `compile` for ad hoc task input.
@@ -948,6 +945,7 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 - Long CLI options that require values now reject bare `--name` tokens instead of silently treating them as empty strings.
 - Review artifact collection now honors `--root`, rejects traversal in output paths, bounds recursive session reads, and avoids pulling unrelated session notes through substring task-id matches.
 
+
 ## [0.5.2] - 2026-06-23
 
 ### Fixed
@@ -1029,6 +1027,7 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 - Add duplicate protection for event IDs and `compilation_id + guidance_id` pairs.
 - Add redaction checks for generated event records.
 - Add `meta.json` fields with schema version, compilation ID, task files, evaluated guidance, selection/exclusion reasons, selected constraint reasons, and output hashes.
+- Add `recall-log.draft.json` editable guidance outcome rows and schema documentation.
 - Add regression coverage for supplied/generated compilation IDs, evaluated-guidance ordering, event appends, duplicate retry safety, invalid outcome references, and redaction.
 
 ### Changed
@@ -1058,7 +1057,7 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 ## [0.1.1] - 2026-06-14
 
 - Emit selected hard constraints directly in `system.md` with a concrete execution contract and required validation commands.
-- Read `active_constraints_dir` from learning-root `config.json` when loading active hard constraint manifests.
+- Read `active_constraints_dir` from learning-root `config.json` when loading active hard-constraint manifests.
 - Expand root auto-discovery to the same common learning-root directories supported by `voku/agent-learning`.
 
 ## [0.1.0] - 2026-06-14
