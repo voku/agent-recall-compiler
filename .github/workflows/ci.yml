@@ -99,6 +99,29 @@ jobs:
       - name: Run governed context-explain dogfood
         run: php tools/context-explain-dogfood.php
 
+      - name: Prove released Learning 0.18.5 numeric identity bridge in installed consumer
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -r '
+          $path = "build/agent-loop/composer.json";
+          $data = json_decode(file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+          $data["require"]["voku/agent-learning"] = "0.18.5";
+          file_put_contents($path, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . PHP_EOL);
+          '
+          composer update voku/agent-learning --working-dir=build/agent-loop --with-dependencies --no-interaction --prefer-dist --no-progress
+          test "$(composer show --working-dir=build/agent-loop voku/agent-learning --format=json | php -r '$data=json_decode(stream_get_contents(STDIN), true, 512, JSON_THROW_ON_ERROR); echo $data["versions"][0];')" = "0.18.5"
+          php -r '
+          require "build/agent-loop/vendor/autoload.php";
+          $root = sys_get_temp_dir() . "/agent-recall-numeric-owner-" . bin2hex(random_bytes(6));
+          $projection = (new voku\AgentRecallCompiler\Provider\AgentLearningNoteProjectionSource())->forTask($root, "403");
+          $observation = $projection->observation();
+          $expected = [["identity_id" => "403", "depth" => 0]];
+          if (($observation["identity_depths"] ?? null) !== $expected) {
+              throw new RuntimeException("Released Learning 0.18.5 numeric identity bridge was not preserved.");
+          }
+          '
+
       - name: Upload dogfood evidence
         if: always()
         uses: actions/upload-artifact@v4
