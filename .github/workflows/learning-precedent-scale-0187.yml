@@ -53,8 +53,12 @@ jobs:
           path = Path('build/learning-precedent-scale.php')
           source = path.read_text()
 
+          version_old = "0.18.3"
+          if source.count(version_old) != 2:
+              raise SystemExit(f'expected exactly two pinned owner-version occurrences, got {source.count(version_old)}')
+          source = source.replace(version_old, "0.18.7")
+
           replacements = [
-              ("0.18.3", "0.18.7"),
               ("$relevant = $i === 1;", "$relevant = $i > ($records - 3);"),
               ("taskId: $relevant ? 'SCALE-152' : 'OTHER-152',", "taskId: 'OTHER-152',"),
               ("$expectedTruncated = $records > 100;", "$expectedTruncated = false;"),
