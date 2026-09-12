@@ -31,11 +31,19 @@ final readonly class LearningNoteRecallProvider implements ConditionalRecallProv
 
     public function collect(TaskBrief $task, RecallRootConfig $rootConfig): RecallProviderResult
     {
-        $selection = $this->source->forTask(
-            $rootConfig->root,
-            $task->id,
-            $rootConfig->projectRoot,
-        );
+        $selection = $this->source instanceof TaskAwareLearningNoteProjectionSource
+            ? $this->source->forTaskWithContext(
+                $rootConfig->root,
+                $task->id,
+                $rootConfig->projectRoot,
+                $task->files,
+                $task->tags,
+            )
+            : $this->source->forTask(
+                $rootConfig->root,
+                $task->id,
+                $rootConfig->projectRoot,
+            );
 
         $eligible = [];
         foreach ($selection->precedents as $note) {

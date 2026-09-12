@@ -15,7 +15,7 @@ use RuntimeException;
  * present, owner failures are allowed to propagate rather than being rewritten
  * as an empty observation.
  */
-final readonly class AgentLearningNoteProjectionSource implements LearningNoteProjectionSource
+final readonly class AgentLearningNoteProjectionSource implements TaskAwareLearningNoteProjectionSource
 {
     private const string DEFAULT_SERVICE_CLASS = 'voku\\AgentLearning\\LearningLineageService';
 
@@ -34,6 +34,20 @@ final readonly class AgentLearningNoteProjectionSource implements LearningNotePr
         string $taskId,
         ?string $projectRoot = null,
     ): LearningTaskPrecedentProjection {
+        return $this->forTaskWithContext($learningRoot, $taskId, $projectRoot);
+    }
+
+    /**
+     * @param list<string> $taskFiles
+     * @param list<string> $taskTags
+     */
+    public function forTaskWithContext(
+        string $learningRoot,
+        string $taskId,
+        ?string $projectRoot = null,
+        array $taskFiles = [],
+        array $taskTags = [],
+    ): LearningTaskPrecedentProjection {
         if (!$this->isAvailable()) {
             throw new RuntimeException('Installed Learning owner does not expose LearningLineageService.');
         }
@@ -44,7 +58,10 @@ final readonly class AgentLearningNoteProjectionSource implements LearningNotePr
             throw new RuntimeException('Installed Learning owner does not expose LearningLineageService::precedentsForTask().');
         }
 
-        $raw = $service->precedentsForTask($learningRoot, $taskId, $projectRoot);
+        $method = new \ReflectionMethod($service, 'precedentsForTask');
+        $raw = $method->getNumberOfParameters() >= 6
+            ? $service->precedentsForTask($learningRoot, $taskId, $projectRoot, 100, $taskFiles, $taskTags)
+            : $service->precedentsForTask($learningRoot, $taskId, $projectRoot);
         if (!is_object($raw) || !is_callable([$raw, 'toArray'])) {
             throw new RuntimeException('LearningLineageService::precedentsForTask() must return a typed projection.');
         }

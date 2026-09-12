@@ -38,7 +38,7 @@
   "require-dev": {
     "phpstan/phpstan": "^2.1",
     "phpunit/phpunit": "^11.5",
-    "voku/agent-learning": "^0.18.5"
+    "voku/agent-learning": "^0.18.7"
   },
   "autoload": {
     "psr-4": {

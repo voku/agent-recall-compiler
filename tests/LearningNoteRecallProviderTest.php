@@ -9,6 +9,7 @@ use voku\AgentRecallCompiler\Provider\LearningNotePrecedentProjection;
 use voku\AgentRecallCompiler\Provider\LearningNoteProjectionSource;
 use voku\AgentRecallCompiler\Provider\LearningNoteRecallProvider;
 use voku\AgentRecallCompiler\Provider\LearningTaskPrecedentProjection;
+use voku\AgentRecallCompiler\Provider\TaskAwareLearningNoteProjectionSource;
 use voku\AgentRecallCompiler\RecallCompilationBlockedException;
 use voku\AgentRecallCompiler\RecallRootConfig;
 use voku\AgentRecallCompiler\TaskBrief;
@@ -209,6 +210,60 @@ final class LearningNoteRecallProviderTest extends TestCase
         self::assertSame('TASK-CANONICAL-456', $requestedTaskId);
         self::assertCount(1, $result->facts);
         self::assertSame('learning_precedent_observation', $result->facts[0]->type);
+    }
+
+    public function testTaskBriefContextIsForwardedToTaskAwareOwnerSource(): void
+    {
+        $source = new class implements TaskAwareLearningNoteProjectionSource {
+            /** @var list<string> */
+            public array $taskFiles = [];
+
+            /** @var list<string> */
+            public array $taskTags = [];
+
+            public function isAvailable(): bool
+            {
+                return true;
+            }
+
+            public function forTask(
+                string $learningRoot,
+                string $taskId,
+                ?string $projectRoot = null,
+            ): LearningTaskPrecedentProjection {
+                throw new \RuntimeException('Legacy owner path should not be used for a task-aware source.');
+            }
+
+            public function forTaskWithContext(
+                string $learningRoot,
+                string $taskId,
+                ?string $projectRoot = null,
+                array $taskFiles = [],
+                array $taskTags = [],
+            ): LearningTaskPrecedentProjection {
+                $this->taskFiles = $taskFiles;
+                $this->taskTags = $taskTags;
+
+                return new LearningTaskPrecedentProjection(
+                    taskId: $taskId,
+                    precedents: [],
+                    identityIds: [],
+                    depthByIdentityId: [$taskId => 0],
+                    relations: [],
+                    maximumDepth: 3,
+                    maximumResults: 100,
+                    truncated: false,
+                );
+            }
+        };
+
+        (new LearningNoteRecallProvider($source))->collect(
+            new TaskBrief('TASK-152', 'Bounded precedent task', ['src/Auth/Login.php'], tags: ['SECURITY']),
+            new RecallRootConfig('/tmp/learning', 'constraints/active'),
+        );
+
+        self::assertSame(['src/Auth/Login.php'], $source->taskFiles);
+        self::assertSame(['SECURITY'], $source->taskTags);
     }
 
     public function testOwnerFailurePropagatesOutThroughRecall(): void

@@ -58,6 +58,32 @@ final class AgentLearningNoteProjectionSourceTest extends TestCase
         self::assertSame($expectedPrecedentsTruncated, $selection->observation()['precedents_truncated']);
     }
 
+    public function testTaskContextIsForwardedToReleasedOwnerAndLegacyOwnerStillWorks(): void
+    {
+        TaskAwareLearningLineageService::$taskFiles = [];
+        TaskAwareLearningLineageService::$taskTags = [];
+
+        $source = new AgentLearningNoteProjectionSource(TaskAwareLearningLineageService::class);
+        $selection = $source->forTaskWithContext(
+            '/tmp/learning',
+            'TASK-123',
+            taskFiles: ['src/Auth/Login.php'],
+            taskTags: ['SECURITY'],
+        );
+
+        self::assertSame('TASK-123', $selection->taskId);
+        self::assertSame(['src/Auth/Login.php'], TaskAwareLearningLineageService::$taskFiles);
+        self::assertSame(['SECURITY'], TaskAwareLearningLineageService::$taskTags);
+
+        $legacy = (new AgentLearningNoteProjectionSource(ReleasedLearningLineageService::class))->forTaskWithContext(
+            '/tmp/learning',
+            'TASK-123',
+            taskFiles: ['src/Auth/Login.php'],
+            taskTags: ['security'],
+        );
+        self::assertSame('TASK-123', $legacy->taskId);
+    }
+
     public function testPreservesOwnerReportedPrecedentTruncationSeparatelyFromLineageTruncation(): void
     {
         $selection = (new AgentLearningNoteProjectionSource(ReportedTruncationLearningLineageService::class))->forTask(
@@ -141,6 +167,33 @@ final class ReleasedLearningLineageService
         string $taskId,
         ?string $projectRoot = null,
     ): LearningTaskPrecedentResult {
+        return ReleasedLearningTaskPrecedentFixture::create($taskId, str_repeat('a', 64));
+    }
+}
+
+final class TaskAwareLearningLineageService
+{
+    /** @var list<string> */
+    public static array $taskFiles = [];
+
+    /** @var list<string> */
+    public static array $taskTags = [];
+
+    /**
+     * @param list<string> $taskFiles
+     * @param list<string> $taskTags
+     */
+    public function precedentsForTask(
+        string $learningRoot,
+        string $taskId,
+        ?string $projectRoot = null,
+        int $maximumRelatedIdentities = 100,
+        array $taskFiles = [],
+        array $taskTags = [],
+    ): LearningTaskPrecedentResult {
+        self::$taskFiles = $taskFiles;
+        self::$taskTags = $taskTags;
+
         return ReleasedLearningTaskPrecedentFixture::create($taskId, str_repeat('a', 64));
     }
 }
