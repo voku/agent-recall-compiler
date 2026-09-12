@@ -135,3 +135,40 @@ jobs:
             .agent-loop/recall/ARC-17
             .agent-loop/sessions
             .agent-loop/runs/ARC-17
+
+  context-cohort-evidence:
+    if: github.event_name == 'pull_request'
+    name: Real repository context-shape cohort
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout candidate recall compiler
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: json, mbstring, pdo_sqlite, sqlite3
+          coverage: none
+          tools: composer:v2
+
+      - name: Install candidate dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Lint cohort runner
+        run: php -l tools/context-cohort-evidence.php
+
+      - name: Run deterministic context-shape cohort
+        run: php tools/context-cohort-evidence.php
+
+      - name: Upload context cohort evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: context-cohort-${{ github.sha }}
+          if-no-files-found: error
+          path: build/context-cohort
