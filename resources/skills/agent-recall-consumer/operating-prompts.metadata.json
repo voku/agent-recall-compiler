@@ -27,15 +27,18 @@
     {
       "id": "continue-until-done",
       "title": "Continue until done",
-      "description": "Continue authorized independent slices until observable completion or a real blocker.",
+      "description": "Continue authorized independent slices until an observable done condition, resumable checkpoint, or real blocker.",
       "purpose": "recover",
       "arguments": [
         {
           "name": "done_condition",
           "type": "string",
           "required": true,
-          "description": "Observable condition that must be satisfied before the task may stop successfully.",
-          "examples": ["the approved Done When criteria are satisfied"]
+          "description": "Observable condition that must be satisfied before execution may stop successfully; it may describe final task completion or a safe resumability checkpoint.",
+          "examples": [
+            "the approved Done When criteria are satisfied",
+            "closing the current chat would not lose information required to understand completed work, remaining work, blockers, or the next safe step because that state is already represented in durable authoritative artifacts"
+          ]
         }
       ]
     },
