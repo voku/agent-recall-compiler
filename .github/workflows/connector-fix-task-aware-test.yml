@@ -1,0 +1,41 @@
+name: Connector fix task-aware test escape
+
+on:
+  push:
+    branches:
+      - chatgpt/152-task-aware-learning-precedents
+    paths:
+      - .github/workflows/connector-fix-task-aware-test.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: chatgpt/152-task-aware-learning-precedents
+          fetch-depth: 0
+      - name: Fix generated test token
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('tests/LearningNoteRecallProviderTest.php')
+          source = path.read_text()
+          old = "throw new \\\\RuntimeException('Legacy owner path should not be used for a task-aware source.');"
+          new = "throw new \\RuntimeException('Legacy owner path should not be used for a task-aware source.');"
+          if source.count(old) != 1:
+              raise SystemExit(f'expected one escaped RuntimeException token, got {source.count(old)}')
+          path.write_text(source.replace(old, new, 1))
+          PY
+          rm .github/workflows/connector-fix-task-aware-test.yml
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests/LearningNoteRecallProviderTest.php .github/workflows/connector-fix-task-aware-test.yml
+          git commit -m 'test(learning): fix task-aware source regression syntax'
+          git push origin HEAD:chatgpt/152-task-aware-learning-precedents
