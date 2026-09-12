@@ -99,6 +99,27 @@ This is intentionally distinct from other primitives:
 
 `PLAN_SUFFICIENT` remains valid, but only after the bounded challenge pass finds no material evidence-backed strengthening. The challenge frame must not manufacture backlog, architecture, commands, dependencies, or authority merely to make the second plan longer. More text is, despite centuries of management practice suggesting otherwise, not automatically more planning.
 
+## Continue to a resumable checkpoint
+
+A request such as "continue the work until we reach a safe point where this chat could be closed" does not need another recipe. Use the existing L1 `continue-until-done` contract with a checkpoint-shaped `done_condition`:
+
+```json
+{
+  "id": "continue-until-done",
+  "arguments": {
+    "done_condition": "closing the current chat would not lose information required to understand completed work, remaining work, blockers, or the next safe step because that state is already represented in durable authoritative artifacts"
+  }
+}
+```
+
+This changes the stopping condition, not workflow authority. The executor still works only within the current approved scope, validates bounded slices, and cannot self-approve human, owner, reviewer, accepted-risk, destructive, irreversible, or security decisions.
+
+A successful resumability checkpoint means the useful state needed to continue is no longer trapped in transient conversation context. Remaining work may still exist. What matters is that a fresh agent can re-ground from existing durable authoritative artifacts and continue without chat archaeology.
+
+Use the repository's existing durable owner for any resume-critical state. Do not invent a second backlog, duplicate whole issue histories, persist hidden reasoning, or convert a work package into execution authority merely to satisfy the checkpoint. Persist only information required to resume correctly.
+
+If the checkpoint cannot be satisfied without widening scope or authority, or resume-critical state has no authorized durable owner, the correct result is `HUMAN_DECISION_REQUIRED` / `BLOCKED`, not a pretend save point.
+
 ## Practical selection
 
 ```text
@@ -110,6 +131,9 @@ Have an existing plan but want a stronger planning pass that treats it as the mi
 
 Need bounded autonomous continuation across already-authorized slices?
     -> select the Recall-owned L1 `continue-until-done`
+
+Need to continue until the current chat can be closed without losing resume-critical state?
+    -> use `continue-until-done` with a resumability-shaped `done_condition`
 
 Need a context-independent execution control?
     -> select a direct L1 contract
