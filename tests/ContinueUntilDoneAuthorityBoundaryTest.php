@@ -32,6 +32,60 @@ final class ContinueUntilDoneAuthorityBoundaryTest extends TestCase
         self::assertStringContainsString('Unresolved required blockers still prevent final success', $template);
     }
 
+    public function testCatalogUsesDoneConditionForResumableCheckpointInsteadOfSecondRecipe(): void
+    {
+        $metadata = json_decode(
+            (string) file_get_contents(dirname(__DIR__) . '/resources/skills/agent-recall-consumer/operating-prompts.metadata.json'),
+            true,
+            512,
+            JSON_THROW_ON_ERROR,
+        );
+
+        self::assertIsArray($metadata['recipes'] ?? null);
+
+        $ids = [];
+        $continueRecipe = null;
+        foreach ($metadata['recipes'] as $recipe) {
+            if (!is_array($recipe)) {
+                continue;
+            }
+
+            if (is_string($recipe['id'] ?? null)) {
+                $ids[] = $recipe['id'];
+            }
+            if (($recipe['id'] ?? null) === 'continue-until-done') {
+                $continueRecipe = $recipe;
+            }
+        }
+
+        self::assertIsArray($continueRecipe);
+        self::assertNotContains('continue-to-checkpoint', $ids);
+        self::assertStringContainsString('resumable checkpoint', (string) ($continueRecipe['description'] ?? ''));
+
+        $arguments = is_array($continueRecipe['arguments'] ?? null) ? $continueRecipe['arguments'] : [];
+        $doneCondition = null;
+        foreach ($arguments as $argument) {
+            if (is_array($argument) && ($argument['name'] ?? null) === 'done_condition') {
+                $doneCondition = $argument;
+                break;
+            }
+        }
+
+        self::assertIsArray($doneCondition);
+        self::assertStringContainsString('safe resumability checkpoint', (string) ($doneCondition['description'] ?? ''));
+
+        $examples = is_array($doneCondition['examples'] ?? null) ? $doneCondition['examples'] : [];
+        $exampleTextParts = [];
+        foreach ($examples as $example) {
+            if (is_string($example)) {
+                $exampleTextParts[] = $example;
+            }
+        }
+        $exampleText = implode("\n", $exampleTextParts);
+        self::assertStringContainsString('closing the current chat', $exampleText);
+        self::assertStringContainsString('durable authoritative artifacts', $exampleText);
+    }
+
     private function template(): string
     {
         $manifest = json_decode(
