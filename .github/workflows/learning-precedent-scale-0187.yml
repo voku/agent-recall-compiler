@@ -1,0 +1,131 @@
+name: Learning 0.18.7 task-aware precedent scale
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/learning-precedent-scale-0187.yml
+
+permissions:
+  contents: read
+
+jobs:
+  scale:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        records: [100, 500, 1000]
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          extensions: pdo_sqlite, sqlite3
+          tools: composer:v2
+
+      - name: Install current Recall and released Learning owner
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Assert exact released owner
+        run: >-
+          php -r 'require "vendor/autoload.php";
+          $v=Composer\InstalledVersions::getPrettyVersion("voku/agent-learning");
+          if ($v !== "0.18.7") { fwrite(STDERR, "expected 0.18.7, got ".var_export($v,true).PHP_EOL); exit(1); }
+          echo "agent-learning {$v}".PHP_EOL;'
+
+      - name: Materialize the prior pinned scale harness with the corrected falsifier
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          curl --fail --location --silent --show-error \
+            https://raw.githubusercontent.com/voku/agent-recall-compiler/ec993a9d07843b60efb04231b98b362a9ba831d9/tools/learning-precedent-scale.php \
+            --output build/learning-precedent-scale.php
+          python <<'PY'
+          from pathlib import Path
+
+          path = Path('build/learning-precedent-scale.php')
+          source = path.read_text()
+
+          replacements = [
+              ("0.18.3", "0.18.7"),
+              ("$relevant = $i === 1;", "$relevant = $i > ($records - 3);"),
+              ("taskId: $relevant ? 'SCALE-152' : 'OTHER-152',", "taskId: 'OTHER-152',"),
+              ("$expectedTruncated = $records > 100;", "$expectedTruncated = false;"),
+              ("requireEvidence(count($selection->precedents) === 100, 'Learning owner did not return exactly 100 bounded precedents.');", "requireEvidence(count($selection->precedents) === 3, 'Learning owner did not return exactly three task-relevant precedents.');"),
+              ("requireEvidence(($observation['candidates_returned'] ?? null) === 100, 'Recall did not receive exactly 100 bounded candidates.');", "requireEvidence(($observation['candidates_returned'] ?? null) === 3, 'Recall did not receive exactly three task-relevant candidates.');"),
+              ("requireEvidence(($observation['candidates_considered'] ?? null) === 1, 'Recall considered more than the one deliberately relevant precedent.');", "requireEvidence(($observation['candidates_considered'] ?? null) === 3, 'Recall did not consider all three deliberately relevant precedents.');"),
+              ("requireEvidence(($observation['precedents_selected'] ?? null) === 1, 'Recall did not select exactly one precedent.');", "requireEvidence(($observation['precedents_selected'] ?? null) === 3, 'Recall did not select exactly three precedents.');"),
+              ("requireEvidence(($observation['selected_precedent_ids'] ?? null) === ['learning-note.2026-09-09.000001'], 'Recall selected an unexpected precedent.');", "requireEvidence(($observation['selected_precedent_ids'] ?? null) === $expectedSelectedPrecedentIds, 'Recall selected an unexpected precedent.');"),
+          ]
+          for old, new in replacements:
+              count = source.count(old)
+              if count != 1:
+                  raise SystemExit(f'expected exactly one replacement target, got {count}: {old}')
+              source = source.replace(old, new, 1)
+
+          old_call = """        $selection = $lineage->precedentsForTask(
+              $learningRoot,
+              'SCALE-152',
+              projectRoot: $projectRoot,
+              maximumRelatedIdentities: 100,
+          );"""
+          new_call = """        $selection = $lineage->precedentsForTask(
+              $learningRoot,
+              'SCALE-152',
+              projectRoot: $projectRoot,
+              maximumRelatedIdentities: 100,
+              taskFiles: ['src/Unit1.php'],
+              taskTags: [],
+          );"""
+          if source.count(old_call) != 1:
+              raise SystemExit(f'expected one owner query target, got {source.count(old_call)}')
+          source = source.replace(old_call, new_call, 1)
+
+          observation_anchor = """    $observation = $observations[0];
+          requireEvidence(($observation['candidates_returned'] ?? null) === 3, 'Recall did not receive exactly three task-relevant candidates.');"""
+          observation_replacement = """    $observation = $observations[0];
+          $expectedSelectedPrecedentIds = [];
+          for ($index = $records - 2; $index <= $records; ++$index) {
+              $expectedSelectedPrecedentIds[] = 'learning-note.2026-09-09.' . sprintf('%06x', $index);
+          }
+          requireEvidence(($observation['candidates_returned'] ?? null) === 3, 'Recall did not receive exactly three task-relevant candidates.');"""
+          if source.count(observation_anchor) != 1:
+              raise SystemExit(f'expected one observation insertion target, got {source.count(observation_anchor)}')
+          source = source.replace(observation_anchor, observation_replacement, 1)
+
+          path.write_text(source)
+          PY
+          php -l build/learning-precedent-scale.php
+
+      - name: Run ${{ matrix.records }}-record owner/query/full-compile evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          php build/learning-precedent-scale.php --records=${{ matrix.records }} | tee build/learning-precedent-scale-${{ matrix.records }}.json
+          jq -e '
+            (.records == $records)
+            and (.installed_learning_version == "0.18.7")
+            and (.candidates_returned == 3)
+            and (.candidates_considered == 3)
+            and (.precedents_selected == 3)
+            and (.lineage_truncated == false)
+            and (.precedents_truncated == false)
+            and (.query_deterministic == true)
+            and (.compile_deterministic == true)
+            and (.observation_deterministic == true)
+          ' --argjson records '${{ matrix.records }}' build/learning-precedent-scale-${{ matrix.records }}.json >/dev/null
+
+      - name: Upload scale evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: learning-precedent-scale-0187-${{ matrix.records }}-${{ github.sha }}
+          if-no-files-found: warn
+          path: build/learning-precedent-scale-${{ matrix.records }}.json
