@@ -231,7 +231,7 @@ final class LearningNoteRecallProviderTest extends TestCase
                 string $taskId,
                 ?string $projectRoot = null,
             ): LearningTaskPrecedentProjection {
-                throw new \\RuntimeException('Legacy owner path should not be used for a task-aware source.');
+                throw new \RuntimeException('Legacy owner path should not be used for a task-aware source.');
             }
 
             public function forTaskWithContext(
