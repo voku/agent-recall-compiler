@@ -46,8 +46,9 @@ final class LearningPrecedentRendererTest extends TestCase
             $this->fact('learning-note.git', 'git.repository.state', render: true),
         ], new RecallResult([$guidance], [], []));
 
-        self::assertStringContainsString('covered_by_active_guidance', $markdown);
-        self::assertStringContainsString('proposal.active.001', $markdown);
+        self::assertStringContainsString('### Omitted Learning Precedents', $markdown);
+        self::assertStringContainsString('**covered_by_active_guidance**: 1', $markdown);
+        self::assertStringNotContainsString('proposal.active.001', $markdown);
         self::assertStringNotContainsString('Prior case guidance body.', $markdown);
         self::assertStringNotContainsString('Never infer repository state.', $markdown);
     }
@@ -59,9 +60,42 @@ final class LearningPrecedentRendererTest extends TestCase
             $this->fact('learning-note.budget', 'pattern.budget', render: false, omissionReason: 'context_budget'),
         ], new RecallResult([], [], []));
 
-        self::assertStringContainsString('historical precedent with `review_needed`', $markdown);
-        self::assertStringContainsString('omitted from full prose by deterministic precedent context budget', $markdown);
+        self::assertStringContainsString('**review_needed**: 1', $markdown);
+        self::assertStringContainsString('**context_budget**: 1', $markdown);
+        self::assertStringNotContainsString('learning-note.stale', $markdown);
+        self::assertStringNotContainsString('learning-note.budget', $markdown);
         self::assertStringNotContainsString('Prior case guidance body.', $markdown);
+    }
+
+    public function testOmittedTailDoesNotScaleWithCandidatesConsidered(): void
+    {
+        $renderer = new LearningPrecedentRenderer();
+        $result = new RecallResult([], [], []);
+        $rendered = $this->fact('learning-note.rendered', 'pattern.rendered', render: true);
+
+        $small = $renderer->render([$rendered, ...$this->budgetFacts(5)], $result);
+        $large = $renderer->render([$rendered, ...$this->budgetFacts(100)], $result);
+
+        self::assertStringContainsString('**context_budget**: 5', $small);
+        self::assertStringContainsString('**context_budget**: 100', $large);
+        self::assertStringNotContainsString('learning-note.budget.099', $large);
+        self::assertLessThan(32, strlen($large) - strlen($small));
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function budgetFacts(int $count): array
+    {
+        $facts = [];
+        for ($index = 0; $index < $count; ++$index) {
+            $facts[] = $this->fact(
+                sprintf('learning-note.budget.%03d', $index),
+                'pattern.budget.' . $index,
+                render: false,
+                omissionReason: 'context_budget',
+            );
+        }
+
+        return $facts;
     }
 
     /** @return array<string, mixed> */

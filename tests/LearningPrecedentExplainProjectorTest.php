@@ -51,11 +51,24 @@ final class LearningPrecedentExplainProjectorTest extends TestCase
         self::assertSame('machine_fact_only', $items[0]['use']);
     }
 
+    public function testKeepsPerPrecedentOmissionDetailForDurableAudit(): void
+    {
+        $items = (new LearningPrecedentExplainProjector())->project([
+            $this->fact(['scope_match'], render: false, omissionReason: 'context_budget'),
+        ], new RecallResult([], [], []));
+
+        self::assertCount(1, $items);
+        self::assertFalse($items[0]['selected']);
+        self::assertSame('context_budget', $items[0]['why_not'] ?? null);
+        self::assertSame('agent-learning:learning-note.real', $items[0]['source_ref']);
+        self::assertSame(['finding.real.001'], $items[0]['evidence_ids']);
+    }
+
     /**
      * @param list<string> $reasons
      * @return array<string, mixed>
      */
-    private function fact(array $reasons): array
+    private function fact(array $reasons, bool $render = true, ?string $omissionReason = null): array
     {
         return [
             'id' => 'learning-precedent.learning-note.real',
@@ -70,7 +83,8 @@ final class LearningPrecedentExplainProjectorTest extends TestCase
                 'source_findings' => ['finding.real.001'],
                 'evidence_state' => 'current',
                 'match_reasons' => $reasons,
-                'render' => true,
+                'render' => $render,
+                'omission_reason' => $omissionReason,
             ],
         ];
     }

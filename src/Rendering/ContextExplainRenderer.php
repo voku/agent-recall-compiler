@@ -36,7 +36,16 @@ final readonly class ContextExplainRenderer
             '',
         ];
 
+        /** @var array<string, int> $omittedLearningPrecedents */
+        $omittedLearningPrecedents = [];
         foreach ($items as $item) {
+            if ($item['kind'] === 'learning_precedent' && !$item['selected']) {
+                $reason = $this->omissionReason($item['why_not'] ?? null);
+                $omittedLearningPrecedents[$reason] = ($omittedLearningPrecedents[$reason] ?? 0) + 1;
+
+                continue;
+            }
+
             $lines[] = '### ' . $item['what'];
             $lines[] = '- **State**: ' . strtoupper($item['state']);
             $lines[] = '- **Selected**: ' . ($item['selected'] ? 'yes' : 'no');
@@ -56,6 +65,31 @@ final readonly class ContextExplainRenderer
             $lines[] = '';
         }
 
+        if ($omittedLearningPrecedents !== []) {
+            ksort($omittedLearningPrecedents, SORT_STRING);
+            $lines[] = '### Omitted Learning Precedents';
+            $lines[] = '- **Omitted from runtime context**: ' . array_sum($omittedLearningPrecedents);
+            $lines[] = '- **Durable detail**: complete per-precedent provenance remains in `selection-report.json.context_explain`.';
+            foreach ($omittedLearningPrecedents as $reason => $count) {
+                $lines[] = '- **' . $reason . '**: ' . $count;
+            }
+            $lines[] = '';
+        }
+
         return rtrim(implode("\n", $lines));
+    }
+
+    private function omissionReason(?string $reason): string
+    {
+        if ($reason === null || trim($reason) === '') {
+            return 'unspecified';
+        }
+
+        $reason = trim($reason);
+        if (str_starts_with($reason, 'covered_by_active_guidance:')) {
+            return 'covered_by_active_guidance';
+        }
+
+        return $reason;
     }
 }

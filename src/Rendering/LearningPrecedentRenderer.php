@@ -36,6 +36,8 @@ final readonly class LearningPrecedentRenderer
             '',
         ];
         $rendered = 0;
+        /** @var array<string, int> $omitted */
+        $omitted = [];
         foreach ($precedents as $fact) {
             $payload = is_array($fact['payload'] ?? null) ? $fact['payload'] : [];
             $noteId = $this->string($payload['note_id'] ?? null) ?? $this->string($fact['id'] ?? null) ?? 'unknown';
@@ -45,17 +47,18 @@ final readonly class LearningPrecedentRenderer
             $omissionReason = $this->string($payload['omission_reason'] ?? null);
 
             if ($patternKey !== null && isset($activePatterns[$patternKey])) {
-                $lines[] = '- `' . $noteId . '` suppressed as full precedent: `covered_by_active_guidance` (`' . $activePatterns[$patternKey] . '`, pattern `' . $patternKey . '`).';
+                $omitted['covered_by_active_guidance'] = ($omitted['covered_by_active_guidance'] ?? 0) + 1;
+
                 continue;
             }
             if (($payload['render'] ?? false) !== true) {
-                if ($state === 'review_needed') {
-                    $lines[] = '- `' . $noteId . '` is historical precedent with `review_needed`; current case prose is intentionally withheld until re-grounded.';
-                } elseif ($state === 'no_hashable_repository_evidence') {
-                    $lines[] = '- `' . $noteId . '` has no hashable repository evidence; it is retained as historical context, not current execution advice.';
-                } elseif ($omissionReason === 'context_budget') {
-                    $lines[] = '- `' . $noteId . '` omitted from full prose by deterministic precedent context budget.';
-                }
+                $reason = match ($state) {
+                    'review_needed' => 'review_needed',
+                    'no_hashable_repository_evidence' => 'no_hashable_repository_evidence',
+                    default => $omissionReason ?? 'not_rendered',
+                };
+                $omitted[$reason] = ($omitted[$reason] ?? 0) + 1;
+
                 continue;
             }
 
@@ -101,7 +104,18 @@ final readonly class LearningPrecedentRenderer
             ++$rendered;
         }
 
-        if ($rendered === 0 && count($lines) === 3) {
+        if ($omitted !== []) {
+            ksort($omitted, SORT_STRING);
+            $lines[] = '### Omitted Learning Precedents';
+            $lines[] = '- **Omitted from full precedent prose**: ' . array_sum($omitted);
+            $lines[] = '- **Durable detail**: per-precedent facts and provenance remain in `facts.json` and `selection-report.json.context_explain`.';
+            foreach ($omitted as $reason => $count) {
+                $lines[] = '- **' . $reason . '**: ' . $count;
+            }
+            $lines[] = '';
+        }
+
+        if ($rendered === 0 && $omitted === []) {
             return '';
         }
 
