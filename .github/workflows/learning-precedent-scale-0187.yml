@@ -74,34 +74,23 @@ jobs:
                   raise SystemExit(f'expected exactly one replacement target, got {count}: {old}')
               source = source.replace(old, new, 1)
 
-          old_call = """        $selection = $lineage->precedentsForTask(
-              $learningRoot,
-              'SCALE-152',
-              projectRoot: $projectRoot,
-              maximumRelatedIdentities: 100,
-          );"""
-          new_call = """        $selection = $lineage->precedentsForTask(
-              $learningRoot,
-              'SCALE-152',
-              projectRoot: $projectRoot,
-              maximumRelatedIdentities: 100,
-              taskFiles: ['src/Unit1.php'],
-              taskTags: [],
-          );"""
-          if source.count(old_call) != 1:
-              raise SystemExit(f'expected one owner query target, got {source.count(old_call)}')
-          source = source.replace(old_call, new_call, 1)
+          call_anchor = "maximumRelatedIdentities: 100,"
+          if source.count(call_anchor) != 1:
+              raise SystemExit(f'expected one owner query parameter anchor, got {source.count(call_anchor)}')
+          source = source.replace(
+              call_anchor,
+              call_anchor + "\n            taskFiles: ['src/Unit1.php'],\n            taskTags: [],",
+              1,
+          )
 
-          observation_anchor = """    $observation = $observations[0];
-          requireEvidence(($observation['candidates_returned'] ?? null) === 3, 'Recall did not receive exactly three task-relevant candidates.');"""
+          observation_anchor = "    $observation = $observations[0];"
+          if source.count(observation_anchor) != 1:
+              raise SystemExit(f'expected one observation anchor, got {source.count(observation_anchor)}')
           observation_replacement = """    $observation = $observations[0];
           $expectedSelectedPrecedentIds = [];
           for ($index = $records - 2; $index <= $records; ++$index) {
               $expectedSelectedPrecedentIds[] = 'learning-note.2026-09-09.' . sprintf('%06x', $index);
-          }
-          requireEvidence(($observation['candidates_returned'] ?? null) === 3, 'Recall did not receive exactly three task-relevant candidates.');"""
-          if source.count(observation_anchor) != 1:
-              raise SystemExit(f'expected one observation insertion target, got {source.count(observation_anchor)}')
+          }"""
           source = source.replace(observation_anchor, observation_replacement, 1)
 
           path.write_text(source)
