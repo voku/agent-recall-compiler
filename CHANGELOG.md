@@ -6,6 +6,22 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.17.5] - 2026-09-12
+
+### Added
+
+- Forward the current task identity to Learning's bounded precedent owner query, so Recall selects task-relevant retained experience without falling back to repository-wide discovery.
+
+### Fixed
+
+- Preserve numeric task identities in Learning's lineage depth projection. PHP normalizes numeric array keys to integers; Recall now retains their string identity rather than rejecting valid owner output.
+- Keep the runtime omission tail bounded while preserving complete per-precedent audit provenance in Recall-owned evidence.
+
+### Validation
+
+- The exact release candidate must pass PHPUnit and PHPStan on PHP 8.3, 8.4, and 8.5 plus the installed `agent-loop` consumer proof that pins released Learning 0.18.5 and exercises numeric task id `403`.
+- This patch supersedes the published `0.17.4` package source for numeric task-id lineage. Existing release tags remain immutable; the marker targets this release-ready commit only.
+
 ## [0.17.3] - 2026-09-08
 
 ### Added
