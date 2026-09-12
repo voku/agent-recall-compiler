@@ -87,7 +87,9 @@ When the compiler cannot reconstruct a stronger explanation from emitted evidenc
 
 ## Outputs and authority boundary
 
-`selection-report.json` contains the machine-readable `context_explain` projection. `system.md` renders the same information under `Context Explain Plan` for a receiving agent.
+`selection-report.json` contains the complete machine-readable `context_explain` projection for deterministic audit and replay. `system.md` renders full provenance for context actually exposed to the receiving agent. Learning precedents omitted from runtime prose are represented there only by a bounded reason/count summary; their individual source, evidence, state, and `why_not` detail remains in `selection-report.json.context_explain`.
+
+The same boundary applies to the Learning precedent section itself: rendered precedents keep their useful case detail, while non-rendered precedents are summarized by omission reason instead of consuming one runtime line per considered candidate. Runtime context therefore scales with rendered facts plus a bounded omission summary rather than with every candidate considered.
 
 The canonical `recall.bundle.json` remains the source evidence. The explain plan is derived from already-bound facts and selection results, and `selection-report.json` remains covered by the normal compile output hashes. No new lifecycle or evidence authority is introduced.
 
