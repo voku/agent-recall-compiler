@@ -58,7 +58,7 @@ final class ContinueUntilDoneAuthorityBoundaryTest extends TestCase
             }
         }
 
-        self::assertNotNull($continueRecipe);
+        self::assertIsArray($continueRecipe);
         self::assertNotContains('continue-to-checkpoint', $ids);
         self::assertStringContainsString('resumable checkpoint', (string) ($continueRecipe['description'] ?? ''));
 
@@ -71,11 +71,17 @@ final class ContinueUntilDoneAuthorityBoundaryTest extends TestCase
             }
         }
 
-        self::assertNotNull($doneCondition);
+        self::assertIsArray($doneCondition);
         self::assertStringContainsString('safe resumability checkpoint', (string) ($doneCondition['description'] ?? ''));
 
         $examples = is_array($doneCondition['examples'] ?? null) ? $doneCondition['examples'] : [];
-        $exampleText = implode("\n", array_filter($examples, 'is_string'));
+        $exampleTextParts = [];
+        foreach ($examples as $example) {
+            if (is_string($example)) {
+                $exampleTextParts[] = $example;
+            }
+        }
+        $exampleText = implode("\n", $exampleTextParts);
         self::assertStringContainsString('closing the current chat', $exampleText);
         self::assertStringContainsString('durable authoritative artifacts', $exampleText);
     }
