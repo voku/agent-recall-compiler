@@ -6,6 +6,17 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.17.6] - 2026-09-13
+
+### Added
+
+- Make resumable checkpoint an explicit `continue-until-done` prompt primitive and use case, ensuring structured task resumption across session boundaries.
+- Allow `voku/agent-map ^0.13.0` beside existing 0.10, 0.11, and 0.12 compatibility lines.
+
+### Validation
+
+- `composer ci` passed with PHPUnit (319 tests, 1768 assertions) and PHPStan Level Max static analysis with zero errors.
+
 ## [0.17.5] - 2026-09-12
 
 ### Added
