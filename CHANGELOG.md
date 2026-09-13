@@ -6,7 +6,12 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
-## [0.17.6] - 2026-09-13
+## [0.17.7] - 2026-09-13
+
+### Added
+
+- Add typed consumer and maintainer resource scoping to `PackageResources`: `consumerSkills()` exposes `agent-recall-consumer`, and `maintainerSkills()` exposes `agent-recall-compiler-maintainer`.
+
 
 ### Added
 
