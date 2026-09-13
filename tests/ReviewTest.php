@@ -110,6 +110,25 @@ final class ReviewTest extends TestCase
         self::assertStringContainsString('.agent-loop/sessions/2026-06-28-work/checkpoints/001-validation.md', $prompt);
     }
 
+    public function testPromptPreservesLatestDecisionFromOversizedRelatedSessionArtifact(): void
+    {
+        $this->write('.agent-recall/current/meta.json', '{"task_id":"ABC-123","task_files":[]}');
+        $this->write('.agent-recall/current/validation-plan.md', 'Run composer test.');
+        $this->write('.agent-loop/sessions/2026-06-28-work/session.json', '{"task_id":"ABC-123"}');
+        $this->write(
+            '.agent-loop/sessions/2026-06-28-work/decisions.md',
+            str_repeat("Earlier decision.\n", 400) . 'LATEST_DECISION_MARKER',
+        );
+
+        $prompt = (new ReviewPromptBuilder($this->root))->buildBlindSpotPrompt(
+            (new BlindSpotReviewer($this->root))->review('ABC-123', '.agent-recall/current'),
+            '.agent-recall/current',
+        );
+
+        self::assertStringContainsString('LATEST_DECISION_MARKER', $prompt);
+        self::assertStringContainsString('[middle truncated]', $prompt);
+    }
+
     public function testReviewCliHelpAndCodeCommand(): void
     {
         $this->write('.agent-recall/current/meta.json', '{"task_id":"ABC-123","task_files":["src/Foo.php"]}');

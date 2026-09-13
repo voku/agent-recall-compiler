@@ -13,6 +13,9 @@ final class ReviewPromptBuilder
 {
     private const int MAX_BYTES = 5000;
     private const int MAX_SESSION_FILE_BYTES = 2097152;
+    private const string MIDDLE_TRUNCATION_MARKER = "\n[middle truncated]\n";
+    private const int SESSION_HEAD_BYTES = 2490;
+    private const int SESSION_TAIL_BYTES = 2490;
 
     public function __construct(private readonly string $workspacePath) {}
 
@@ -207,10 +210,42 @@ final class ReviewPromptBuilder
         if (!is_file($path) || !is_readable($path)) {
             return;
         }
+
+        $size = filesize($path);
+        if (is_int($size) && $size > self::MAX_BYTES && $this->isAppendOrientedSessionArtifact($relative)) {
+            $content = $this->headAndTail($path, $size);
+            if ($content !== null) {
+                $artifacts[$relative] = $content;
+
+                return;
+            }
+        }
+
         $content = file_get_contents($path, false, null, 0, self::MAX_BYTES + 1);
         if ($content !== false) {
             $artifacts[$relative] = strlen($content) > self::MAX_BYTES ? rtrim(substr($content, 0, self::MAX_BYTES)) . "\n[truncated]" : rtrim($content);
         }
+    }
+
+    private function isAppendOrientedSessionArtifact(string $relative): bool
+    {
+        return preg_match('#\A\.agent-loop/sessions/[^/]+/(?:decisions|assumptions)\.md\z#', $relative) === 1;
+    }
+
+    private function headAndTail(string $path, int $size): ?string
+    {
+        $tailOffset = $size - self::SESSION_TAIL_BYTES;
+        if ($tailOffset < 0) {
+            return null;
+        }
+
+        $head = file_get_contents($path, false, null, 0, self::SESSION_HEAD_BYTES);
+        $tail = file_get_contents($path, false, null, $tailOffset, self::SESSION_TAIL_BYTES);
+        if (!is_string($head) || !is_string($tail)) {
+            return null;
+        }
+
+        return rtrim($head) . self::MIDDLE_TRUNCATION_MARKER . ltrim($tail) . "\n[truncated]";
     }
 
     /**
