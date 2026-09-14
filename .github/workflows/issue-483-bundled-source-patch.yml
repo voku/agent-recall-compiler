@@ -54,57 +54,53 @@ jobs:
           marker = "    public function testOperatingPromptWithoutSourceOrManifestStillFailsClosed(): void\n"
           if content.count(marker) != 1:
               raise SystemExit(f'{test_path}: expected missing-source test marker exactly once')
-          unknown_test = """    public function testUnknownOperatingPromptSourceFailsClosed(): void
-    {
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('compile --operating-prompt-source must be bundled');
-
-        (new CompileCommand(reportToStdout: false))->run([
-            '--root',
-            $this->root,
-            '--task',
-            'BUNDLED-SOURCE-UNKNOWN',
-            '--description',
-            'Review the implementation as a first draft.',
-            '--operating-prompt-source',
-            'remote',
-            '--output-dir',
-            $this->root . '/unknown-source-output',
-            '--compilation-id',
-            'compilation.BUNDLED-SOURCE-UNKNOWN.fixed',
-        ]);
-    }
-
-"""
+          unknown_test = (
+              "    public function testUnknownOperatingPromptSourceFailsClosed(): void\n"
+              "    {\n"
+              "        $this->expectException(InvalidArgumentException::class);\n"
+              "        $this->expectExceptionMessage('compile --operating-prompt-source must be bundled');\n"
+              "\n"
+              "        (new CompileCommand(reportToStdout: false))->run([\n"
+              "            '--root',\n"
+              "            $this->root,\n"
+              "            '--task',\n"
+              "            'BUNDLED-SOURCE-UNKNOWN',\n"
+              "            '--description',\n"
+              "            'Review the implementation as a first draft.',\n"
+              "            '--operating-prompt-source',\n"
+              "            'remote',\n"
+              "            '--output-dir',\n"
+              "            $this->root . '/unknown-source-output',\n"
+              "            '--compilation-id',\n"
+              "            'compilation.BUNDLED-SOURCE-UNKNOWN.fixed',\n"
+              "        ]);\n"
+              "    }\n"
+              "\n"
+          )
           p.write_text(content.replace(marker, unknown_test + marker, 1))
 
           skill_path = 'resources/skills/agent-recall-consumer/SKILL.md'
           p = Path(skill_path)
           content = p.read_text()
-          old_block = """The bundled manifest is:
-
-```text
-resources/skills/agent-recall-consumer/operating-prompts.json
-```
-
-From an installed Composer dependency:
-
-```text
-vendor/voku/agent-recall-compiler/resources/skills/agent-recall-consumer/operating-prompts.json
-```
-
-Callers still select every recipe and provide every required argument explicitly. Bundling the catalog does not create hidden defaults.
-"""
-          new_block = """The standalone CLI resolves the shipped consumer catalog through Recall owner truth:
-
-```text
---operating-prompt-source bundled
-```
-
-PHP hosts that need the manifest path use `BundledOperatingPromptManifest::consumer()` instead of reconstructing package layout.
-
-Callers still select every recipe and provide every required argument explicitly. Bundling the catalog does not create hidden defaults.
-"""
+          old_block = (
+              "The bundled manifest is:\n\n"
+              "```text\n"
+              "resources/skills/agent-recall-consumer/operating-prompts.json\n"
+              "```\n\n"
+              "From an installed Composer dependency:\n\n"
+              "```text\n"
+              "vendor/voku/agent-recall-compiler/resources/skills/agent-recall-consumer/operating-prompts.json\n"
+              "```\n\n"
+              "Callers still select every recipe and provide every required argument explicitly. Bundling the catalog does not create hidden defaults.\n"
+          )
+          new_block = (
+              "The standalone CLI resolves the shipped consumer catalog through Recall owner truth:\n\n"
+              "```text\n"
+              "--operating-prompt-source bundled\n"
+              "```\n\n"
+              "PHP hosts that need the manifest path use `BundledOperatingPromptManifest::consumer()` instead of reconstructing package layout.\n\n"
+              "Callers still select every recipe and provide every required argument explicitly. Bundling the catalog does not create hidden defaults.\n"
+          )
           if content.count(old_block) != 1:
               raise SystemExit(f'{skill_path}: expected ownership-path block exactly once')
           content = content.replace(old_block, new_block, 1)
