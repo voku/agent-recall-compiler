@@ -77,8 +77,41 @@ final class RecallPromptBuilder
             $md[] = "## Navigation Facts";
             $sourceRefs = [];
             foreach ($navigationFacts as $fact) {
-                $sourceRef = is_string($fact['source_ref'] ?? null) ? $fact['source_ref'] : 'unknown';
-                $sourceRefs[$sourceRef] = true;
+                $payload = is_array($fact['payload'] ?? null) ? $fact['payload'] : [];
+                $filePath = is_string($payload['path'] ?? null) ? $payload['path'] : null;
+                if ($filePath === null) {
+                    $sourceRef = is_string($fact['source_ref'] ?? null) ? $fact['source_ref'] : 'unknown';
+                    $sourceRefs[$sourceRef] = true;
+                    continue;
+                }
+
+                $symbols = is_array($payload['symbols'] ?? null) ? $payload['symbols'] : [];
+                if ($symbols === []) {
+                    $md[] = "- `" . $filePath . "`";
+                    continue;
+                }
+
+                $md[] = "- `" . $filePath . "`";
+                foreach ($symbols as $symbol) {
+                    if (!is_array($symbol) || !is_string($symbol['fqn'] ?? null)) {
+                        continue;
+                    }
+                    $lineStart = is_int($symbol['line_start'] ?? null) ? $symbol['line_start'] : 0;
+                    $lineEnd = is_int($symbol['line_end'] ?? null) ? $symbol['line_end'] : 0;
+                    $lineRange = $lineEnd > $lineStart ? $lineStart . '-' . $lineEnd : (string) $lineStart;
+                    $kind = is_string($symbol['kind'] ?? null) && $symbol['kind'] !== '' ? $symbol['kind'] . ' ' : '';
+                    $md[] = "  - " . $kind . "`" . $symbol['fqn'] . "` (lines " . $lineRange . ")";
+                    $methods = is_array($symbol['methods'] ?? null) ? $symbol['methods'] : [];
+                    foreach ($methods as $method) {
+                        if (!is_array($method) || !is_string($method['name'] ?? null)) {
+                            continue;
+                        }
+                        $mStart = is_int($method['line_start'] ?? null) ? $method['line_start'] : 0;
+                        $mEnd = is_int($method['line_end'] ?? null) ? $method['line_end'] : 0;
+                        $mRange = $mEnd > $mStart ? $mStart . '-' . $mEnd : (string) $mStart;
+                        $md[] = "    - `" . $method['name'] . "()` (lines " . $mRange . ")";
+                    }
+                }
             }
             foreach (array_keys($sourceRefs) as $sourceRef) {
                 $md[] = "- " . $sourceRef;

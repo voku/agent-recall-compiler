@@ -6,6 +6,10 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+### Fixed
+
+- Project payload-backed map navigation facts in `RecallPromptBuilder::buildSystemMd()`. When a task declares known files, exact symbols, classes, methods, and line ranges are now rendered into `system.md` under `## Navigation Facts` instead of collapsing into a solitary map index path, removing unnecessary coding-agent source rediscovery. Closes #174.
+
 ## [0.17.8] - 2026-09-14
 
 ### Fixed
