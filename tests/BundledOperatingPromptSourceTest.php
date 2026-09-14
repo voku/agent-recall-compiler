@@ -81,6 +81,27 @@ final class BundledOperatingPromptSourceTest extends TestCase
         self::assertStringContainsString('CLEAN remains valid', $system);
     }
 
+    public function testUnknownOperatingPromptSourceFailsClosed(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('compile --operating-prompt-source must be bundled');
+
+        (new CompileCommand(reportToStdout: false))->run([
+            '--root',
+            $this->root,
+            '--task',
+            'BUNDLED-SOURCE-UNKNOWN',
+            '--description',
+            'Review the implementation as a first draft.',
+            '--operating-prompt-source',
+            'remote',
+            '--output-dir',
+            $this->root . '/unknown-source-output',
+            '--compilation-id',
+            'compilation.BUNDLED-SOURCE-UNKNOWN.fixed',
+        ]);
+    }
+
     public function testOperatingPromptWithoutSourceOrManifestStillFailsClosed(): void
     {
         $request = json_encode([

@@ -8,6 +8,7 @@ use InvalidArgumentException;
 use LogicException;
 use RuntimeException;
 use voku\AgentMap\Context\EditContextPolicy;
+use voku\AgentRecallCompiler\BundledOperatingPromptManifest;
 use voku\AgentRecallCompiler\CanonicalJson;
 use voku\AgentRecallCompiler\Compilation\RecallCompilationService;
 use voku\AgentRecallCompiler\Context\ContextExplainProjector;
@@ -83,8 +84,15 @@ final class CompileCommand
         }
 
         $operatingPromptManifests = $parsed->stringOptions('operating-prompt-manifest');
+        $operatingPromptSource = $parsed->stringOption('operating-prompt-source');
+        if ($operatingPromptSource !== null) {
+            if ($operatingPromptSource !== 'bundled') {
+                throw new InvalidArgumentException('compile --operating-prompt-source must be bundled');
+            }
+            $operatingPromptManifests[] = BundledOperatingPromptManifest::consumer();
+        }
         if ($task->operatingPrompts !== [] && $operatingPromptManifests === []) {
-            throw new InvalidArgumentException('compile operating prompts require at least one --operating-prompt-manifest');
+            throw new InvalidArgumentException('compile operating prompts require --operating-prompt-source bundled or at least one --operating-prompt-manifest');
         }
 
         $outputDir = $parsed->stringOption('output-dir') ?? '.';
