@@ -6,6 +6,17 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.17.8] - 2026-09-14
+
+### Fixed
+
+- Preserve both the earliest and latest content from oversized append-oriented Session `decisions.md` and `assumptions.md` artifacts in review prompts using a bounded head+tail projection, so recent decisions no longer disappear behind the 5 KB head truncation boundary.
+
+### Validation
+
+- Exact product commit `1efd48487431dd9c122c7a6257af8dd3f920647c` passed PHPUnit and PHPStan on PHP 8.3, 8.4, and 8.5 in Actions run `34779676024`.
+
+
 ## [0.17.7] - 2026-09-13
 
 ### Added
