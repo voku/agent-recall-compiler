@@ -110,7 +110,7 @@ final class BundledOperatingPromptSourceTest extends TestCase
         ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
 
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('compile operating prompts require at least one --operating-prompt-manifest');
+        $this->expectExceptionMessage('compile operating prompts require --operating-prompt-source bundled or at least one --operating-prompt-manifest');
 
         (new CompileCommand(reportToStdout: false))->run([
             '--root',
