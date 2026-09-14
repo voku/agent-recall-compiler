@@ -1,0 +1,126 @@
+name: Apply issue 483 bundled source correction
+
+on:
+  push:
+    branches:
+      - test/483-bundled-operating-prompt-source
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: test/483-bundled-operating-prompt-source
+
+      - name: Apply exact owner-boundary patch
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              p = Path(path)
+              content = p.read_text()
+              count = content.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected exactly one match, got {count}')
+              p.write_text(content.replace(old, new, 1))
+
+          compile_path = 'src/Command/CompileCommand.php'
+          replace_once(
+              compile_path,
+              'use voku\\AgentRecallCompiler\\CanonicalJson;\n',
+              'use voku\\AgentRecallCompiler\\BundledOperatingPromptManifest;\nuse voku\\AgentRecallCompiler\\CanonicalJson;\n',
+          )
+          replace_once(
+              compile_path,
+              "        $operatingPromptManifests = $parsed->stringOptions('operating-prompt-manifest');\n        if ($task->operatingPrompts !== [] && $operatingPromptManifests === []) {\n            throw new InvalidArgumentException('compile operating prompts require at least one --operating-prompt-manifest');\n        }\n",
+              "        $operatingPromptManifests = $parsed->stringOptions('operating-prompt-manifest');\n        $operatingPromptSource = $parsed->stringOption('operating-prompt-source');\n        if ($operatingPromptSource !== null) {\n            if ($operatingPromptSource !== 'bundled') {\n                throw new InvalidArgumentException('compile --operating-prompt-source must be bundled');\n            }\n            $operatingPromptManifests[] = BundledOperatingPromptManifest::consumer();\n        }\n        if ($task->operatingPrompts !== [] && $operatingPromptManifests === []) {\n            throw new InvalidArgumentException('compile operating prompts require --operating-prompt-source bundled or at least one --operating-prompt-manifest');\n        }\n",
+          )
+
+          replace_once(
+              'src/Cli.php',
+              '        fwrite(STDOUT, "  --operating-prompt JSON  Task-selected operating prompt request. Repeatable.\\n");\n        fwrite(STDOUT, "  --operating-prompt-manifest PATH  Versioned operating prompt manifest. Repeatable.\\n");\n',
+              '        fwrite(STDOUT, "  --operating-prompt JSON  Task-selected operating prompt request. Repeatable.\\n");\n        fwrite(STDOUT, "  --operating-prompt-source bundled  Use the Recall-owned bundled consumer manifest.\\n");\n        fwrite(STDOUT, "  --operating-prompt-manifest PATH  Versioned custom operating prompt manifest. Repeatable.\\n");\n',
+          )
+
+          test_path = 'tests/BundledOperatingPromptSourceTest.php'
+          p = Path(test_path)
+          content = p.read_text()
+          marker = "    public function testOperatingPromptWithoutSourceOrManifestStillFailsClosed(): void\n"
+          if content.count(marker) != 1:
+              raise SystemExit(f'{test_path}: expected missing-source test marker exactly once')
+          unknown_test = """    public function testUnknownOperatingPromptSourceFailsClosed(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('compile --operating-prompt-source must be bundled');
+
+        (new CompileCommand(reportToStdout: false))->run([
+            '--root',
+            $this->root,
+            '--task',
+            'BUNDLED-SOURCE-UNKNOWN',
+            '--description',
+            'Review the implementation as a first draft.',
+            '--operating-prompt-source',
+            'remote',
+            '--output-dir',
+            $this->root . '/unknown-source-output',
+            '--compilation-id',
+            'compilation.BUNDLED-SOURCE-UNKNOWN.fixed',
+        ]);
+    }
+
+"""
+          p.write_text(content.replace(marker, unknown_test + marker, 1))
+
+          skill_path = 'resources/skills/agent-recall-consumer/SKILL.md'
+          p = Path(skill_path)
+          content = p.read_text()
+          old_block = """The bundled manifest is:
+
+```text
+resources/skills/agent-recall-consumer/operating-prompts.json
+```
+
+From an installed Composer dependency:
+
+```text
+vendor/voku/agent-recall-compiler/resources/skills/agent-recall-consumer/operating-prompts.json
+```
+
+Callers still select every recipe and provide every required argument explicitly. Bundling the catalog does not create hidden defaults.
+"""
+          new_block = """The standalone CLI resolves the shipped consumer catalog through Recall owner truth:
+
+```text
+--operating-prompt-source bundled
+```
+
+PHP hosts that need the manifest path use `BundledOperatingPromptManifest::consumer()` instead of reconstructing package layout.
+
+Callers still select every recipe and provide every required argument explicitly. Bundling the catalog does not create hidden defaults.
+"""
+          if content.count(old_block) != 1:
+              raise SystemExit(f'{skill_path}: expected ownership-path block exactly once')
+          content = content.replace(old_block, new_block, 1)
+          old_arg = '--operating-prompt-manifest vendor/voku/agent-recall-compiler/resources/skills/agent-recall-consumer/operating-prompts.json'
+          occurrences = content.count(old_arg)
+          if occurrences != 3:
+              raise SystemExit(f'{skill_path}: expected three bundled manifest CLI examples, got {occurrences}')
+          content = content.replace(old_arg, '--operating-prompt-source bundled')
+          p.write_text(content)
+
+      - name: Commit correction
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/Command/CompileCommand.php src/Cli.php tests/BundledOperatingPromptSourceTest.php resources/skills/agent-recall-consumer/SKILL.md
+          git diff --cached --check
+          git commit -m 'feat(cli): resolve bundled operating prompts through owner API'
+          git push origin HEAD:test/483-bundled-operating-prompt-source
