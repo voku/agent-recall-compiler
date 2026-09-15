@@ -712,6 +712,43 @@ final class RecallCompilerTest extends TestCase
         $engine->decide($task, $activeGuidance, [], [], [], $retiredProposals);
     }
 
+    public function testDecidesSelectsGuidanceThatSupersedesARetiredProposalOnTheSameTarget(): void
+    {
+        // Replacing a memory row retires the old proposal with superseded_by pointing at its
+        // successor. Treating that retirement as a contradiction blocked the successor forever.
+        $activeGuidance = [
+            new RecallGuidance('g-new', 'REPLACE', 'memory', 'memory.auth_rule', ['src/Auth'], 'Old wording', 'New wording', 'Reason', 'Boundary', ['make test'], 'applied'),
+        ];
+        $retiredProposals = [
+            new RecallRetirement('g-old', 'Superseded by g-new.', ['src/Auth'], 'REPLACE', 'memory.auth_rule', [], 'g-new'),
+            new RecallRetirement('g-older', 'Superseded by g-new.', ['src/Auth'], 'ADD', 'memory.auth_rule', [], 'g-new'),
+        ];
+
+        $engine = new RecallDecisionEngine();
+        $task = new TaskBrief('ITPNG-123', 'Implement auth logic', ['src/Auth/OAuth.php']);
+
+        $result = $engine->decide($task, $activeGuidance, [], [], [], $retiredProposals);
+
+        self::assertSame(['g-new'], array_map(static fn (RecallGuidance $g): string => $g->id, $result->selectedGuidance));
+    }
+
+    public function testDecidesStillBlocksWhenTheRetirementNamesADifferentSuccessor(): void
+    {
+        $activeGuidance = [
+            new RecallGuidance('g-new', 'REPLACE', 'memory', 'memory.auth_rule', ['src/Auth'], 'Old wording', 'New wording', 'Reason', 'Boundary', ['make test'], 'applied'),
+        ];
+        $retiredProposals = [
+            new RecallRetirement('g-old', 'Superseded by g-other.', ['src/Auth'], 'REPLACE', 'memory.auth_rule', [], 'g-other'),
+        ];
+
+        $engine = new RecallDecisionEngine();
+        $task = new TaskBrief('ITPNG-123', 'Implement auth logic', ['src/Auth/OAuth.php']);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage("Conflict: Selected guidance 'g-new' targets 'memory.auth_rule', which contradicts retired proposal 'g-old'");
+        $engine->decide($task, $activeGuidance, [], [], [], $retiredProposals);
+    }
+
     public function testPromptBuilderFormatsOutputs(): void
     {
         $task = new TaskBrief('ITPNG-123', 'Task description', ['src/Auth/OAuth.php']);

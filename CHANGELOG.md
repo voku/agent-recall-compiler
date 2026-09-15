@@ -6,6 +6,10 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+### Fixed
+
+- Stop blocking guidance that replaced a retired proposal. `RecallDecisionEngine` rejected every selected guidance whose target matched a retired proposal, including the proposal named in that retirement's `superseded_by`, so replacing a memory or skill row blocked its own successor. `RecallRetirement` now carries `supersededBy` (read from `superseded_by`), and only retirements that do not name the selected guidance still count as contradictions.
+
 ## [0.17.9] - 2026-09-14
 
 ### Added

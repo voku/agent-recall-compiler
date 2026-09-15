@@ -275,10 +275,15 @@ final class RecallDecisionEngine
 
         // 8. Contradiction warning: selected guidance targets a rule that was retired for cause.
         // Same reasoning as rejected proposals: an unrelated broad target like MEMORY.md must not
-        // trip this, so only in-scope retirements ($selectedRetirements) are checked.
+        // trip this, so only in-scope retirements ($selectedRetirements) are checked. A retirement
+        // that names the selected guidance as its successor is the replacement itself, not a
+        // contradiction of it.
         foreach ($selectedGuidance as $g) {
             if ($g->target !== null && trim($g->target) !== '') {
                 foreach ($selectedRetirements as $ret) {
+                    if ($ret->supersededBy === $g->id) {
+                        continue;
+                    }
                     if ($ret->target !== null && trim($ret->target) !== '' && $g->target === $ret->target) {
                         throw new RecallCompilationBlockedException(sprintf(
                             "Conflict: Selected guidance '%s' targets '%s', which contradicts retired proposal '%s' (Retirement reason: %s).",
