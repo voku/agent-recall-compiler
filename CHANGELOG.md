@@ -4,9 +4,13 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
-## [Unreleased]
+## [0.17.11] - 2026-09-17
 
-## [0.17.10] - 2026-09-15
+### Added
+
+- Allow `voku/agent-map` `^0.14.0`.
+- Discover configured `learning_root` from `.agent-loop/init.json` in `PathResolver`.
+
 
 ### Fixed
 
