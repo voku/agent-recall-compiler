@@ -66,6 +66,34 @@ final class DefaultPathTest extends TestCase
         }
     }
 
+    public function testDiscoversConfiguredLearningRootFromInitJson(): void
+    {
+        $project = $this->tempDir();
+        mkdir($project . '/.agent-loop', 0o775, true);
+        mkdir($project . '/infra/doc/agent-learning/findings', 0o775, true);
+        file_put_contents($project . '/.agent-loop/init.json', json_encode([
+            'paths' => [
+                'learning_root' => 'infra/doc/agent-learning',
+            ],
+        ], JSON_THROW_ON_ERROR));
+        $previous = getcwd();
+
+        try {
+            chdir($project);
+
+            $root = (new PathResolver())->resolve();
+            self::assertSame($project . '/infra/doc/agent-learning', $root);
+
+            $explicitRoot = (new PathResolver())->resolve($project);
+            self::assertSame($project . '/infra/doc/agent-learning', $explicitRoot);
+        } finally {
+            if (is_string($previous)) {
+                chdir($previous);
+            }
+            $this->remove($project);
+        }
+    }
+
     private function tempDir(): string
     {
         $path = sys_get_temp_dir() . '/agent-recall-default-' . bin2hex(random_bytes(6));
