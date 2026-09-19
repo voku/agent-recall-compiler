@@ -4,6 +4,12 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.18.0] - 2026-09-19
+
+### Changed
+
+- Require `voku/agent-map ^0.15.0`, the released Map preparation-owner baseline used by first-party consumers.
+
 ## [0.17.11] - 2026-09-17
 
 ### Added
