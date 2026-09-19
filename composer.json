@@ -33,7 +33,7 @@
   ],
   "require": {
     "php": "^8.3",
-    "voku/agent-map": "^0.15.0"
+    "voku/agent-map": "^0.16.0"
   },
   "require-dev": {
     "phpstan/phpstan": "^2.1",
