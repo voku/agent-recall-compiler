@@ -73,6 +73,9 @@ final readonly class RecallCompiler
         if ($request->mapSearchIndex !== null) {
             array_push($tokens, '--map-search-index', $request->mapSearchIndex);
         }
+        foreach ($request->operatingPrompts as $operatingPrompt) {
+            array_push($tokens, '--operating-prompt', CanonicalJson::encode($operatingPrompt->toArray()));
+        }
         foreach ($request->operatingPromptManifests as $manifest) {
             array_push($tokens, '--operating-prompt-manifest', $manifest);
         }
