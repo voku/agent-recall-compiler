@@ -15,6 +15,7 @@ use RuntimeException;
  */
 final readonly class BundledOperatingPromptManifest
 {
+    /** @return non-empty-string */
     public static function consumer(): string
     {
         $path = PackageResources::consumerOperatingPrompts();

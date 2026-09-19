@@ -7,10 +7,11 @@ namespace voku\AgentRecallCompiler;
 use InvalidArgumentException;
 
 /**
- * Bounded inline task input for hosts that already know the concrete edit target.
+ * Bounded inline task input for hosts that already know the concrete task identity.
  *
- * This is the typed embedding equivalent of Recall's standalone inline CLI input.
- * Hosts should not construct CompileCommand tokens to use it.
+ * Targets are optional for context-only compilation such as durable handoff prompt
+ * construction. This mirrors Recall's standalone inline CLI input without requiring
+ * hosts to invent a code target that does not exist.
  */
 final readonly class InlineCompileTask
 {
@@ -38,9 +39,6 @@ final readonly class InlineCompileTask
             $normalizedTargets[] = $target;
         }
         $normalizedTargets = array_values(array_unique($normalizedTargets));
-        if ($normalizedTargets === []) {
-            throw new InvalidArgumentException('targets must contain at least one target.');
-        }
 
         $this->taskId = $taskId;
         $this->description = $description;

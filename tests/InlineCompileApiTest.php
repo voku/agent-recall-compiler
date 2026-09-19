@@ -14,8 +14,10 @@ use voku\AgentMap\Index\FileEntry;
 use voku\AgentMap\Index\IndexWriter;
 use voku\AgentMap\Index\MethodEntry;
 use voku\AgentMap\Index\SymbolEntry;
+use voku\AgentRecallCompiler\BundledOperatingPromptManifest;
 use voku\AgentRecallCompiler\CompileRequest;
 use voku\AgentRecallCompiler\InlineCompileTask;
+use voku\AgentRecallCompiler\OperatingPromptRequest;
 use voku\AgentRecallCompiler\RecallCompiler;
 
 final class InlineCompileApiTest extends TestCase
@@ -119,12 +121,50 @@ PHP);
         );
     }
 
-    public function testInlineTaskRejectsEmptyTargetSet(): void
+    public function testEmbeddedCompilerAcceptsContextOnlyOperatingPrompt(): void
+    {
+        $output = $this->root . '/recall/HANDOFF-1';
+
+        $result = (new RecallCompiler())->compile(new CompileRequest(
+            learningRoot: $this->root,
+            taskBrief: null,
+            outputDirectory: $output,
+            operatingPromptManifests: [BundledOperatingPromptManifest::consumer()],
+            inlineTask: new InlineCompileTask(
+                taskId: 'HANDOFF-1',
+                description: 'Prepare a durable handoff without inventing a code target.',
+                targets: [],
+            ),
+            operatingPrompts: [new OperatingPromptRequest('todo-card-handoff')],
+        ));
+
+        self::assertSame('HANDOFF-1', json_decode(
+            (string) file_get_contents($result->bundlePath()),
+            true,
+            512,
+            JSON_THROW_ON_ERROR,
+        )['task']['id'] ?? null);
+        self::assertStringContainsString(
+            '### todo-card-handoff (L2)',
+            (string) file_get_contents($result->systemPath()),
+        );
+    }
+
+    public function testCompileRequestRejectsDuplicateOperatingPromptSelection(): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('targets must contain at least one target.');
+        $this->expectExceptionMessage('inline operating prompt selected more than once: todo-card-handoff');
 
-        new InlineCompileTask('INLINE-1', '', []);
+        new CompileRequest(
+            learningRoot: $this->root,
+            taskBrief: null,
+            outputDirectory: $this->root . '/out',
+            inlineTask: new InlineCompileTask('HANDOFF-1', '', []),
+            operatingPrompts: [
+                new OperatingPromptRequest('todo-card-handoff'),
+                new OperatingPromptRequest('todo-card-handoff'),
+            ],
+        );
     }
 
     private function map(): AgentMapIndex

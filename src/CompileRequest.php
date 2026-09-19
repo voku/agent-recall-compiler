@@ -18,6 +18,7 @@ final readonly class CompileRequest
      * @param list<non-empty-string> $operatingPromptManifests
      * @param list<non-empty-string> $documentManifests
      * @param list<non-empty-string> $editFocus
+     * @param list<OperatingPromptRequest> $operatingPrompts
      */
     public function __construct(
         public string $learningRoot,
@@ -35,6 +36,7 @@ final readonly class CompileRequest
         public ?string $feedback = null,
         public ?KanbanContextProjection $kanbanContextProjection = null,
         public ?InlineCompileTask $inlineTask = null,
+        public array $operatingPrompts = [],
     ) {
         $this->assertNonEmpty($this->learningRoot, 'learningRoot');
         $this->assertOptionalNonEmpty($this->taskBrief, 'taskBrief');
@@ -48,6 +50,7 @@ final readonly class CompileRequest
         $this->assertStringList($this->operatingPromptManifests, 'operatingPromptManifests');
         $this->assertStringList($this->documentManifests, 'documentManifests');
         $this->assertStringList($this->editFocus, 'editFocus');
+        $this->assertOperatingPrompts($this->operatingPrompts);
 
         if ($this->taskBrief !== null && $this->inlineTask !== null) {
             throw new InvalidArgumentException('taskBrief and inlineTask are mutually exclusive.');
@@ -87,6 +90,21 @@ final readonly class CompileRequest
             if (!is_string($value) || trim($value) === '') {
                 throw new InvalidArgumentException($name . ' must contain only non-empty strings.');
             }
+        }
+    }
+
+    /** @param list<mixed> $requests */
+    private function assertOperatingPrompts(array $requests): void
+    {
+        $seen = [];
+        foreach ($requests as $request) {
+            if (!$request instanceof OperatingPromptRequest) {
+                throw new InvalidArgumentException('operatingPrompts must contain only OperatingPromptRequest instances.');
+            }
+            if (isset($seen[$request->id])) {
+                throw new InvalidArgumentException('inline operating prompt selected more than once: ' . $request->id);
+            }
+            $seen[$request->id] = true;
         }
     }
 }

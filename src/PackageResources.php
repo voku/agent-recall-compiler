@@ -56,6 +56,7 @@ final class PackageResources
         return is_file($path) ? $path : null;
     }
 
+    /** @return non-empty-string */
     public static function consumerOperatingPrompts(): string
     {
         return dirname(__DIR__) . '/' . self::OPERATING_PROMPTS;
