@@ -10,12 +10,13 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 - Require `voku/agent-map ^0.15.0`, the released Map preparation-owner baseline used by first-party consumers.
 
-## Unreleased
+## [0.19.0] - 2026-09-19
 
 ### Added
 
 - Let typed `CompileRequest` carry explicit `OperatingPromptRequest` selections so embedding hosts can use Recall-owned operating recipes without reconstructing `--operating-prompt` CLI JSON.
 - Allow `InlineCompileTask` to represent context-only inline compilation without fake code targets, matching the existing standalone compile semantics used by durable handoff construction.
+- Reject duplicate typed operating-prompt selections during direct PHP construction, matching the CLI validation boundary.
 
 ## [0.17.11] - 2026-09-17
 
