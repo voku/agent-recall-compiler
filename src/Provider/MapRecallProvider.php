@@ -13,6 +13,7 @@ use voku\AgentMap\Index\FileEntry;
 use voku\AgentMap\Index\IndexReader;
 use voku\AgentMap\Search\Embedding\CorpusEmbeddingProvider;
 use voku\AgentMap\Search\HybridSearch;
+use voku\AgentMap\Search\SearchReadinessInspector;
 use voku\AgentMap\Search\SearchIndexStore;
 use voku\AgentRecallCompiler\RecallRootConfig;
 use voku\AgentRecallCompiler\TaskBrief;
@@ -211,23 +212,31 @@ final readonly class MapRecallProvider implements RecallProvider
         if (strlen($query) < self::MIN_QUERY_LENGTH) {
             return [$this->searchStatusFact('skipped', 'task description is too short to be a search query')];
         }
-        if (!is_file($this->searchDatabase)) {
-            return [$this->searchStatusFact('missing', 'no search index at ' . $this->searchDatabase . '; run "agent-map search-index build"')];
-        }
-        if (!SearchIndexStore::supportsFts5()) {
-            return [$this->searchStatusFact('unavailable', 'this PHP build has no SQLite FTS5 support')];
+
+        $readiness = (new SearchReadinessInspector())->inspect($map, $this->indexPath, $this->searchDatabase);
+        if (!$readiness->isReady()) {
+            $reason = $readiness->message ?? 'Search readiness is not established.';
+            if ($readiness->recoveryCommand !== null) {
+                $reason .= ' Recovery: ' . $readiness->recoveryCommand;
+            }
+
+            return [$this->searchStatusFact(
+                $readiness->state,
+                $reason,
+                [
+                    'reason_code' => $readiness->reason,
+                    'message' => $readiness->message,
+                    'database_path' => $readiness->databasePath,
+                    'map_snapshot' => $readiness->mapSnapshot,
+                    'search_index_snapshot' => $readiness->searchSnapshot,
+                    'recovery_command' => $readiness->recoveryCommand,
+                ],
+            )];
         }
 
         $store = new SearchIndexStore($this->searchDatabase);
-        $mapSnapshot = $map->fingerprint === null ? 'sha256:none' : $map->fingerprint->sourceDigest;
-        $indexSnapshot = $store->meta('map_snapshot') ?? 'sha256:none';
-        if ($indexSnapshot !== $mapSnapshot) {
-            return [$this->searchStatusFact(
-                'stale',
-                'the search index was built from a different map; run "agent-map search-index refresh"',
-                ['map_snapshot' => $mapSnapshot, 'search_index_snapshot' => $indexSnapshot],
-            )];
-        }
+        $mapSnapshot = $readiness->mapSnapshot;
+        $indexSnapshot = $readiness->searchSnapshot;
 
         $result = (new HybridSearch(embeddings: $this->corpusProvider($store)))
             ->search($map, $store, $query, $this->searchLimit);
@@ -264,7 +273,7 @@ final readonly class MapRecallProvider implements RecallProvider
         )];
     }
 
-    /** @param array<string, string> $extra */
+    /** @param array<string, mixed> $extra */
     private function searchStatusFact(string $status, string $reason, array $extra = []): RecallFact
     {
         return new RecallFact(
