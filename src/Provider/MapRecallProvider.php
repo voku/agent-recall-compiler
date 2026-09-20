@@ -287,27 +287,14 @@ final readonly class MapRecallProvider implements RecallProvider
     }
 
     /**
-     * Restores the weighting the stored vectors were written with, exactly as the agent-map CLI
-     * does. Refitting here would produce a different vector space and silently compare query
-     * vectors against neighbours that were never in it; a null provider degrades to
-     * structural+lexical and says so in the fact payload.
+     * Ask Map to restore the weighting the stored vectors were written with. Refitting here would
+     * produce a different vector space and silently compare query vectors against neighbours that
+     * were never in it; a null provider degrades to structural+lexical and says so in the fact
+     * payload.
      */
     private function corpusProvider(SearchIndexStore $store): ?CorpusEmbeddingProvider
     {
-        if (!$store->enableVectorSupport() || $store->vectorCount() === 0) {
-            return null;
-        }
-
-        $state = json_decode((string) $store->meta('embedding_state'), true);
-        if (!is_array($state) || !is_string($state['revision'] ?? null) || !is_array($state['weights'] ?? null)) {
-            return null;
-        }
-
-        $provider = new CorpusEmbeddingProvider();
-        /** @var array{revision: string, weights: array<string, float>} $state */
-        $provider->restore($state);
-
-        return $provider->model()->fingerprint() === $store->meta('embedding_fingerprint') ? $provider : null;
+        return $store->semanticProvider();
     }
 
     private function withRuntimeRoot(AgentMapIndex $map): AgentMapIndex

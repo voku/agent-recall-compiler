@@ -4,6 +4,12 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.22.1] - 2026-09-20
+
+### Changed
+
+- Delegate Search embedding-provider restoration from `MapRecallProvider` to Map's typed `SearchIndexStore::semanticProvider()` owner API.
+
 ## [0.22.0] - 2026-09-20
 
 ### Changed

@@ -89,6 +89,15 @@ final class MapSearchCandidatesTest extends TestCase
         self::assertContains('src/Mail/DunningMailer.php', $paths);
     }
 
+    public function testSemanticEmbeddingRestorationStaysAtTheMapOwnerBoundary(): void
+    {
+        $source = file_get_contents(dirname(__DIR__) . '/src/Provider/MapRecallProvider.php');
+        self::assertIsString($source);
+        self::assertStringContainsString('return $store->semanticProvider();', $source);
+        self::assertStringNotContainsString("meta('embedding_state')", $source);
+        self::assertStringNotContainsString("meta('embedding_fingerprint')", $source);
+    }
+
     /**
      * Without sqlite-vec the semantic channel is missing, and a result set that hid that would make
      * a later ranking comparison meaningless.
