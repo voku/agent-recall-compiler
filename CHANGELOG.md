@@ -4,6 +4,13 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.22.0] - 2026-09-20
+
+### Changed
+
+- Consume Map 0.18's typed `SearchReadinessInspector` for Search currentness, capability, snapshot identity, and recovery projection instead of reconstructing Search metadata in Recall.
+- Refuse unverifiable Map snapshots and empty or stale Search projections explicitly in Recall navigation facts.
+
 ## [0.21.0] - 2026-09-20
 
 ### Changed

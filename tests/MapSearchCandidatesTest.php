@@ -14,6 +14,7 @@ use voku\AgentMap\Index\IndexWriter;
 use voku\AgentMap\Index\MethodEntry;
 use voku\AgentMap\Index\SymbolEntry;
 use voku\AgentMap\Search\ChunkExtractor;
+use voku\AgentMap\Search\ChunkPolicy;
 use voku\AgentMap\Search\SearchIndexStore;
 use voku\AgentRecallCompiler\Cli;
 use voku\AgentRecallCompiler\Provider\MapRecallProvider;
@@ -128,6 +129,28 @@ final class MapSearchCandidatesTest extends TestCase
 
         self::assertSame('missing', $fact->payload['status']);
         self::assertStringContainsString($this->searchPath, $fact->payload['reason']);
+    }
+
+    public function testMapOwnerRefusesAnUnverifiableSnapshotInsteadOfTreatingNoneAsCurrent(): void
+    {
+        $map = $this->map();
+        (new IndexWriter())->write(new AgentMapIndex(
+            schemaVersion: $map->schemaVersion,
+            root: $map->root,
+            backend: $map->backend,
+            files: $map->files,
+            relations: $map->relations,
+            diagnostics: $map->diagnostics,
+            fingerprint: null,
+        ), $this->mapPath, 'json');
+        $this->buildSearchIndex('sha256:none');
+
+        $fact = $this->collectSearchFact('Dunning reminder mails are sent twice for the same overdue invoice.');
+
+        self::assertSame('unavailable', $fact->payload['status']);
+        self::assertSame('map_snapshot_unverifiable', $fact->payload['reason_code']);
+        self::assertNull($fact->payload['map_snapshot']);
+        self::assertArrayNotHasKey('results', $fact->payload);
     }
 
     public function testATaskLabelIsNotTreatedAsASearchQuery(): void
@@ -258,6 +281,7 @@ final class MapSearchCandidatesTest extends TestCase
         $store = new SearchIndexStore($this->searchPath);
         $store->replaceChunks((new ChunkExtractor())->extract($runtimeMap));
         $store->setMeta('map_snapshot', $mapSnapshot);
+        $store->setMeta('chunk_policy_version', (string) ChunkPolicy::VERSION);
     }
 
     private function writeSources(): void
