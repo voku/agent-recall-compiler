@@ -84,7 +84,7 @@ jobs:
           ];
           $data["require"]["voku/agent-kanban"] = "0.4.2";
           $data["require"]["voku/agent-learning"] = "0.16.1";
-          $data["require"]["voku/agent-map"] = "^0.16.0";
+          $data["require"]["voku/agent-map"] = "^0.17.0";
           $data["require"]["voku/agent-recall-compiler"] = "0.15.999";
           $data["require"]["voku/agent-session"] = "0.7.0";
           file_put_contents($path, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . PHP_EOL);
