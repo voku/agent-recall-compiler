@@ -159,6 +159,28 @@ final class AcceptanceCriteriaContextTest extends TestCase
         self::assertSame($task->acceptanceCriteria, $effective->acceptanceCriteria);
     }
 
+    public function testSystemPromptKeepsAuthorizedMissingPathVisibleWithoutClaimingExistence(): void
+    {
+        $task = new TaskBrief(
+            id: 'TASK-SCOPE-1',
+            description: 'Add a typed invocation carrier.',
+            files: [
+                'src/Existing.php',
+                'src/Run/RunCommandInvocation.php',
+            ],
+            scopes: ['src/Run/'],
+            status: 'approved',
+        );
+
+        $prompt = (new RecallPromptBuilder())->buildSystemMd($task, '', new RecallResult([], [], []));
+
+        self::assertStringContainsString('## Declared Task Scope', $prompt);
+        self::assertStringContainsString('File/path: `src/Run/RunCommandInvocation.php`', $prompt);
+        self::assertStringContainsString('Scope: `src/Run/`', $prompt);
+        self::assertStringContainsString('not evidence that a path exists', $prompt);
+        self::assertStringContainsString('reporting the owner\'s approved scope rather than granting new authority', $prompt);
+    }
+
     /** @param array<string, mixed> $data */
     private function writeJson(string $path, array $data): void
     {
