@@ -4,6 +4,16 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.23.0] - 2026-09-22
+
+### Added
+
+- Make the `missingness-audit` recipe surface acceptance-to-scope gaps as explicit implementation-authority and verification-scope blockers instead of leaving the agent to infer them.
+
+### Changed
+
+- Bound rendered context-explanation capability detail by task relevance while retaining complete capability facts and provenance in the canonical selection report and facts artifact.
+
 ## [0.22.1] - 2026-09-20
 
 ### Changed
