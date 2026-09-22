@@ -1,0 +1,61 @@
+name: Packagist release boundary diagnostic
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/packagist-release-boundary.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    env:
+      PACKAGIST_TOKEN: ${{ secrets.PACKAGIST_TOKEN }}
+      PACKAGIST_API_TOKEN: ${{ secrets.PACKAGIST_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          coverage: none
+          tools: composer:v2
+
+      - name: Check Packagist credential availability without disclosure
+        shell: bash
+        run: |
+          set -euo pipefail
+          token_name='none'
+          if [ -n "${PACKAGIST_TOKEN:-}" ]; then
+            token_name='PACKAGIST_TOKEN'
+          elif [ -n "${PACKAGIST_API_TOKEN:-}" ]; then
+            token_name='PACKAGIST_API_TOKEN'
+          fi
+          echo "available_packagist_token_name=${token_name}"
+          if [ "${token_name}" = 'none' ]; then
+            echo 'No Packagist API token is available under the probed secret names.'
+          fi
+
+      - name: Inspect normal Composer repository metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          composer clear-cache >/dev/null 2>&1 || true
+          composer show voku/agent-recall-compiler --all --format=json > /tmp/package.json
+          php -r '
+            $data = json_decode((string) file_get_contents("/tmp/package.json"), true, 512, JSON_THROW_ON_ERROR);
+            $versions = $data["versions"] ?? [];
+            if (!is_array($versions)) {
+                fwrite(STDERR, "Composer package metadata has no versions array.\n");
+                exit(1);
+            }
+            echo "resolved_versions=", implode(",", array_slice($versions, 0, 12)), PHP_EOL;
+            if (!in_array("0.23.0", $versions, true)) {
+                fwrite(STDERR, "Released version 0.23.0 is absent from normal Composer repository metadata.\n");
+                exit(2);
+            }
+            echo "Released version 0.23.0 is visible to normal Composer consumers.\n";
+          '
