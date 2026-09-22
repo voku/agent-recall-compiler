@@ -73,7 +73,7 @@ final readonly class ContextExplainProjector
     {
         return match ($fact['type'] ?? null) {
             'edit_context' => $this->explainEditContext($fact),
-            'project_capabilities' => $this->explainCapabilities($fact),
+            'project_capabilities' => $this->explainCapabilities($task, $fact),
             'adr', 'skill' => [$this->explainDocument($task, $fact)],
             'operating_prompt' => $this->explainOperatingPrompt($fact),
             default => [],
@@ -183,7 +183,7 @@ final readonly class ContextExplainProjector
      * @param array<string, mixed> $fact
      * @return list<ExplainItem>
      */
-    private function explainCapabilities(array $fact): array
+    private function explainCapabilities(TaskBrief $task, array $fact): array
     {
         $payload = $this->payload($fact);
         $authority = $this->string($fact['authority'] ?? null) ?? 'project_metadata';
@@ -213,18 +213,21 @@ final readonly class ContextExplainProjector
                 continue;
             }
             $name = trim($name);
+            $command = 'composer ' . $name;
+            $selected = $this->taskReferences($task, $command);
             $items[] = $this->item(
                 'project-capability:composer-script:' . $name,
                 'repository_command',
-                'composer ' . $name,
+                $command,
                 'The repository declares this Composer script, so the command is an exact project-native entry point rather than an inferred tool invocation.',
                 'Read directly from composer.json scripts.' . $name . '.',
                 $authority,
                 'verification_candidate',
                 'verified',
-                true,
+                $selected,
                 $sourceRef,
                 [],
+                $selected ? null : 'not_referenced_by_current_task',
             );
         }
 
@@ -233,6 +236,7 @@ final readonly class ContextExplainProjector
             if (!is_string($name) || !is_string($constraint)) {
                 continue;
             }
+            $selected = $this->taskReferences($task, $name);
             $items[] = $this->item(
                 'project-capability:tool:' . $name,
                 'tool_presence',
@@ -242,9 +246,10 @@ final readonly class ContextExplainProjector
                 $authority,
                 'capability_presence_only_do_not_infer_command',
                 'verified',
-                true,
+                $selected,
                 $sourceRef,
                 [],
+                $selected ? null : 'not_referenced_by_current_task',
             );
         }
 
@@ -253,6 +258,7 @@ final readonly class ContextExplainProjector
             ['ci_workflows', 'ci_anchor', 'The CI workflow file exists, but this provider does not parse it into executable task policy.', 'Detected as a .github/workflows YAML file by the bounded project-capabilities provider.', 'navigation_anchor_only'],
         ] as [$payloadKey, $kind, $why, $how, $use]) {
             foreach ($this->strings($payload[$payloadKey] ?? []) as $path) {
+                $selected = $this->taskReferences($task, $path);
                 $items[] = $this->item(
                     'project-capability:' . $kind . ':' . $path,
                     $kind,
@@ -262,9 +268,10 @@ final readonly class ContextExplainProjector
                     $authority,
                     $use,
                     'verified',
-                    true,
+                    $selected,
                     $path,
                     [],
+                    $selected ? null : 'not_referenced_by_current_task',
                 );
             }
         }
@@ -425,6 +432,31 @@ final readonly class ContextExplainProjector
         }
 
         return $item;
+    }
+
+    private function taskReferences(TaskBrief $task, string $needle): bool
+    {
+        $needle = strtolower(trim($needle));
+        if ($needle === '') {
+            return false;
+        }
+
+        foreach ([
+            $task->description,
+            ...$task->files,
+            ...$task->scopes,
+            ...$task->nonGoals,
+            ...$task->validation,
+            ...$task->behaviorAnchors,
+            ...$task->targets,
+            ...$task->acceptanceCriteria,
+        ] as $candidate) {
+            if (str_contains(strtolower($candidate), $needle)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

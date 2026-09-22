@@ -98,6 +98,7 @@ final class ContextExplainProjectorTest extends TestCase
             'ARC-17',
             'Explain context.',
             ['src/Compilation/RecallCompilationService.php'],
+            validation: ['composer ci'],
             tags: ['recall', 'prompting'],
         );
         $result = new RecallResult(
@@ -174,10 +175,26 @@ final class ContextExplainProjectorTest extends TestCase
 
         self::assertSame('verification_candidate', $byWhat['composer ci']['use']);
         self::assertSame('verified', $byWhat['composer ci']['state']);
+        self::assertTrue($byWhat['composer ci']['selected']);
         self::assertStringContainsString('composer.json scripts.ci', $byWhat['composer ci']['how']);
+        self::assertFalse($byWhat['composer test']['selected']);
+        self::assertSame('not_referenced_by_current_task', $byWhat['composer test']['why_not']);
 
         self::assertSame('capability_presence_only_do_not_infer_command', $byWhat['phpunit/phpunit ^11.5']['use']);
+        self::assertFalse($byWhat['phpunit/phpunit ^11.5']['selected']);
         self::assertStringContainsString('does not prove', $byWhat['phpunit/phpunit ^11.5']['how']);
+        self::assertFalse($byWhat['phpstan.neon.dist']['selected']);
+        self::assertFalse($byWhat['.github/workflows/ci.yml']['selected']);
+
+        $markdown = (new ContextExplainRenderer())->render($items);
+        self::assertStringContainsString('### composer ci', $markdown);
+        self::assertStringNotContainsString('### composer test', $markdown);
+        self::assertStringNotContainsString('### phpunit/phpunit ^11.5', $markdown);
+        self::assertStringNotContainsString('### phpstan.neon.dist', $markdown);
+        self::assertStringNotContainsString('### .github/workflows/ci.yml', $markdown);
+        self::assertStringContainsString('### Omitted Project Capabilities', $markdown);
+        self::assertStringContainsString('**Omitted from runtime context**: 4', $markdown);
+        self::assertStringContainsString('selection-report.json.context_explain', $markdown);
 
         self::assertSame('verified', $byWhat['docs/operating-prompts.md']['state']);
         self::assertStringContainsString('scope overlap', $byWhat['docs/operating-prompts.md']['why']);
@@ -195,7 +212,7 @@ final class ContextExplainProjectorTest extends TestCase
 
     public function testProjectionAndRenderingAreDeterministicAndDescribeProvenanceNotImplementationRationale(): void
     {
-        $task = new TaskBrief('ARC-17', 'Explain context.', ['src/Foo.php']);
+        $task = new TaskBrief('ARC-17', 'Explain context.', ['src/Foo.php'], validation: ['composer ci']);
         $facts = [[
             'id' => 'project.capabilities',
             'type' => 'project_capabilities',

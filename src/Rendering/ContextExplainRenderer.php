@@ -36,9 +36,17 @@ final readonly class ContextExplainRenderer
             '',
         ];
 
+        /** @var array<string, int> $omittedProjectCapabilities */
+        $omittedProjectCapabilities = [];
         /** @var array<string, int> $omittedLearningPrecedents */
         $omittedLearningPrecedents = [];
         foreach ($items as $item) {
+            if (!$item['selected'] && $this->isOmittableProjectCapability($item['kind'])) {
+                $omittedProjectCapabilities[$item['kind']] = ($omittedProjectCapabilities[$item['kind']] ?? 0) + 1;
+
+                continue;
+            }
+
             if ($item['kind'] === 'learning_precedent' && !$item['selected']) {
                 $reason = $this->omissionReason($item['why_not'] ?? null);
                 $omittedLearningPrecedents[$reason] = ($omittedLearningPrecedents[$reason] ?? 0) + 1;
@@ -65,6 +73,18 @@ final readonly class ContextExplainRenderer
             $lines[] = '';
         }
 
+        if ($omittedProjectCapabilities !== []) {
+            ksort($omittedProjectCapabilities, SORT_STRING);
+            $lines[] = '### Omitted Project Capabilities';
+            $lines[] = '- **Omitted from runtime context**: ' . array_sum($omittedProjectCapabilities);
+            $lines[] = '- **Reason**: not referenced by the current task contract or validation.';
+            $lines[] = '- **Durable detail**: complete per-capability provenance remains in `selection-report.json.context_explain`.';
+            foreach ($omittedProjectCapabilities as $kind => $count) {
+                $lines[] = '- **' . $kind . '**: ' . $count;
+            }
+            $lines[] = '';
+        }
+
         if ($omittedLearningPrecedents !== []) {
             ksort($omittedLearningPrecedents, SORT_STRING);
             $lines[] = '### Omitted Learning Precedents';
@@ -77,6 +97,16 @@ final readonly class ContextExplainRenderer
         }
 
         return rtrim(implode("\n", $lines));
+    }
+
+    private function isOmittableProjectCapability(string $kind): bool
+    {
+        return in_array($kind, [
+            'repository_command',
+            'tool_presence',
+            'configuration_anchor',
+            'ci_anchor',
+        ], true);
     }
 
     private function omissionReason(?string $reason): string
