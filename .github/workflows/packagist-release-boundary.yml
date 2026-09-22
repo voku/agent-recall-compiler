@@ -59,3 +59,38 @@ jobs:
             }
             echo "Released version 0.23.0 is visible to normal Composer consumers.\n";
           '
+
+      - name: Reproduce agent-loop dependency resolution
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="${RUNNER_TEMP}/agent-loop-solver"
+          mkdir -p "${root}"
+          cat > "${root}/composer.json" <<'JSON'
+          {
+            "name": "diagnostic/agent-loop-solver",
+            "require": {
+              "php": "^8.3",
+              "helgesverre/toon": "^3.1",
+              "voku/agent-kanban": "^0.4.4",
+              "voku/agent-learning": "^0.18.21",
+              "voku/agent-map": "^0.18.0",
+              "voku/agent-recall-compiler": "^0.22.0",
+              "voku/agent-session": "^0.7.1",
+              "voku/portable-utf8": "^6.1"
+            },
+            "config": {
+              "allow-plugins": false,
+              "sort-packages": true
+            }
+          }
+          JSON
+          composer update --working-dir="${root}" --no-interaction --prefer-dist --no-progress
+          installed="$(composer show --working-dir="${root}" voku/agent-recall-compiler --format=json | php -r '$data=json_decode(stream_get_contents(STDIN), true, 512, JSON_THROW_ON_ERROR); echo $data["versions"][0] ?? "";')"
+          echo "agent_loop_graph_installed_recall=${installed}"
+          if [ "${installed}" != "0.23.0" ]; then
+            echo 'Agent-loop dependency graph rejects 0.23.0:' >&2
+            composer why-not --working-dir="${root}" voku/agent-recall-compiler 0.23.0 || true
+            exit 3
+          fi
+          echo 'Agent-loop dependency graph accepts Recall 0.23.0.'
