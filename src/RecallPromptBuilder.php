@@ -32,6 +32,18 @@ final class RecallPromptBuilder
             $md[] = "";
         }
 
+        if ($task->files !== [] || $task->scopes !== []) {
+            $md[] = "## Declared Task Scope";
+            $md[] = "These entries come from the task/Contract input. They are scope metadata, not evidence that a path exists. For an approved governed Contract, Recall is reporting the owner's approved scope rather than granting new authority.";
+            foreach ($task->files as $file) {
+                $md[] = "- File/path: `" . $file . "`";
+            }
+            foreach ($task->scopes as $scope) {
+                $md[] = "- Scope: `" . $scope . "`";
+            }
+            $md[] = "";
+        }
+
         if ($task->acceptanceCriteria !== []) {
             $md[] = "## Acceptance Criteria";
             $md[] = "These are required task outcomes, not evidence that they are satisfied.";
