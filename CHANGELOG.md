@@ -4,6 +4,12 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.23.1] - 2026-09-22
+
+### Fixed
+
+- Keep explicitly declared task-scope paths visible in L2 context even when those authorized paths do not exist yet, so missing implementation scope remains observable instead of being silently dropped.
+
 ## [0.23.0] - 2026-09-22
 
 ### Added
