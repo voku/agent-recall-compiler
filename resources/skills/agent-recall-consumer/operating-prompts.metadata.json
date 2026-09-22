@@ -103,7 +103,7 @@
     {
       "id": "missingness-audit",
       "title": "Audit missing pieces",
-      "description": "Find evidence-backed gaps in tests, validation, recovery, observability or boundaries.",
+      "description": "Find evidence-backed gaps in required artifacts, scope, verification, recovery, observability or boundaries.",
       "purpose": "review",
       "arguments": []
     },
