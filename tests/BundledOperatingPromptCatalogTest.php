@@ -195,10 +195,12 @@ final class BundledOperatingPromptCatalogTest extends TestCase
             self::assertStringContainsString($field, $skill);
         }
 
-        self::assertStringContainsString('An untouched compiler draft is not feedback', $skill);
-        self::assertStringContainsString('An explicit `unknown` outcome requires a non-empty comment', $skill);
-        self::assertStringContainsString('do not manufacture `not_used` or `irrelevant`', $skill);
-        self::assertStringContainsString('Silent omission without that declared withholding fails', $skill);
+        // Sparse judgements: an empty list is the normal case, an added row is a claim.
+        self::assertStringContainsString('starts with an empty `guidance_outcomes` list', $skill);
+        self::assertStringContainsString('unjudged selections are neutral', $skill);
+        self::assertStringContainsString('An added `unknown` row needs a comment', $skill);
+        self::assertStringContainsString('Never manufacture `not_used` or `irrelevant`', $skill);
+        self::assertStringNotContainsString('Silent omission without that declared withholding fails', $skill);
     }
 
     public function testPackageResourcesResolvesShippedAssets(): void
