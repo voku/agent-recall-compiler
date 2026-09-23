@@ -1229,6 +1229,28 @@ final class RecallCompilerTest extends TestCase
         self::assertFileDoesNotExist($this->root . '/history/outcomes.jsonl');
     }
 
+    public function testWrittenAttributionIsTheShapeLearningOwnsAndAudits(): void
+    {
+        $this->writeProposal('proposal.2026-06-18.001', 'skill', ['src/Auth']);
+        $draftPath = $this->buildEventDraft('compilation.PROJECT-123.2026-06-18.024');
+        $draft = json_decode((string)file_get_contents($draftPath), true);
+        $draft['guidance_outcomes'][0]['applied'] = true;
+        $draft['guidance_outcomes'][0]['outcome'] = 'helpful';
+        $draft['guidance_outcomes'][0]['comment'] = 'Read before choosing the guard placement; nothing else prescribed it.';
+        $draft['guidance_outcomes'][0]['attribution'] = ['seen_before_decision' => true, 'also_prescribed_by' => []];
+        file_put_contents($draftPath, json_encode($draft, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+
+        (new OutcomeLogger())->log($this->root, $draftPath, 'lars', 'commit_1');
+
+        // Learning owns the meaning; Recall must write exactly what Learning parses.
+        $summaries = (new \voku\AgentLearning\GuidanceUsageProjector())->project(
+            (new \voku\AgentLearning\RecallSelectionEventRepository())->load($this->root),
+            (new \voku\AgentLearning\GuidanceOutcomeEventRepository())->load($this->root),
+        );
+        $outcomeId = $this->jsonlRecords($this->root . '/history/outcomes.jsonl')[0]['id'];
+        self::assertSame([$outcomeId], $summaries['proposal.2026-06-18.001']->attributableHelpfulEventIds);
+    }
+
     public function testNonHelpfulGuidanceOutcomeDoesNotRequireAttribution(): void
     {
         $this->writeProposal('proposal.2026-06-18.001', 'skill', ['src/Auth']);

@@ -4,6 +4,18 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.24.0] - 2026-09-23
+
+### Added
+
+- Record Learning-owned decision-time `attribution` (`seen_before_decision`, `also_prescribed_by`) on guidance outcome events; the outcome draft carries an explicit `attribution` slot per selected guidance row.
+- Expose `CompiledRecallOutput::suppressedLearningPrecedents()`: relevant LearningNotes withheld from the briefing because their repository evidence needs review, so hosts can surface the otherwise silent suppression as Learning maintenance.
+
+### Changed
+
+- `log-outcome` refuses a `helpful` guidance outcome without `attribution`. A bare `helpful` cannot distinguish guidance that changed a decision from guidance that merely matched it; real consumer history showed labels written after the credited fix and decisions already prescribed by loaded skills and Constraints.
+- Require `voku/agent-learning ^0.18.23`, which owns the attribution semantics; a round-trip test proves Recall-written outcomes parse into Learning's causal-audit set.
+
 ## [0.23.1] - 2026-09-22
 
 ### Fixed
