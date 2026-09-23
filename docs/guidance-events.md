@@ -30,22 +30,25 @@ Finalized event drafts append evaluated guidance to `history/recall-selections.j
 
 Selection means that deterministic Recall evaluation reached that guidance item and records whether it was selected. It does not prove model access, application, or usefulness.
 
-## Guidance outcome placeholders are not feedback
+## Guidance outcomes are sparse
 
-`recall-log.draft.json` initially contains one `guidance_outcomes` placeholder row per selected guidance item:
+`recall-log.draft.json` lists the selected guidance under `evaluated_guidance` and starts with an empty `guidance_outcomes` list. Every selection is recorded as a selection event when the draft is logged, whether or not it is judged.
+
+Add a `guidance_outcomes` row only for guidance you have something to say about, i.e. it actually changed, confirmed, or misled the work:
 
 ```json
 {
   "guidance_id": "skill.auth-context",
+  "guidance_type": "skill",
   "selected": true,
-  "applied": false,
-  "outcome": "unknown",
-  "comment": null,
-  "attribution": null
+  "applied": true,
+  "outcome": "helpful",
+  "comment": "Named the session boundary this change had to respect.",
+  "attribution": {"seen_before_decision": true, "also_prescribed_by": []}
 }
 ```
 
-Those defaults are compiler scaffolding, not finalized evidence. `log-outcome` rejects an untouched `unknown` row because otherwise the compiler's own placeholder would be persisted as though a session had judged the guidance.
+An unjudged selection is **neutral**: no row, no `not_used`, and no prose explaining that nothing happened. Forced per-item judgements produced mostly invented `not_used`/`irrelevant` rows, which push guidance toward retirement. Learning reports judged/selected coverage as a metric, not a warning. `guidance_outcomes_withheld_reason` remains optional; when given, it is kept on the unjudged selection events.
 
 For a finalized row:
 
@@ -64,9 +67,7 @@ For a finalized row:
 
 `seen_before_decision` states whether the session read the guidance before the decision it credits. `also_prescribed_by` lists every other source that already prescribed that decision (`task_prompt`, `contract`, `skill`, `template`, `constraint`, `repository_docs`), or `[]` when nothing else did. Record it honestly; `false` and non-empty lists are valid and expected. `helpful` alone cannot tell "this changed my choice" from "this matches what I did anyway", and real history held both confounds. Learning owns the meaning of the field and treats only `true` + `[]` as a candidate for a causal-value audit. Other outcomes may carry attribution but do not require it.
 
-When the session genuinely cannot judge selected guidance, do **not** manufacture `not_used` or `irrelevant` merely to satisfy completeness. Remove the unjudged placeholder rows and set a non-empty top-level `guidance_outcomes_withheld_reason`. The corresponding selection events retain that reason so downstream consumers can distinguish deliberate absence from accidentally dropped feedback.
-
-Silent omission without a withholding reason fails.
+`not_used` and `irrelevant` are real negative signals. Use them only when the session actually established them, never to fill a list.
 
 ## Finalize outcome evidence
 

@@ -245,22 +245,18 @@ final class OutcomeLogger
         $withheldReason = null;
         $unjudged = array_values(array_diff(array_keys($selected), array_keys($seenOutcomes)));
         if ($unjudged !== []) {
-            // Selecting guidance does not oblige the session to judge it, and a
-            // forced row is worse than an absent one: `not_used` and `irrelevant`
-            // both push a rule towards retirement, so a caller with nothing to
-            // say was previously made to invent a signal that moves a gate.
-            // Absence is already modelled - DreamMetrics reports selected versus
-            // judged as outcome completeness - so the honest state just has to be
-            // sayable. It has to be deliberate, though, or a harness that drops
-            // outcomes by accident looks the same as one that withheld them.
+            // Judgements are sparse: a session reports only guidance it has
+            // something to say about. Selection events are still recorded for
+            // every item, and an unjudged selection is neutral - a forced row is
+            // worse than none, because `not_used`/`irrelevant` push a rule
+            // towards retirement. Real history showed 82% of forced judgements
+            // were exactly that filler. A reason may still be given, but a
+            // session must not be made to write prose to say nothing happened.
             $reason = $data['guidance_outcomes_withheld_reason'] ?? null;
-            if (!is_string($reason) || trim($reason) === '') {
-                throw new RuntimeException(sprintf(
-                    'selected guidance %s has no outcome; judge it, or state guidance_outcomes_withheld_reason to record the absence deliberately',
-                    implode(', ', array_map(static fn (string $id): string => "'" . $id . "'", $unjudged)),
-                ));
+            if ($reason !== null && (!is_string($reason) || trim($reason) === '')) {
+                throw new RuntimeException('guidance_outcomes_withheld_reason must be a non-empty string when present');
             }
-            $withheldReason = $reason;
+            $withheldReason = is_string($reason) ? trim($reason) : null;
         }
         $unjudgedIds = array_fill_keys($unjudged, true);
 
@@ -422,15 +418,13 @@ final class OutcomeLogger
                 throw new RuntimeException(sprintf("guidance outcome '%s' cannot be %s when applied=false", $guidanceId, $outcome->value));
             }
 
-            // Stricter than the operating-prompt sibling, and only for `unknown`,
-            // because `unknown` with no comment is exactly what the compiler
-            // pre-fills into every draft row. Without this, an untouched draft
-            // logs the compiler's own placeholder as though a session had judged
-            // it, which is how eight of these records came to exist. Say why the
-            // guidance could not be judged, or withhold the row entirely.
+            // Stricter than the operating-prompt sibling, and only for `unknown`:
+            // an added row is a claim, and `unknown` with no comment claims
+            // nothing. Earlier drafts pre-filled exactly that row and eight such
+            // records were logged as if judged. Say why, or drop the row.
             if ($outcome === OutcomeValue::UNKNOWN && !$justified) {
                 throw new RuntimeException(sprintf(
-                    "guidance outcome '%s' is still the compiled placeholder: record why it cannot be judged, or omit it and set guidance_outcomes_withheld_reason",
+                    "guidance outcome '%s' has no judgement: say why it cannot be judged, or remove the row (unjudged selections are neutral)",
                     $guidanceId,
                 ));
             }

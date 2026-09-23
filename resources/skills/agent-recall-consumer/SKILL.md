@@ -185,9 +185,7 @@ Treat `selected` as exposure only. Set `applied=true` only when guidance affecte
 
 A `helpful` row also needs `attribution`: `seen_before_decision` (did you read this guidance before the decision it helped?) and `also_prescribed_by` (which of `task_prompt`, `contract`, `skill`, `template`, `constraint`, `repository_docs` already prescribed that decision; `[]` if nothing else did). Answer from what actually happened in the session, not from what would look best: guidance first opened while filling this draft is `seen_before_decision: false`.
 
-An untouched compiler draft is not feedback: its pre-filled `outcome: unknown`, `applied: false`, `comment: null` rows are placeholders for the later session to complete. An explicit `unknown` outcome requires a non-empty comment explaining why the selected guidance cannot be judged.
-
-When the caller has no evidence to judge selected guidance, do not manufacture `not_used` or `irrelevant` merely to satisfy completeness. Remove the placeholder outcome rows and set `guidance_outcomes_withheld_reason` to a bounded reason. Silent omission without that declared withholding fails. The resulting selection events retain `outcome_withheld_reason`, so downstream Learning can distinguish deliberate absence from dropped feedback.
+The compiled draft starts with an empty `guidance_outcomes` list. Add a row only for selected guidance that actually changed, confirmed, or misled your work, and leave the list empty when nothing notable happened: unjudged selections are neutral and are still recorded as selection events. Do not write prose explaining that nothing happened. An added `unknown` row needs a comment explaining why it cannot be judged. `guidance_outcomes_withheld_reason` is optional; when given it is kept on the unjudged selection events as `outcome_withheld_reason`. Never manufacture `not_used` or `irrelevant` to fill the list.
 
 `not_used` and `irrelevant` are real negative signals used by staleness/retirement policy. A harness that did not read or apply the guidance must not emit either as a convenient empty bucket.
 
