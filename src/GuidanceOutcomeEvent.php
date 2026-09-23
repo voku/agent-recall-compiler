@@ -17,6 +17,7 @@ final readonly class GuidanceOutcomeEvent
         public string $commit,
         public string $recordedBy,
         public string $recordedAt,
+        public ?GuidanceOutcomeAttribution $attribution = null,
     ) {
     }
 
@@ -32,12 +33,13 @@ final readonly class GuidanceOutcomeEvent
      *     comment: string|null,
      *     commit: string,
      *     recorded_by: string,
-     *     recorded_at: string
+     *     recorded_at: string,
+     *     attribution?: array{seen_before_decision: bool, also_prescribed_by: list<string>}
      * }
      */
     public function toArray(): array
     {
-        return [
+        $record = [
             'schema_version' => '1.0',
             'id' => $this->id,
             'compilation_id' => $this->compilationId,
@@ -50,5 +52,10 @@ final readonly class GuidanceOutcomeEvent
             'recorded_by' => $this->recordedBy,
             'recorded_at' => $this->recordedAt,
         ];
+        if ($this->attribution instanceof GuidanceOutcomeAttribution) {
+            $record['attribution'] = $this->attribution->toArray();
+        }
+
+        return $record;
     }
 }

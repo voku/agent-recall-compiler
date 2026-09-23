@@ -202,7 +202,7 @@ vendor/bin/agent-recall-compiler log-outcome \
 
 The generated `guidance_outcomes` rows deliberately start as `applied=false`, `outcome=unknown`, `comment=null`. Those are compiler placeholders, not finalized evidence. `log-outcome` rejects an untouched `unknown` row: either provide a non-empty comment explaining why the guidance cannot be judged, or remove unjudged rows and set `guidance_outcomes_withheld_reason` to explain the deliberate absence.
 
-For `helpful`, `irrelevant`, or `harmful`, a non-empty justification comment is required. `helpful` and `harmful` also require `applied=true`. Selection only proves that guidance entered the selected set; it does not prove model access, application, or usefulness.
+For `helpful`, `irrelevant`, or `harmful`, a non-empty justification comment is required. `helpful` and `harmful` also require `applied=true`, and `helpful` requires decision-time `attribution` (`seen_before_decision`, `also_prescribed_by`; see [guidance-events.md](guidance-events.md)). Selection only proves that guidance entered the selected set; it does not prove model access, application, or usefulness.
 
 The command appends immutable selection events to `history/recall-selections.jsonl`, finalized guidance outcomes to `history/outcomes.jsonl`, and selected operating-prompt outcomes to `history/operating-prompt-outcomes.jsonl`. These are durable evidence events, not automatic durable-guidance promotion or retirement decisions.
 

@@ -157,6 +157,41 @@ final readonly class CompiledRecallOutput
     }
 
     /**
+     * Relevant LearningNotes withheld because their repository evidence needs
+     * review. Budget omissions of current notes are not included: those notes
+     * are healthy, only lower ranked.
+     *
+     * @return list<SuppressedLearningPrecedent>
+     */
+    public function suppressedLearningPrecedents(): array
+    {
+        $suppressed = [];
+        foreach ($this->facts as $fact) {
+            if ($fact->type !== 'learning_precedent' || ($fact->payload['render'] ?? null) !== false) {
+                continue;
+            }
+            $state = $fact->payload['evidence_state'] ?? null;
+            $noteId = $fact->payload['note_id'] ?? null;
+            if (!is_string($noteId) || $noteId === '' || !in_array($state, ['review_needed', 'no_hashable_repository_evidence'], true)) {
+                continue;
+            }
+            $files = $fact->payload['matching_task_files'] ?? [];
+            $patternKey = $fact->payload['pattern_key'] ?? null;
+            $title = $fact->payload['title'] ?? null;
+            $suppressed[] = new SuppressedLearningPrecedent(
+                $noteId,
+                is_string($patternKey) ? $patternKey : null,
+                is_string($title) ? $title : null,
+                $state,
+                is_array($files) ? array_values(array_filter($files, 'is_string')) : [],
+            );
+        }
+        usort($suppressed, static fn (SuppressedLearningPrecedent $a, SuppressedLearningPrecedent $b): int => $a->noteId <=> $b->noteId);
+
+        return $suppressed;
+    }
+
+    /**
      * Output files whose current bytes no longer satisfy Recall's own recorded
      * compilation integrity contract.
      *

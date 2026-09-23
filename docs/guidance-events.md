@@ -40,7 +40,8 @@ Selection means that deterministic Recall evaluation reached that guidance item 
   "selected": true,
   "applied": false,
   "outcome": "unknown",
-  "comment": null
+  "comment": null,
+  "attribution": null
 }
 ```
 
@@ -51,7 +52,17 @@ For a finalized row:
 - allowed outcomes are `helpful`, `irrelevant`, `harmful`, `not_used`, and `unknown`;
 - `helpful`, `irrelevant`, and `harmful` require a non-empty justification comment;
 - `helpful` and `harmful` require `applied=true`;
-- an explicit `unknown` requires a non-empty comment explaining why the guidance could not be judged.
+- an explicit `unknown` requires a non-empty comment explaining why the guidance could not be judged;
+- `helpful` requires decision-time `attribution`:
+
+```json
+"attribution": {
+  "seen_before_decision": true,
+  "also_prescribed_by": []
+}
+```
+
+`seen_before_decision` states whether the session read the guidance before the decision it credits. `also_prescribed_by` lists every other source that already prescribed that decision (`task_prompt`, `contract`, `skill`, `template`, `constraint`, `repository_docs`), or `[]` when nothing else did. Record it honestly; `false` and non-empty lists are valid and expected. `helpful` alone cannot tell "this changed my choice" from "this matches what I did anyway", and real history held both confounds. Learning owns the meaning of the field and treats only `true` + `[]` as a candidate for a causal-value audit. Other outcomes may carry attribution but do not require it.
 
 When the session genuinely cannot judge selected guidance, do **not** manufacture `not_used` or `irrelevant` merely to satisfy completeness. Remove the unjudged placeholder rows and set a non-empty top-level `guidance_outcomes_withheld_reason`. The corresponding selection events retain that reason so downstream consumers can distinguish deliberate absence from accidentally dropped feedback.
 

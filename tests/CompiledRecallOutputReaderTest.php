@@ -251,6 +251,46 @@ final class CompiledRecallOutputReaderTest extends TestCase
         self::assertSame('navigation', $facts[1]->type);
     }
 
+    public function testOnlyEvidenceSuppressedPrecedentsAreReportedAsMaintenance(): void
+    {
+        $this->writeMeta();
+        $precedent = static fn (string $noteId, string $state, bool $render): array => [
+            'type' => 'learning_precedent',
+            'source_ref' => 'agent-learning:' . $noteId,
+            'payload' => [
+                'note_id' => $noteId,
+                'pattern_key' => 'roles.desired_state',
+                'title' => 'Store member-scoped rights as desired state',
+                'evidence_state' => $state,
+                'matching_task_files' => ['src/Roles.php'],
+                'render' => $render,
+            ],
+        ];
+        file_put_contents($this->dir . '/facts.json', json_encode([
+            'schema_version' => '1.0',
+            'bundle_sha256' => str_repeat('a', 64),
+            'facts' => [
+                $precedent('learning-note.2026-09-10.bbbbbb', 'review_needed', false),
+                $precedent('learning-note.2026-09-10.cccccc', 'current', true),
+                // Healthy but over the rendering budget: not a maintenance signal.
+                $precedent('learning-note.2026-09-10.dddddd', 'current', false),
+                $precedent('learning-note.2026-09-10.aaaaaa', 'no_hashable_repository_evidence', false),
+            ],
+        ], JSON_THROW_ON_ERROR));
+
+        $output = (new CompiledRecallOutputReader())->read($this->dir);
+        self::assertNotNull($output);
+        $suppressed = $output->suppressedLearningPrecedents();
+
+        self::assertSame(
+            ['learning-note.2026-09-10.aaaaaa', 'learning-note.2026-09-10.bbbbbb'],
+            array_map(static fn ($p) => $p->noteId, $suppressed),
+        );
+        self::assertSame('review_needed', $suppressed[1]->evidenceState);
+        self::assertSame('roles.desired_state', $suppressed[1]->patternKey);
+        self::assertSame(['src/Roles.php'], $suppressed[1]->matchingTaskFiles);
+    }
+
     public function testCorruptFactsAreReportedSeparatelyFromMissingFacts(): void
     {
         $this->writeMeta();
