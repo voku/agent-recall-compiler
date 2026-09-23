@@ -572,6 +572,7 @@ final class RecallPromptBuilder
                     'applied' => false,
                     'outcome' => OutcomeValue::UNKNOWN->value,
                     'comment' => null,
+                    'attribution' => null,
                 ],
                 array_values($selectedById),
             ),
@@ -580,7 +581,7 @@ final class RecallPromptBuilder
             'irrelevant' => [],
             'harmful' => [],
             'result' => 'successful',
-            'comment' => 'Complete guidance_outcomes after the session. Selection alone is not proof of usefulness, so every row below is a placeholder that log-outcome refuses to record: judge each one with an outcome and a comment, or delete the rows you cannot judge and set guidance_outcomes_withheld_reason.',
+            'comment' => 'Complete guidance_outcomes after the session. Selection alone is not proof of usefulness, so every row below is a placeholder that log-outcome refuses to record: judge each one with an outcome and a comment, or delete the rows you cannot judge and set guidance_outcomes_withheld_reason. A helpful row also needs attribution: {"seen_before_decision": did you read it before the decision it helped, "also_prescribed_by": the other sources that already prescribed that decision (task_prompt, contract, skill, template, constraint, repository_docs), or [] if nothing else did}.',
         ];
 
         return json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);

@@ -307,6 +307,7 @@ final class OutcomeLogger
                 $commit,
                 $actor,
                 $recordedAt,
+                $outcome['attribution'],
             );
         }
 
@@ -386,7 +387,7 @@ final class OutcomeLogger
         return $items;
     }
 
-    /** @return list<array{guidance_id: string, guidance_type: GuidanceType, selected: bool, applied: bool, outcome: OutcomeValue, comment: string|null}> */
+    /** @return list<array{guidance_id: string, guidance_type: GuidanceType, selected: bool, applied: bool, outcome: OutcomeValue, comment: string|null, attribution: GuidanceOutcomeAttribution|null}> */
     private function parseGuidanceOutcomes(mixed $value, string $file): array
     {
         if (!is_array($value)) {
@@ -434,6 +435,19 @@ final class OutcomeLogger
                 ));
             }
 
+            $attribution = $this->parseAttribution($item['attribution'] ?? null, $guidanceId);
+            // `helpful` alone cannot tell "this changed my choice" from "this
+            // matches what I did anyway"; real history held both confounds
+            // (guidance read only after the credited fix, and decisions a
+            // loaded skill/Constraint already prescribed). Require the two
+            // decision-time facts while the session still knows them.
+            if ($outcome === OutcomeValue::HELPFUL && !$attribution instanceof GuidanceOutcomeAttribution) {
+                throw new RuntimeException(sprintf(
+                    "guidance outcome '%s' is helpful but has no attribution: record seen_before_decision and also_prescribed_by (task_prompt, contract, skill, template, constraint, repository_docs; [] if nothing else did)",
+                    $guidanceId,
+                ));
+            }
+
             $items[] = [
                 'guidance_id' => $guidanceId,
                 'guidance_type' => $this->guidanceType($this->requiredString($item, 'guidance_type', $file), $guidanceId),
@@ -441,10 +455,46 @@ final class OutcomeLogger
                 'applied' => $applied,
                 'outcome' => $outcome,
                 'comment' => $comment,
+                'attribution' => $attribution,
             ];
         }
 
         return $items;
+    }
+
+    private function parseAttribution(mixed $value, string $guidanceId): ?GuidanceOutcomeAttribution
+    {
+        if ($value === null) {
+            return null;
+        }
+        if (!is_array($value) || (array_is_list($value) && $value !== [])) {
+            throw new RuntimeException(sprintf("guidance outcome '%s' attribution must be an object", $guidanceId));
+        }
+        $unknown = array_diff(array_keys($value), ['seen_before_decision', 'also_prescribed_by']);
+        if ($unknown !== []) {
+            throw new RuntimeException(sprintf("guidance outcome '%s' has unknown attribution field: %s", $guidanceId, implode(', ', $unknown)));
+        }
+        $seenBeforeDecision = $value['seen_before_decision'] ?? null;
+        if (!is_bool($seenBeforeDecision)) {
+            throw new RuntimeException(sprintf("guidance outcome '%s' attribution.seen_before_decision must be boolean", $guidanceId));
+        }
+        $rawSources = $value['also_prescribed_by'] ?? null;
+        if (!is_array($rawSources) || !array_is_list($rawSources)) {
+            throw new RuntimeException(sprintf("guidance outcome '%s' attribution.also_prescribed_by must be a list", $guidanceId));
+        }
+        $sources = [];
+        foreach ($rawSources as $rawSource) {
+            $source = is_string($rawSource) ? GuidanceOutcomeAttributionSource::tryFrom($rawSource) : null;
+            if (!$source instanceof GuidanceOutcomeAttributionSource) {
+                throw new RuntimeException(sprintf("guidance outcome '%s' has unknown attribution source: %s", $guidanceId, is_string($rawSource) ? $rawSource : get_debug_type($rawSource)));
+            }
+            if (in_array($source, $sources, true)) {
+                throw new RuntimeException(sprintf("guidance outcome '%s' has duplicate attribution source: %s", $guidanceId, $source->value));
+            }
+            $sources[] = $source;
+        }
+
+        return new GuidanceOutcomeAttribution($seenBeforeDecision, $sources);
     }
 
     /**

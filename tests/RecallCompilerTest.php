@@ -1187,6 +1187,7 @@ final class RecallCompilerTest extends TestCase
         $draft['guidance_outcomes'][0]['applied'] = true;
         $draft['guidance_outcomes'][0]['outcome'] = 'helpful';
         $draft['guidance_outcomes'][0]['comment'] = 'Prevented direct session access.';
+        $draft['guidance_outcomes'][0]['attribution'] = ['seen_before_decision' => true, 'also_prescribed_by' => ['skill']];
         file_put_contents($draftPath, json_encode($draft, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
 
         $result = (new OutcomeLogger())->log($this->root, $draftPath, 'Lars Moelleken', 'abc1234');
@@ -1204,6 +1205,95 @@ final class RecallCompilerTest extends TestCase
         self::assertSame('helpful', $outcomeEvents[0]['outcome']);
         self::assertTrue($outcomeEvents[0]['applied']);
         self::assertSame('abc1234', $outcomeEvents[0]['commit']);
+        self::assertSame(['seen_before_decision' => true, 'also_prescribed_by' => ['skill']], $outcomeEvents[0]['attribution']);
+    }
+
+    public function testHelpfulGuidanceOutcomeRequiresDecisionTimeAttribution(): void
+    {
+        $this->writeProposal('proposal.2026-06-18.001', 'skill', ['src/Auth']);
+        $draftPath = $this->buildEventDraft('compilation.PROJECT-123.2026-06-18.021');
+        $draft = json_decode((string)file_get_contents($draftPath), true);
+        self::assertArrayHasKey('attribution', $draft['guidance_outcomes'][0]);
+        self::assertNull($draft['guidance_outcomes'][0]['attribution']);
+        $draft['guidance_outcomes'][0]['applied'] = true;
+        $draft['guidance_outcomes'][0]['outcome'] = 'helpful';
+        $draft['guidance_outcomes'][0]['comment'] = 'Matched what I did.';
+        file_put_contents($draftPath, json_encode($draft, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+
+        try {
+            (new OutcomeLogger())->log($this->root, $draftPath, 'lars', 'commit_1');
+            self::fail('helpful without attribution must be refused');
+        } catch (\RuntimeException $e) {
+            self::assertStringContainsString("guidance outcome 'proposal.2026-06-18.001' is helpful but has no attribution", $e->getMessage());
+        }
+        self::assertFileDoesNotExist($this->root . '/history/outcomes.jsonl');
+    }
+
+    public function testWrittenAttributionIsTheShapeLearningOwnsAndAudits(): void
+    {
+        $this->writeProposal('proposal.2026-06-18.001', 'skill', ['src/Auth']);
+        $draftPath = $this->buildEventDraft('compilation.PROJECT-123.2026-06-18.024');
+        $draft = json_decode((string)file_get_contents($draftPath), true);
+        $draft['guidance_outcomes'][0]['applied'] = true;
+        $draft['guidance_outcomes'][0]['outcome'] = 'helpful';
+        $draft['guidance_outcomes'][0]['comment'] = 'Read before choosing the guard placement; nothing else prescribed it.';
+        $draft['guidance_outcomes'][0]['attribution'] = ['seen_before_decision' => true, 'also_prescribed_by' => []];
+        file_put_contents($draftPath, json_encode($draft, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+
+        (new OutcomeLogger())->log($this->root, $draftPath, 'lars', 'commit_1');
+
+        // Learning owns the meaning; Recall must write exactly what Learning parses.
+        $summaries = (new \voku\AgentLearning\GuidanceUsageProjector())->project(
+            (new \voku\AgentLearning\RecallSelectionEventRepository())->load($this->root),
+            (new \voku\AgentLearning\GuidanceOutcomeEventRepository())->load($this->root),
+        );
+        $outcomeId = $this->jsonlRecords($this->root . '/history/outcomes.jsonl')[0]['id'];
+        self::assertSame([$outcomeId], $summaries['proposal.2026-06-18.001']->attributableHelpfulEventIds);
+    }
+
+    public function testNonHelpfulGuidanceOutcomeDoesNotRequireAttribution(): void
+    {
+        $this->writeProposal('proposal.2026-06-18.001', 'skill', ['src/Auth']);
+        $draftPath = $this->buildEventDraft('compilation.PROJECT-123.2026-06-18.022');
+        $draft = json_decode((string)file_get_contents($draftPath), true);
+        $draft['guidance_outcomes'][0]['outcome'] = 'irrelevant';
+        $draft['guidance_outcomes'][0]['comment'] = 'Different subsystem.';
+        file_put_contents($draftPath, json_encode($draft, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+
+        (new OutcomeLogger())->log($this->root, $draftPath, 'lars', 'commit_1');
+
+        $outcomeEvents = $this->jsonlRecords($this->root . '/history/outcomes.jsonl');
+        self::assertArrayNotHasKey('attribution', $outcomeEvents[0]);
+    }
+
+    /**
+     * @return iterable<string, array{mixed, string}>
+     */
+    public static function malformedAttributions(): iterable
+    {
+        yield 'list' => [[true], 'attribution must be an object'];
+        yield 'unknown field' => [['seen_before_decision' => true, 'also_prescribed_by' => [], 'confidence' => 1], 'unknown attribution field: confidence'];
+        yield 'string flag' => [['seen_before_decision' => 'yes', 'also_prescribed_by' => []], 'attribution.seen_before_decision must be boolean'];
+        yield 'sources not list' => [['seen_before_decision' => true, 'also_prescribed_by' => 'skill'], 'attribution.also_prescribed_by must be a list'];
+        yield 'unknown source' => [['seen_before_decision' => true, 'also_prescribed_by' => ['memory']], 'unknown attribution source: memory'];
+        yield 'duplicate source' => [['seen_before_decision' => true, 'also_prescribed_by' => ['skill', 'skill']], 'duplicate attribution source: skill'];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('malformedAttributions')]
+    public function testMalformedAttributionIsRefused(mixed $attribution, string $message): void
+    {
+        $this->writeProposal('proposal.2026-06-18.001', 'skill', ['src/Auth']);
+        $draftPath = $this->buildEventDraft('compilation.PROJECT-123.2026-06-18.023');
+        $draft = json_decode((string)file_get_contents($draftPath), true);
+        $draft['guidance_outcomes'][0]['applied'] = true;
+        $draft['guidance_outcomes'][0]['outcome'] = 'helpful';
+        $draft['guidance_outcomes'][0]['comment'] = 'Changed the guard placement.';
+        $draft['guidance_outcomes'][0]['attribution'] = $attribution;
+        file_put_contents($draftPath, json_encode($draft, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage($message);
+        (new OutcomeLogger())->log($this->root, $draftPath, 'lars', 'commit_1');
     }
 
     public function testOutcomeLoggerToleratesUnselectedLegacyFileTargetTypeInEvaluatedGuidance(): void
@@ -1223,6 +1313,7 @@ final class RecallCompilerTest extends TestCase
         $draft['guidance_outcomes'][0]['outcome'] = 'helpful';
         $draft['guidance_outcomes'][0]['applied'] = true;
         $draft['guidance_outcomes'][0]['comment'] = 'Named the session boundary this change had to respect.';
+        $draft['guidance_outcomes'][0]['attribution'] = ['seen_before_decision' => true, 'also_prescribed_by' => []];
         file_put_contents($draftPath, json_encode($draft, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
 
         $result = (new OutcomeLogger())->log($this->root, $draftPath, 'lars', 'commit_1');
@@ -1275,6 +1366,7 @@ final class RecallCompilerTest extends TestCase
             'applied' => true,
             'outcome' => 'helpful',
             'comment' => 'Bad row',
+            'attribution' => ['seen_before_decision' => true, 'also_prescribed_by' => []],
         ];
         file_put_contents($draftPath, json_encode($draft, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
 
