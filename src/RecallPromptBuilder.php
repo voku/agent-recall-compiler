@@ -564,24 +564,15 @@ final class RecallPromptBuilder
             'applied_proposals' => array_values(array_unique([...$selectedIds, ...$sourceProposalIds])),
             'selected' => array_values(array_unique([...$selectedIds, ...$selectedConstraintIds])),
             'evaluated_guidance' => array_map(static fn(EvaluatedGuidance $g) => $g->toArray(), $result->evaluatedGuidance),
-            'guidance_outcomes' => array_map(
-                static fn(EvaluatedGuidance $g) => [
-                    'guidance_id' => $g->guidanceId,
-                    'guidance_type' => $g->guidanceType->value,
-                    'selected' => true,
-                    'applied' => false,
-                    'outcome' => OutcomeValue::UNKNOWN->value,
-                    'comment' => null,
-                    'attribution' => null,
-                ],
-                array_values($selectedById),
-            ),
+            // Sparse by design: add a row only for guidance you have something to
+            // say about. Every selected item is still recorded as a selection.
+            'guidance_outcomes' => [],
             'applied' => [],
             'helpful' => [],
             'irrelevant' => [],
             'harmful' => [],
             'result' => 'successful',
-            'comment' => 'Complete guidance_outcomes after the session. Selection alone is not proof of usefulness, so every row below is a placeholder that log-outcome refuses to record: judge each one with an outcome and a comment, or delete the rows you cannot judge and set guidance_outcomes_withheld_reason. A helpful row also needs attribution: {"seen_before_decision": did you read it before the decision it helped, "also_prescribed_by": the other sources that already prescribed that decision (task_prompt, contract, skill, template, constraint, repository_docs), or [] if nothing else did}.',
+            'comment' => 'Optional: add a guidance_outcomes row only for selected guidance (see evaluated_guidance) that actually changed, confirmed, or misled your work: {"guidance_id", "guidance_type", "selected": true, "applied", "outcome", "comment"} (outcome values: docs/guidance-events.md). A helpful row also needs attribution: {"seen_before_decision": did you read it before the decision it helped, "also_prescribed_by": the other sources that already prescribed that decision (task_prompt, contract, skill, template, constraint, repository_docs), or [] if nothing else did}. Leave the list empty when nothing notable happened; unjudged selections are neutral.',
         ];
 
         return json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);

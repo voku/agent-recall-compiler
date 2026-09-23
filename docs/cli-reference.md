@@ -200,7 +200,7 @@ vendor/bin/agent-recall-compiler log-outcome \
   --commit "<commit-or-working-tree>"
 ```
 
-The generated `guidance_outcomes` rows deliberately start as `applied=false`, `outcome=unknown`, `comment=null`. Those are compiler placeholders, not finalized evidence. `log-outcome` rejects an untouched `unknown` row: either provide a non-empty comment explaining why the guidance cannot be judged, or remove unjudged rows and set `guidance_outcomes_withheld_reason` to explain the deliberate absence.
+The generated draft starts with an empty `guidance_outcomes` list. Add a row only for selected guidance you have something to say about; unjudged selections are neutral and still recorded as selection events. An added `unknown` row needs a comment explaining why it cannot be judged. `guidance_outcomes_withheld_reason` is optional.
 
 For `helpful`, `irrelevant`, or `harmful`, a non-empty justification comment is required. `helpful` and `harmful` also require `applied=true`, and `helpful` requires decision-time `attribution` (`seen_before_decision`, `also_prescribed_by`; see [guidance-events.md](guidance-events.md)). Selection only proves that guidance entered the selected set; it does not prove model access, application, or usefulness.
 

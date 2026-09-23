@@ -255,7 +255,7 @@ vendor/bin/agent-recall-compiler log-outcome \
   --commit "<commit-or-working-tree>"
 ```
 
-The generated guidance rows start as `applied=false`, `outcome=unknown`, `comment=null` placeholders. An untouched placeholder is not accepted as feedback: judge it with evidence, or remove rows that cannot be judged and set `guidance_outcomes_withheld_reason` explicitly.
+The generated draft starts with no outcome rows. Add a row only for selected guidance that actually changed, confirmed, or misled the work; unjudged selections are neutral and still recorded as selection events.
 
 ### Governed use through `agent-loop`
 

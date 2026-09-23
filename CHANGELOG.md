@@ -4,6 +4,14 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.25.0] - 2026-09-23
+
+### Changed
+
+- Guidance outcomes are sparse. The compiled `recall-log.draft.json` starts with an empty `guidance_outcomes` list; a session adds rows only for guidance it has something to say about. Every selection is still recorded as a selection event.
+- `log-outcome` accepts selected guidance without an outcome row and no longer requires `guidance_outcomes_withheld_reason` (still optional and still recorded when given). In real consumer history 82% of forced per-item judgements were invented `not_used`/`irrelevant` filler, which pushes guidance toward retirement.
+- An added `unknown` row without a comment is still refused, now with a message that says to remove the row instead.
+
 ## [0.24.0] - 2026-09-23
 
 ### Added

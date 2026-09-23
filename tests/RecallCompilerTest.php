@@ -788,7 +788,8 @@ final class RecallCompilerTest extends TestCase
         self::assertSame('ITPNG-123', $logData['task_id']);
         self::assertSame(['g-1'], $logData['applied_proposals']);
         self::assertSame([], $logData['helpful']);
-        self::assertStringContainsString('Selection alone is not proof', $logData['comment']);
+        self::assertSame([], $logData['guidance_outcomes']);
+        self::assertStringContainsString('unjudged selections are neutral', $logData['comment']);
     }
 
     public function testOutcomeStatsSeparateSelectionFromUsefulness(): void
@@ -1126,9 +1127,9 @@ final class RecallCompilerTest extends TestCase
 
         $draft = json_decode((string)file_get_contents($outputDir . '/recall-log.draft.json'), true);
         self::assertSame('compilation.PROJECT-123.2026-06-18.001', $draft['compilation_id']);
-        self::assertSame('proposal.2026-06-18.001', $draft['guidance_outcomes'][0]['guidance_id']);
-        self::assertFalse($draft['guidance_outcomes'][0]['applied']);
-        self::assertSame('unknown', $draft['guidance_outcomes'][0]['outcome']);
+        // Selections are listed for the session; judgements start empty.
+        self::assertContains('proposal.2026-06-18.001', array_column($draft['evaluated_guidance'], 'guidance_id'));
+        self::assertSame([], $draft['guidance_outcomes']);
     }
 
     public function testCompileCommandGeneratesCompilationIdWhenOmitted(): void
@@ -1213,8 +1214,7 @@ final class RecallCompilerTest extends TestCase
         $this->writeProposal('proposal.2026-06-18.001', 'skill', ['src/Auth']);
         $draftPath = $this->buildEventDraft('compilation.PROJECT-123.2026-06-18.021');
         $draft = json_decode((string)file_get_contents($draftPath), true);
-        self::assertArrayHasKey('attribution', $draft['guidance_outcomes'][0]);
-        self::assertNull($draft['guidance_outcomes'][0]['attribution']);
+        self::assertStringContainsString('A helpful row also needs attribution', $draft['comment']);
         $draft['guidance_outcomes'][0]['applied'] = true;
         $draft['guidance_outcomes'][0]['outcome'] = 'helpful';
         $draft['guidance_outcomes'][0]['comment'] = 'Matched what I did.';
@@ -1376,24 +1376,24 @@ final class RecallCompilerTest extends TestCase
         self::assertFileDoesNotExist($this->root . '/history/recall-selections.jsonl');
     }
 
-    public function testUneditedCompiledDraftCannotBeLoggedAsGuidanceFeedback(): void
+    public function testUneditedCompiledDraftRecordsSelectionsWithoutInventingJudgements(): void
     {
-        // The defect this covers shipped: the compiler writes every selected row
-        // as outcome=unknown with no comment, log-outcome accepted it verbatim,
-        // and the result was a usefulness signal produced by the same component
-        // that chose the guidance. Eight such records exist in this project's own
-        // history, and guidance-evaluate can gate on none of them.
+        // Judgements are sparse. The compiled draft starts with no outcome rows,
+        // and logging it untouched records every selection as a fact while
+        // writing no usefulness signal at all: nothing is invented, and the
+        // session writes no prose to say that nothing notable happened.
         $this->writeProposal('proposal.2026-06-18.001', 'skill', ['src/Auth']);
-        $draftPath = $this->buildEventDraft('compilation.PROJECT-123.2026-06-18.010');
+        $draftPath = $this->buildEventDraft('compilation.PROJECT-123.2026-06-18.010', withSessionRows: false);
+        $draft = json_decode((string)file_get_contents($draftPath), true);
+        self::assertSame([], $draft['guidance_outcomes']);
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage("guidance outcome 'proposal.2026-06-18.001' is still the compiled placeholder");
-        try {
-            (new OutcomeLogger())->log($this->root, $draftPath, 'lars', 'commit_1');
-        } finally {
-            self::assertFileDoesNotExist($this->root . '/history/outcomes.jsonl');
-            self::assertFileDoesNotExist($this->root . '/history/recall-selections.jsonl');
-        }
+        (new OutcomeLogger())->log($this->root, $draftPath, 'lars', 'commit_1');
+
+        $selectionEvents = $this->jsonlRecords($this->root . '/history/recall-selections.jsonl');
+        self::assertCount(1, $selectionEvents);
+        self::assertTrue($selectionEvents[0]['selected']);
+        self::assertArrayNotHasKey('outcome_withheld_reason', array_filter($selectionEvents[0], static fn ($v) => $v !== null));
+        self::assertFileDoesNotExist($this->root . '/history/outcomes.jsonl');
     }
 
     public function testSelectedGuidanceMayBeLeftUnjudgedWhenTheAbsenceIsDeclared(): void
@@ -1427,17 +1427,20 @@ final class RecallCompilerTest extends TestCase
         self::assertFileDoesNotExist($this->root . '/history/outcomes.jsonl');
     }
 
-    public function testSilentlyDroppedGuidanceOutcomesAreStillRejected(): void
+    public function testAddedRowWithoutAJudgementIsStillRefused(): void
     {
+        // Omitting a row is neutral; adding one is a claim. A row left at
+        // `unknown` with no comment says nothing and must not become evidence.
         $this->writeProposal('proposal.2026-06-18.001', 'skill', ['src/Auth']);
         $draftPath = $this->buildEventDraft('compilation.PROJECT-123.2026-06-18.012');
-        $draft = json_decode((string)file_get_contents($draftPath), true);
-        $draft['guidance_outcomes'] = [];
-        file_put_contents($draftPath, json_encode($draft, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
 
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage("selected guidance 'proposal.2026-06-18.001' has no outcome");
-        (new OutcomeLogger())->log($this->root, $draftPath, 'lars', 'commit_1');
+        $this->expectExceptionMessage("guidance outcome 'proposal.2026-06-18.001' has no judgement");
+        try {
+            (new OutcomeLogger())->log($this->root, $draftPath, 'lars', 'commit_1');
+        } finally {
+            self::assertFileDoesNotExist($this->root . '/history/outcomes.jsonl');
+        }
     }
 
     public function testHelpfulGuidanceOutcomeCannotContradictItsOwnAppliedFlag(): void
@@ -1716,7 +1719,12 @@ final class RecallCompilerTest extends TestCase
 
         (new LearningLineageService())->rebuild($this->root, $this->root);
     }
-    private function buildEventDraft(string $compilationId): string
+    /**
+     * With $withSessionRows the helper also adds one unjudged row per selected
+     * guidance item, the way a session does when it has something to report;
+     * the compiled draft itself starts with no outcome rows.
+     */
+    private function buildEventDraft(string $compilationId, bool $withSessionRows = true): string
     {
         $result = (new RecallDecisionEngine())->decide(
             new TaskBrief('PROJECT-123', 'Touch auth', ['src/Auth/UserService.php']),
@@ -1730,6 +1738,23 @@ final class RecallCompilerTest extends TestCase
             $result,
             $compilationId,
         ));
+        if ($withSessionRows) {
+            $draft = json_decode((string) file_get_contents($draftPath), true, 512, JSON_THROW_ON_ERROR);
+            foreach ($draft['evaluated_guidance'] as $guidance) {
+                if (($guidance['selected'] ?? false) !== true) {
+                    continue;
+                }
+                $draft['guidance_outcomes'][] = [
+                    'guidance_id' => $guidance['guidance_id'],
+                    'guidance_type' => $guidance['guidance_type'],
+                    'selected' => true,
+                    'applied' => false,
+                    'outcome' => 'unknown',
+                    'comment' => null,
+                ];
+            }
+            file_put_contents($draftPath, json_encode($draft, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+        }
 
         return $draftPath;
     }
