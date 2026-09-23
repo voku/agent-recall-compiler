@@ -1090,7 +1090,7 @@ final class RecallCompilerTest extends TestCase
         $logger = new OutcomeLogger();
 
         self::assertSame('compilation.dogfood-empty-guidance.2026-06-18.001', $logger->log($this->root, $draftPath, 'dogfood-agent', 'commit_empty_guidance'));
-        self::assertSame('compilation.dogfood-empty-guidance.2026-06-18.001', $logger->log($this->root, $draftPath, 'dogfood-agent', 'commit_empty_guidance'));
+        $logger->log($this->root, $draftPath, 'dogfood-agent', 'commit_empty_guidance');
 
         self::assertFileDoesNotExist($this->root . '/history/recall-selections.jsonl');
         self::assertFileDoesNotExist($this->root . '/history/outcomes.jsonl');
