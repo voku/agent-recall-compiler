@@ -28,6 +28,7 @@ final readonly class ReviewAuditPreparer
         string $outputDirectory,
         ?int $contractRevision = null,
         ?string $implementationSnapshot = null,
+        ?ReviewPromptOptions $promptOptions = null,
     ): ReviewReportArtifact {
         if (!BlindSpotReviewer::isValidTaskId($taskId)) {
             throw new InvalidArgumentException('Review audit task id is invalid.');
@@ -51,7 +52,7 @@ final readonly class ReviewAuditPreparer
             );
         }
 
-        (new ReviewReportWriter($this->workspacePath))->write($report, $outputDirectory);
+        (new ReviewReportWriter($this->workspacePath))->write($report, $outputDirectory, $promptOptions);
 
         $artifact = (new ReviewReportReader($this->workspacePath))->read($taskId, $outputDirectory);
         if (!$artifact instanceof ReviewReportArtifact) {

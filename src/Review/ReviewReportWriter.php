@@ -15,7 +15,7 @@ final class ReviewReportWriter
         $this->paths = new ReviewReportPaths($workspacePath);
     }
 
-    public function write(ReviewReport $report, string $outputDir): void
+    public function write(ReviewReport $report, string $outputDir, ?ReviewPromptOptions $promptOptions = null): void
     {
         $directory = $this->paths->reviewsDirectory($outputDir);
         if (!is_dir($directory) && !mkdir($directory, 0o775, true) && !is_dir($directory)) {
@@ -32,7 +32,7 @@ final class ReviewReportWriter
         if (file_put_contents($this->paths->markdown($report->taskId, $outputDir), $this->toMarkdown($report)) === false) {
             throw new RuntimeException('Unable to write review Markdown report.');
         }
-        $prompt = (new BlindSpotPromptBuilder($this->workspacePath))->build($report, $outputDir);
+        $prompt = (new BlindSpotPromptBuilder($this->workspacePath))->build($report, $outputDir, $promptOptions);
         if (file_put_contents($this->paths->prompt($report->taskId, $outputDir), $prompt) === false) {
             throw new RuntimeException('Unable to write review prompt.');
         }

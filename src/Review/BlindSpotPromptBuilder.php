@@ -8,7 +8,7 @@ final class BlindSpotPromptBuilder
 {
     public function __construct(private readonly string $workspacePath) {}
 
-    public function build(ReviewReport $report, string $outputDir): string
+    public function build(ReviewReport $report, string $outputDir, ?ReviewPromptOptions $options = null): string
     {
         $prompt = (new ReviewPromptBuilder($this->workspacePath))->buildBlindSpotPrompt($report, $outputDir);
         $parts = explode("\n", $prompt, 2);
@@ -16,6 +16,8 @@ final class BlindSpotPromptBuilder
         $body = $parts[1] ?? '';
 
         return $heading
+            . "\n\n## Presentation\n\n"
+            . ($options ?? new ReviewPromptOptions())->guidance()
             . "\n\n## First-draft falsification lens\n\n"
             . trim((new FirstDraftReviewPromptBuilder())->build())
             . "\n\n## Repo-first blind-spot lens\n\n"

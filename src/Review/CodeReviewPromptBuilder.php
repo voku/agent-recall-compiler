@@ -8,7 +8,7 @@ final class CodeReviewPromptBuilder
 {
     public function __construct(private readonly string $workspacePath) {}
 
-    public function build(string $taskId, string $outputDir = '.agent-recall/current'): string
+    public function build(string $taskId, string $outputDir = '.agent-recall/current', ?ReviewPromptOptions $options = null): string
     {
         $prompt = (new ReviewPromptBuilder($this->workspacePath))->buildCodeReviewPrompt($taskId, $outputDir);
         $parts = explode("\n", $prompt, 2);
@@ -16,6 +16,8 @@ final class CodeReviewPromptBuilder
         $body = $parts[1] ?? '';
 
         return $heading
+            . "\n\n## Presentation\n\n"
+            . ($options ?? new ReviewPromptOptions())->guidance()
             . "\n\n## First-draft falsification lens\n\n"
             . trim((new FirstDraftReviewPromptBuilder())->build())
             . "\n\n"
