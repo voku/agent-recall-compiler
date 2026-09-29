@@ -9,6 +9,7 @@ use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use voku\AgentRecallCompiler\Review\ReviewAuditPreparer;
+use voku\AgentRecallCompiler\Review\ReviewPromptOptions;
 
 final class ReviewAuditPreparerTest extends TestCase
 {
@@ -65,5 +66,24 @@ final class ReviewAuditPreparerTest extends TestCase
             outputDirectory: '.agent-recall/current',
             contractRevision: 7,
         );
+    }
+
+    public function testPresentationOptionsAffectPromptButNotDeterministicReport(): void
+    {
+        $preparer = new ReviewAuditPreparer($this->root);
+        $first = $preparer->prepare('ABC-123', '.agent-recall/current');
+        $firstJson = (string) file_get_contents($first->jsonPath);
+
+        $second = $preparer->prepare(
+            'ABC-123',
+            '.agent-recall/current',
+            promptOptions: new ReviewPromptOptions('de', 'direct', 'rollback after timeout'),
+        );
+        $prompt = (string) file_get_contents($this->root . '/.agent-recall/current/reviews/ABC-123.blindspots.prompt.md');
+
+        self::assertSame($firstJson, file_get_contents($second->jsonPath));
+        self::assertStringContainsString('Write the final review in language de.', $prompt);
+        self::assertStringContainsString('State evidenced weaknesses and consequences plainly.', $prompt);
+        self::assertStringContainsString('"rollback after timeout"', $prompt);
     }
 }

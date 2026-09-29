@@ -4,6 +4,17 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.25.1] - 2026-09-29
+
+### Added
+
+- Review prompts accept a validated language tag, `measured`/`direct`/`unflinching` tone, and an optional bounded focus through `ReviewPromptOptions` and the `review` CLI. Code-review prompts also accept the language option.
+- Keep presentation preferences outside deterministic blind-spot audit identity; generated prompts direct receiving agents to preserve evidence and machine-readable status tokens while using the requested language and tone.
+
+### Validation
+
+- Docker `composer ci` passed: 352 tests and PHPStan.
+
 ## [0.25.0] - 2026-09-23
 
 ### Changed

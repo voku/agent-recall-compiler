@@ -143,6 +143,10 @@ final class ReviewTest extends TestCase
         self::assertStringContainsString('.agent-recall/current/reviews/ABC-123.code.prompt.md', $code['output']);
         self::assertFileExists($this->root . '/.agent-recall/current/reviews/ABC-123.code.prompt.md');
 
+        $localizedCode = $this->runReviewCli(['agent-recall-compiler review', 'code', 'ABC-123', '--language', 'de']);
+        self::assertSame(0, $localizedCode['exit']);
+        self::assertStringContainsString('Write the final review in language de.', (string) file_get_contents($this->root . '/.agent-recall/current/reviews/ABC-123.code.prompt.md'));
+
         $invalid = $this->runReviewCli(['agent-recall-compiler review', 'code', '../foo']);
         self::assertSame(1, $invalid['exit']);
 
@@ -154,6 +158,10 @@ final class ReviewTest extends TestCase
         self::assertFileExists($this->root . '/.agent-recall/current/reviews/ABC-123.blindspots.json');
         self::assertFileExists($this->root . '/.agent-recall/current/reviews/ABC-123.blindspots.md');
         self::assertFileExists($this->root . '/.agent-recall/current/reviews/ABC-123.blindspots.prompt.md');
+
+        $focused = $this->runReviewCli(['agent-recall-compiler review', 'blindspots', 'ABC-123', '--language', 'de', '--tone', 'direct', '--focus', 'rollback after timeout']);
+        self::assertSame(1, $focused['exit']);
+        self::assertStringContainsString('"rollback after timeout"', (string) file_get_contents($this->root . '/.agent-recall/current/reviews/ABC-123.blindspots.prompt.md'));
     }
 
     public function testCompactSessionNotesCanSatisfyValidationAndReviewMarkers(): void

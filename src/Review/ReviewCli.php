@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace voku\AgentRecallCompiler\Review;
 
+use InvalidArgumentException;
 use RuntimeException;
 
 final class ReviewCli
@@ -60,10 +61,11 @@ final class ReviewCli
                     $outputDir,
                     $this->contractRevision($parsed['options']),
                     $this->implementationSnapshot($parsed['options']),
+                    $this->promptOptions($parsed['options']),
                 ),
-                'code' => $this->runCode($taskId, $outputDir),
+                'code' => $this->runCode($taskId, $outputDir, $this->promptOptions($parsed['options'])),
             };
-        } catch (RuntimeException $exception) {
+        } catch (RuntimeException|InvalidArgumentException $exception) {
             fwrite(\STDERR, '[ERROR] ' . $exception->getMessage() . "\n");
             return 1;
         }
@@ -74,6 +76,7 @@ final class ReviewCli
         string $outputDir,
         ?int $contractRevision,
         ?string $implementationSnapshot,
+        ReviewPromptOptions $promptOptions,
     ): int {
         if (($contractRevision === null) !== ($implementationSnapshot === null)) {
             throw new RuntimeException('--contract-revision and --implementation-snapshot must be provided together.');
@@ -84,6 +87,7 @@ final class ReviewCli
             outputDirectory: $outputDir,
             contractRevision: $contractRevision,
             implementationSnapshot: $implementationSnapshot,
+            promptOptions: $promptOptions,
         );
         $report = $artifact->report;
 
@@ -98,7 +102,7 @@ final class ReviewCli
         return $report->status() === 'fail' ? 1 : 0;
     }
 
-    private function runCode(string $taskId, string $outputDir): int
+    private function runCode(string $taskId, string $outputDir, ReviewPromptOptions $promptOptions): int
     {
         $relativeDirectory = rtrim($outputDir, '/') . '/reviews';
         $directory = str_starts_with($relativeDirectory, '/') ? $relativeDirectory : rtrim($this->workspacePath, '/') . '/' . $relativeDirectory;
@@ -106,7 +110,7 @@ final class ReviewCli
             throw new RuntimeException('Unable to create review directory: ' . $directory);
         }
 
-        $prompt = (new CodeReviewPromptBuilder($this->workspacePath))->build($taskId, $outputDir);
+        $prompt = (new CodeReviewPromptBuilder($this->workspacePath))->build($taskId, $outputDir, $promptOptions);
         $path = $directory . '/' . $taskId . '.code.prompt.md';
         if (file_put_contents($path, $prompt) === false) {
             throw new RuntimeException('Unable to write code review prompt: ' . $path);
@@ -132,8 +136,8 @@ agent-recall-compiler review - deterministic evidence audits and review-prompt h
 Usage:
   agent-recall-compiler review help
   agent-recall-compiler review first-draft
-  agent-recall-compiler review blindspots <task-id> [--output-dir PATH] [--contract-revision N --implementation-snapshot sha256:DIGEST]
-  agent-recall-compiler review code <task-id> [--output-dir PATH]
+  agent-recall-compiler review blindspots <task-id> [--output-dir PATH] [--language TAG] [--tone measured|direct|unflinching] [--focus TEXT] [--contract-revision N --implementation-snapshot sha256:DIGEST]
+  agent-recall-compiler review code <task-id> [--output-dir PATH] [--language TAG]
 
 Commands:
   help                  Show review help.
@@ -171,6 +175,16 @@ TXT;
         }
 
         return ['options' => $options, 'arguments' => $arguments];
+    }
+
+    /** @param array<string, list<string>> $options */
+    private function promptOptions(array $options): ReviewPromptOptions
+    {
+        return new ReviewPromptOptions(
+            language: $this->stringOption($options, 'language') ?? 'en',
+            tone: $this->stringOption($options, 'tone') ?? 'measured',
+            focus: $this->stringOption($options, 'focus'),
+        );
     }
 
     /** @param array<string, list<string>> $options */
