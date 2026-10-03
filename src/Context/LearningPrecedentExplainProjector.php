@@ -19,6 +19,7 @@ use voku\AgentRecallCompiler\RecallResult;
  *     selected: bool,
  *     source_ref: string|null,
  *     evidence_ids: list<string>,
+ *     subject_id?: string,
  *     why_not?: string
  * }
  */
@@ -72,6 +73,7 @@ final readonly class LearningPrecedentExplainProjector
                 'selected' => $render,
                 'source_ref' => $this->string($fact['source_ref'] ?? null),
                 'evidence_ids' => $this->strings($payload['source_findings'] ?? []),
+                'subject_id' => $noteId,
                 ...($whyNot === null ? [] : ['why_not' => $whyNot]),
             ];
         }
