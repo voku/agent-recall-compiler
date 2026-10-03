@@ -4,6 +4,20 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.25.2] - 2026-10-03
+
+### Added
+
+- `CompiledContextExplainItem::$subjectId`: the id of the owner record an explain item is about, carried as a typed field. For a `learning_precedent` item it is the LearningNote id, written from the `note_id` the fact payload already holds - so a selected precedent, one held back by `covered_by_active_guidance` and one omitted by the context budget each name their note. Until now a consumer relating the item to its note had to take the id apart (`learning-precedent:<noteId>`), which is Recall's own format and not a contract (#220, #221).
+- `null` means "not recorded", never "no such record": an item that is not about an owner record (for example a map omission) and a `selection-report.json` persisted before this field existed both read back as `null`. The reader treats `context_explain.subject_id` like every other field, so a non-string value is rejected.
+
+No selection, rendering, authority or existing `id`/`source_ref` value changes; the new constructor parameter is trailing and optional. The persisted selection report remains bound to the compiled bundle by `bundle_sha256` but has no digest of its own, so this field has the same integrity as the existing explain items and no more.
+
+### Validation
+
+- Three reader tests (round-trip, a pre-field report still reads, a non-string value is rejected) and one projector test (selected, covered and budget-omitted precedents all carry the note id). Three mutants (reader ignores the field, projector drops it, reader skips the type check) each fail the suite.
+- PR #221 head `49114c661ed269db6df7377ebb6b1edfa7c69cf5` passed the PHP 8.3/8.4/8.5 matrix and the governed context-explain job (4 check runs); its merge commit `efc70437a00a1af2121b4df618d326bd5f690949` passed the same on `main` (3 passed, 1 skipped). The changelog section itself was missed in #221 and is added by this release's prepare commit.
+
 ## [0.25.1] - 2026-09-29
 
 ### Added
