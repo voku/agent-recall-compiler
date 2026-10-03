@@ -16,6 +16,9 @@ final class BlindSpotAnalysisPromptContractTest extends TestCase
     {
         $prompt = (new BlindSpotAnalysisLensBuilder())->build();
 
+        self::assertStringContainsString('supplied results, including your own prior conclusions', $prompt);
+        self::assertStringContainsString('not as evidence merely because you produced them', $prompt);
+        self::assertStringContainsString('contradictions, omitted evidence, or unsupported causal attribution', $prompt);
         self::assertStringContainsString('Pattern drift', $prompt);
         self::assertStringContainsString('Intent erosion', $prompt);
         self::assertStringContainsString('Operational overconfidence', $prompt);
