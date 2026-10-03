@@ -60,6 +60,7 @@ final class BlindSpotAnalysisPromptContractTest extends TestCase
         self::assertStringStartsWith('# L2 blind-spot analysis prompt for ABC-123', $prompt);
         self::assertStringContainsString('## First-draft falsification lens', $prompt);
         self::assertStringContainsString('## Repo-first blind-spot lens', $prompt);
+        self::assertStringContainsString('supplied results, including your own prior conclusions', $prompt);
         self::assertStringContainsString('Treat every LLM-produced statement as a candidate claim', $prompt);
         self::assertStringContainsString('Use adversarial pre-mortem reasoning only as a hypothesis generator', $prompt);
         self::assertStringContainsString('Close readiness must be BLOCKED, NEEDS HUMAN REVIEW, or READY FOR HUMAN CLOSE.', $prompt);
