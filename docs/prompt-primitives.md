@@ -141,6 +141,12 @@ Need a context-independent execution control?
 Need to attack a completed/current implementation?
     -> review first-draft
 
+Need to audit your own supplied results/conclusions against task artifacts before close?
+    -> review blindspots TASK-ID
+
+Need to audit an already-authoritative plan and then continue executing it?
+    -> select the Recall-owned L1 `execute-plan-with-blind-spot-check`
+
 Need to ask what to invest in next while completed-work context is still hot?
     -> prompt future-work --scope project
 
