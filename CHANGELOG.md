@@ -4,6 +4,19 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.25.3] - 2026-10-03
+
+### Changed
+
+- Blind-spot review now starts by auditing supplied results, including the reviewer's own prior conclusions, as candidate claims against primary artifacts before generating new hypotheses. Material contradictions, omitted evidence, and unsupported causal attribution must be surfaced rather than inherited as truth.
+- Document the existing owner split for self-review requests: artifact-backed result/conclusion audits use `review blindspots <task-id>`, while an already-authoritative plan that should continue executing after the check uses `execute-plan-with-blind-spot-check`. No new recipe, lifecycle state, or approval authority was added.
+- Tighten the repo-first blind-spot lens while reducing its prompt size from 2,959 to 2,854 characters.
+
+### Validation
+
+- PR #223 exact head `c79e2afbdc44922c48567ff8c08c284fffbb1fd3` passed PHPUnit and PHPStan on PHP 8.3, 8.4, and 8.5 plus governed `agent-loop` context-explain dogfood and the released Learning identity bridge in Actions run #757.
+- The merge commit `576cf64768ea502f36cbb496a4ada22a2da0ba22` passed post-merge `main` CI in Actions run #758. The review follow-up also pins that the self-audit text survives final `BlindSpotPromptBuilder` composition.
+
 ## [0.25.2] - 2026-10-03
 
 ### Added
