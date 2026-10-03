@@ -61,6 +61,45 @@ final class CompiledContextExplanationReaderTest extends TestCase
         self::assertSame(2, $explanation->outcomeStats['guidance.selected']['helpful_count']);
     }
 
+    /**
+     * An explain item can name the owner record it is about, as a typed field.
+     *
+     * A `learning_precedent` item is about one LearningNote. Until the item carried that id
+     * as a field, a consumer relating it to the note had to strip a prefix off `id`, which is
+     * Recall's own format. An item that is not about an owner record, and a report persisted
+     * before the field existed, read back as "not recorded" - never as "no such record".
+     */
+    public function testReadsTheOwnerRecordIdAnItemIsAbout(): void
+    {
+        $this->writeFixture([$this->precedentItem(['subject_id' => 'learning-note.2026-10-03.abc123'])]);
+
+        $explanation = (new CompiledContextExplanationReader())->read($this->root);
+
+        self::assertNotNull($explanation);
+        self::assertCount(2, $explanation->items);
+        self::assertNull($explanation->items[0]->subjectId, 'A map omission is not about an owner record.');
+        self::assertSame('learning-note.2026-10-03.abc123', $explanation->items[1]->subjectId);
+    }
+
+    public function testAReportWrittenBeforeTheFieldExistedStillReads(): void
+    {
+        $this->writeFixture([$this->precedentItem([])]);
+
+        $explanation = (new CompiledContextExplanationReader())->read($this->root);
+
+        self::assertNotNull($explanation);
+        self::assertNull($explanation->items[1]->subjectId, 'Absent is not recorded, not "no note".');
+    }
+
+    public function testANonStringOwnerRecordIdIsRejectedLikeEveryOtherField(): void
+    {
+        $this->writeFixture([$this->precedentItem(['subject_id' => 42])]);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessageMatches('/context_explain\.subject_id/');
+        (new CompiledContextExplanationReader())->read($this->root);
+    }
+
     public function testReportsSelectionReportIntegrityDriftWithoutRecompiling(): void
     {
         $this->writeFixture();
@@ -90,7 +129,8 @@ final class CompiledContextExplanationReaderTest extends TestCase
         (new CompiledContextExplanationReader())->read($this->root);
     }
 
-    private function writeFixture(): void
+    /** @param list<array<string, mixed>> $extraItems */
+    private function writeFixture(array $extraItems = []): void
     {
         $bundle = [
             'schema_version' => '1.0',
@@ -150,7 +190,7 @@ final class CompiledContextExplanationReaderTest extends TestCase
                 'source_ref' => 'map.json',
                 'evidence_ids' => [],
                 'why_not' => 'bounded context budget',
-            ]],
+            ], ...$extraItems],
         ];
 
         $bundleJson = CanonicalJson::pretty($bundle);
@@ -167,6 +207,27 @@ final class CompiledContextExplanationReaderTest extends TestCase
                 'selection-report.json' => hash('sha256', $selectionJson),
             ],
         ]));
+    }
+
+    /**
+     * @param array<string, mixed> $extra
+     * @return array<string, mixed>
+     */
+    private function precedentItem(array $extra): array
+    {
+        return [
+            'id' => 'learning-precedent:learning-note.2026-10-03.abc123',
+            'kind' => 'learning_precedent',
+            'what' => 'Release semantic owners first',
+            'why' => 'Deterministic LearningNote relevance: scope_match.',
+            'how' => 'LearningNoteRecallProvider exact path-scope/tag selection.',
+            'authority' => 'learning_precedent',
+            'use' => 'historical_precedent_not_instruction',
+            'state' => 'verified',
+            'selected' => true,
+            'source_ref' => 'agent-learning:learning-note.2026-10-03.abc123',
+            'evidence_ids' => ['finding.2026-10-03.def456'],
+        ] + $extra;
     }
 
     private function removeDirectory(string $path): void

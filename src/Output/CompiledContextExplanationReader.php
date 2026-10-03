@@ -195,6 +195,7 @@ final readonly class CompiledContextExplanationReader
                 sourceRef: $this->optionalString($item['source_ref'] ?? null, 'context_explain.source_ref'),
                 evidenceIds: $this->stringList($item['evidence_ids'] ?? [], 'context_explain.evidence_ids'),
                 whyNot: $this->optionalString($item['why_not'] ?? null, 'context_explain.why_not'),
+                subjectId: $this->optionalString($item['subject_id'] ?? null, 'context_explain.subject_id'),
             );
         }
 

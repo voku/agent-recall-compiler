@@ -65,6 +65,43 @@ final class LearningPrecedentExplainProjectorTest extends TestCase
     }
 
     /**
+     * Whatever happened to the precedent, the item still says which note it is.
+     *
+     * Selected, held back by active guidance and omitted by the budget are three different
+     * answers to "was it delivered", and a consumer relating the item to the LearningNote
+     * needs the note's id in all three, as a field rather than as the tail of `id`.
+     */
+    public function testEveryDispositionNamesTheNoteItIsAbout(): void
+    {
+        $guidance = new RecallGuidance(
+            id: 'proposal.active.001',
+            action: 'ADD',
+            targetType: 'memory',
+            target: 'MEMORY.md',
+            scope: ['src/'],
+            old: null,
+            new: 'Reviewed directive.',
+            reason: 'Reviewed.',
+            boundary: null,
+            validation: [],
+            status: 'approved',
+            patternKey: 'pattern.real',
+        );
+        $projector = new LearningPrecedentExplainProjector();
+
+        $selected = $projector->project([$this->fact(['scope_match'])], new RecallResult([], [], []));
+        $covered = $projector->project([$this->fact(['scope_match'])], new RecallResult([$guidance], [], []));
+        $omitted = $projector->project([$this->fact(['scope_match'], render: false, omissionReason: 'context_budget')], new RecallResult([], [], []));
+
+        self::assertTrue($selected[0]['selected']);
+        self::assertFalse($covered[0]['selected']);
+        self::assertFalse($omitted[0]['selected']);
+        foreach ([$selected, $covered, $omitted] as $items) {
+            self::assertSame('learning-note.real', $items[0]['subject_id'] ?? null);
+        }
+    }
+
+    /**
      * @param list<string> $reasons
      * @return array<string, mixed>
      */
