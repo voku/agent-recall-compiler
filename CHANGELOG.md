@@ -4,6 +4,16 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.25.4] - 2026-10-06
+
+### Changed
+
+- Require `voku/agent-map` `^0.20.0` (was `^0.18.0`) so a consumer can also use `voku/agent-edit` `^0.3.0`, which needs agent-map 0.20. Map facts and plans consumed by Recall are unchanged: agent-map 0.19/0.20 only add `class_removal_plan@1.0` and the optional `non_php_references` residue block on plans.
+
+### Validation
+
+- The full PHPUnit suite passes against agent-map 0.20.0.
+
 ## [0.25.3] - 2026-10-03
 
 ### Changed
