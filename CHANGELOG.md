@@ -6,6 +6,8 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.25.7] - 2026-10-08
+
 ### Added
 
 - Constraint manifests accept an optional `subject_patterns` list of literal substrings naming what the rule is about. A constraint that declares it is selected by scope or tag only when the task description, an acceptance criterion, or a touched file also contains one of them; the selection reason is `subject_match`, and a task that is demonstrably not about the subject gets the exclusion reason `no_subject_match`. Directory-wide scopes such as `src/` therefore stop pulling a rule into every task below them. Constraints without the field, tasks without readable files, files that do not exist yet, paths leaving the project root, files over 2 MiB and directories over 400 files or 8 MiB all keep the previous behaviour (selected, reason `constraint_scope`), so missing information can never hide a constraint. `meta.json` and the bundle record `subject_patterns` only when a selected constraint has them, and `meta.json` now records the real selection reason of each selected constraint instead of always `constraint_scope`. Motivation: after file-pattern scopes (0.25.5), a consuming project still had constraints whose only plausible scope is a whole tree; the outcome history shows most of their selections rated `irrelevant` or `not_used`.
