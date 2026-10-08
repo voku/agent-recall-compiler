@@ -6,6 +6,12 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.25.8] - 2026-10-08
+
+### Changed
+
+- Accept `voku/agent-map` `^0.20.0 || ^0.21.0 || ^0.22.0`, so installs can resolve agent-map 0.22.0 (and agent-graph 0.3 through `voku/agent-learning` 0.18.32). No Recall behavior change.
+
 ## [0.25.7] - 2026-10-08
 
 ### Added
