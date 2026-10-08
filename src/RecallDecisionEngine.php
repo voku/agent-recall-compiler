@@ -420,6 +420,13 @@ final class RecallDecisionEngine
             $scopeNormalized = rtrim(str_replace('\\', '/', $scope), '/');
             foreach ($taskFiles as $taskFile) {
                 $taskFileNormalized = rtrim(str_replace('\\', '/', trim($taskFile)), '/');
+                if ($this->isPatternScope($scopeNormalized)) {
+                    if ($this->patternMatchesFile($scopeNormalized, $taskFileNormalized)) {
+                        $matched[] = $taskFile;
+                    }
+
+                    continue;
+                }
                 if (
                     $taskFileNormalized === $scopeNormalized
                     ||
@@ -477,6 +484,28 @@ final class RecallDecisionEngine
     }
 
     /**
+     * A scope entry with * or ? is a file pattern, not a directory prefix. Before patterns were supported such
+     * an entry was compared as a literal path and never matched, so a pattern scope only ever excluded guidance.
+     */
+    private function isPatternScope(string $scope): bool
+    {
+        return str_contains($scope, '*') || str_contains($scope, '?');
+    }
+
+    /**
+     * A pattern without a slash (for example *_UnitCest.php) matches the file name anywhere in the tree; a pattern
+     * with a slash matches the whole path, and also everything below a matching directory. * crosses directories.
+     */
+    private function patternMatchesFile(string $pattern, string $file): bool
+    {
+        if (!str_contains($pattern, '/')) {
+            return fnmatch($pattern, basename($file));
+        }
+
+        return fnmatch($pattern, $file) || fnmatch($pattern . '/*', $file);
+    }
+
+    /**
      * @param list<string> $guidanceScopes
      * @param list<string> $taskFiles
      */
@@ -512,6 +541,13 @@ final class RecallDecisionEngine
                 $gsNormalized = rtrim(str_replace('\\', '/', $gs), '/');
                 $tfNormalized = rtrim(str_replace('\\', '/', $tf), '/');
 
+                if ($this->isPatternScope($gsNormalized)) {
+                    if ($this->patternMatchesFile($gsNormalized, $tfNormalized)) {
+                        return true;
+                    }
+
+                    continue;
+                }
                 if (str_starts_with($tfNormalized, $gsNormalized . '/')) {
                     return true;
                 }
