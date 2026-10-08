@@ -151,6 +151,21 @@ Active constraints are small runtime manifests, for example:
 
 Selected active constraints contribute authoritative validation obligations. Invalid, contradictory, superseded, or validation-incomplete constraint input fails closed.
 
+### Selecting a constraint by its subject
+
+`scope` and `tags` say where a constraint may apply. A rule with a broad scope (`src/`) is therefore selected for every task below that directory, including tasks that never touch what the rule is about. An optional `subject_patterns` list names that subject:
+
+```json
+{
+  "scope": ["src/"],
+  "subject_patterns": ["legacyQuery(", "LegacyConnection"]
+}
+```
+
+Each entry is a literal, case-sensitive substring (not a regular expression). When the list is present and the scope or a tag matched, the constraint is selected only if the task description, an acceptance criterion, or a touched file contains one of the entries. The selection reason is then `subject_match` and the evaluated files are the ones that contain it. If every touched file could be read and none contains an entry, the constraint is left out with the exclusion reason `no_subject_match`.
+
+Missing information never hides a constraint. It stays selected, with the reason `constraint_scope`, when no project root is configured, when the task has no files, or when any touched file cannot be read: a file the task has not created yet, a path outside the project root (including symlinks that leave it), a file over 2 MiB, or a directory with more than 400 files or 8 MiB. A constraint without `subject_patterns` behaves exactly as before. Each entry must be a non-empty string; anything else fails the compilation with a message naming the manifest.
+
 ## Project-document manifest
 
 `--document-manifest` adds Git-tracked Skills and ADRs to Recall through a bounded manifest instead of scanning an arbitrary documentation tree.

@@ -22,6 +22,10 @@ final class RecallDecisionEngine
      *        Their target + reason are also checked against newly selected guidance, the same
      *        way a rejected proposal is, so a rule that was retired for cause doesn't silently
      *        get re-promoted under a fresh ID.
+     * @param null|\Closure(string): ?string $readTaskFile Returns the text a task path holds, or null when it
+     *        cannot be established (a file the task has not created yet, a path outside the project, a very large
+     *        directory). Only constraints that declare `subjectPatterns` use it. Without a reader, or when a path is
+     *        unreadable, such a constraint stays selected exactly as a constraint without patterns would.
      * @return RecallResult
      */
     public function decide(
@@ -31,6 +35,7 @@ final class RecallDecisionEngine
         array $outcomes,
         array $constraints = [],
         array $retiredProposals = [],
+        ?\Closure $readTaskFile = null,
     ): RecallResult {
         $selectedGuidance = [];
         $selectedRejections = [];
@@ -108,6 +113,32 @@ final class RecallDecisionEngine
                 );
                 continue;
             }
+            $selectionReason = SelectionReason::CONSTRAINT_SCOPE;
+            if ($constraint->subjectPatterns !== []) {
+                $subject = $this->matchSubject(
+                    $constraint->subjectPatterns,
+                    $task,
+                    $matchingFiles !== [] ? $matchingFiles : $task->files,
+                    $readTaskFile,
+                );
+                if ($subject['outcome'] === 'none') {
+                    $evaluatedGuidance[] = new EvaluatedGuidance(
+                        $constraint->id,
+                        GuidanceType::CONSTRAINT,
+                        false,
+                        false,
+                        null,
+                        ExclusionReason::NO_SUBJECT_MATCH,
+                        $matchingFiles,
+                        $constraint->sourceProposal,
+                    );
+                    continue;
+                }
+                if ($subject['outcome'] === 'match') {
+                    $selectionReason = SelectionReason::SUBJECT_MATCH;
+                    $matchingFiles = $subject['files'] !== [] ? $subject['files'] : $matchingFiles;
+                }
+            }
             if ($constraint->validationCommands === []) {
                 throw new RecallCompilationBlockedException(sprintf("Compilation blocked: selected active constraint '%s' has no required validation command.", $constraint->id));
             }
@@ -119,7 +150,7 @@ final class RecallDecisionEngine
                 GuidanceType::CONSTRAINT,
                 true,
                 true,
-                SelectionReason::CONSTRAINT_SCOPE,
+                $selectionReason,
                 null,
                 $matchingFiles,
                 $constraint->sourceProposal,
@@ -395,6 +426,65 @@ final class RecallDecisionEngine
         }
 
         return array_values(array_filter($value, 'is_string'));
+    }
+
+    /**
+     * Decides whether the task is about a constraint's subject.
+     *
+     * "match": the task text or a read file contains a pattern (`files` lists the files that did).
+     * "none": every candidate file was read and none contains a pattern, so the task is not about the subject.
+     * "unknown": the content could not be established for at least one candidate, or there is nothing to read.
+     * The caller keeps the constraint selected for "unknown", so missing information never hides a rule.
+     *
+     * @param list<string>                    $patterns
+     * @param list<string>                    $candidateFiles
+     * @param null|\Closure(string): ?string $readTaskFile
+     *
+     * @return array{outcome: 'match'|'none'|'unknown', files: list<string>}
+     */
+    private function matchSubject(array $patterns, TaskBrief $task, array $candidateFiles, ?\Closure $readTaskFile): array
+    {
+        $taskText = $task->description . "\n" . implode("\n", $task->acceptanceCriteria);
+        if ($this->containsAnyPattern($taskText, $patterns)) {
+            return ['outcome' => 'match', 'files' => []];
+        }
+        if ($readTaskFile === null || $candidateFiles === []) {
+            return ['outcome' => 'unknown', 'files' => []];
+        }
+
+        $matched = [];
+        $undecidable = false;
+        foreach ($candidateFiles as $file) {
+            $content = $readTaskFile($file);
+            if ($content === null) {
+                $undecidable = true;
+
+                continue;
+            }
+            if ($this->containsAnyPattern($content, $patterns)) {
+                $matched[] = $file;
+            }
+        }
+
+        if ($matched !== []) {
+            return ['outcome' => 'match', 'files' => $matched];
+        }
+
+        return ['outcome' => $undecidable ? 'unknown' : 'none', 'files' => []];
+    }
+
+    /**
+     * @param list<string> $patterns
+     */
+    private function containsAnyPattern(string $text, array $patterns): bool
+    {
+        foreach ($patterns as $pattern) {
+            if ($pattern !== '' && str_contains($text, $pattern)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
