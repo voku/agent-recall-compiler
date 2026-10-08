@@ -4,6 +4,16 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.25.5] - 2026-10-08
+
+### Changed
+
+- `BlindSpotReviewer` evaluates `security_sensitive_context` on what the task touches - the `task_files` and `task_targets` in `meta.json` - instead of on the whole Recall artifact text. `system.md` embeds the selected guidance prose, which names words such as `role`, `sql` and `permission` by construction, so the old scan raised the warning for 220 of 223 real reports (and 221 of 222 recorded reports were `warn`), which made the review gate carry almost no information. On the same reports the task-files signal fires for 14 (6%). The finding keeps its id and word-boundary matching, now reads "Task files or targets mention security-sensitive terms", and its evidence names the first five matching paths. A consumer that matched the old message text must match the finding id instead.
+
+### Validation
+
+- `BlindSpotSecurityMarkerTest` (5 tests): guidance prose in `system.md` and the draft no longer triggers the warning, task files and targets do, evidence lists the matching paths capped at five, and word-boundary cases are unchanged. Restoring the whole-text scan fails the guidance-prose test. Full suite 359 tests, 1915 assertions; PHPStan clean. `composer ci` stops earlier in this checkout at `composer validate --strict` because the gitignored local `composer.lock` is stale against `composer.json`.
+
 ## [0.25.4] - 2026-10-06
 
 ### Changed

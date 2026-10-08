@@ -65,12 +65,48 @@ final class BlindSpotReviewer
             $findings[] = new BlindSpotFinding('token_noise_risk', ReviewSeverity::INFO, 'Recall artifacts mention commands that can create token noise.', ['Matched markers: ' . implode(', ', $noise)]);
         }
 
-        $security = $this->matchedSecurityMarkers($text);
+        // The security signal looks at what the task touches (its files and targets), not at the Recall
+        // artifacts: system.md embeds the selected guidance prose, which names words such as role, sql and
+        // permission by construction, so scanning it made the warning fire for 220 of 223 real reports.
+        $touched = $this->taskTouchedPaths($outputDir);
+        $security = $this->matchedSecurityMarkers(implode("\n", $touched));
         if ($security !== []) {
-            $findings[] = new BlindSpotFinding('security_sensitive_context', ReviewSeverity::WARN, 'Recall artifacts mention security-sensitive terms.', ['Matched markers: ' . implode(', ', $security)]);
+            $matchedPaths = array_values(array_filter($touched, fn (string $path): bool => $this->matchedSecurityMarkers($path) !== []));
+            $findings[] = new BlindSpotFinding(
+                'security_sensitive_context',
+                ReviewSeverity::WARN,
+                'Task files or targets mention security-sensitive terms.',
+                ['Matched markers: ' . implode(', ', $security), 'In: ' . implode(', ', array_slice($matchedPaths, 0, 5))],
+            );
         }
 
         return new ReviewReport($taskId, $findings);
+    }
+
+    /**
+     * Paths the task declares it touches, read from the compiled meta.json.
+     *
+     * @return list<string>
+     */
+    private function taskTouchedPaths(string $outputDir): array
+    {
+        $path = $this->path($this->relative($outputDir) . '/meta.json');
+        $content = is_file($path) && is_readable($path) ? file_get_contents($path) : false;
+        $meta = $content === false ? null : json_decode($content, true);
+        if (!is_array($meta)) {
+            return [];
+        }
+
+        $paths = [];
+        foreach (['task_files', 'task_targets'] as $key) {
+            foreach (is_array($meta[$key] ?? null) ? $meta[$key] : [] as $entry) {
+                if (is_string($entry) && $entry !== '') {
+                    $paths[] = $entry;
+                }
+            }
+        }
+
+        return array_values(array_unique($paths));
     }
 
     private function collectReviewText(string $taskId, string $outputDir): string
