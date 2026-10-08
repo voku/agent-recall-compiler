@@ -11,6 +11,7 @@ enum SelectionReason: string
     case SCOPE_OVERLAP = 'scope_overlap';
     case TAG_OVERLAP = 'tag_overlap';
     case CONSTRAINT_SCOPE = 'constraint_scope';
+    case SUBJECT_MATCH = 'subject_match';
     case REQUIRED_VALIDATION = 'required_validation';
     case REJECTED_GUIDANCE_WARNING = 'rejected_guidance_warning';
     case OUTCOME_WARNING = 'outcome_warning';

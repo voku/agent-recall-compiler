@@ -7,6 +7,7 @@ namespace voku\AgentRecallCompiler;
 enum ExclusionReason: string
 {
     case NO_SCOPE_OVERLAP = 'no_scope_overlap';
+    case NO_SUBJECT_MATCH = 'no_subject_match';
     case INACTIVE = 'inactive';
     case STALE = 'stale';
     case SUPERSEDED = 'superseded';

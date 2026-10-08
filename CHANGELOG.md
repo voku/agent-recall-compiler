@@ -4,6 +4,18 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [Unreleased]
+
+## [0.25.7] - 2026-10-08
+
+### Added
+
+- Constraint manifests accept an optional `subject_patterns` list of literal substrings naming what the rule is about. A constraint that declares it is selected by scope or tag only when the task description, an acceptance criterion, or a touched file also contains one of them; the selection reason is `subject_match`, and a task that is demonstrably not about the subject gets the exclusion reason `no_subject_match`. Directory-wide scopes such as `src/` therefore stop pulling a rule into every task below them. Constraints without the field, tasks without readable files, files that do not exist yet, paths leaving the project root, files over 2 MiB and directories over 400 files or 8 MiB all keep the previous behaviour (selected, reason `constraint_scope`), so missing information can never hide a constraint. `meta.json` and the bundle record `subject_patterns` only when a selected constraint has them, and `meta.json` now records the real selection reason of each selected constraint instead of always `constraint_scope`. Motivation: after file-pattern scopes (0.25.5), a consuming project still had constraints whose only plausible scope is a whole tree; the outcome history shows most of their selections rated `irrelevant` or `not_used`.
+
+### Validation
+
+- `ConstraintSubjectMatchTest` (16 tests): a task that never touches the subject, a touched file that does, the task text naming the subject without reading any file, fail-open without a reader and for an unreadable file, unchanged behaviour for constraints without patterns, scope and tag interplay, an excluded constraint that cannot block compilation, reader confinement (missing path, `..`, symlink out, oversized file, directory over the cap), the persisted reason and patterns in `meta.json` and the bundle, an unchanged persisted shape without patterns, and malformed manifests failing loudly. Disabling the gate fails 7 of the 16. Full suite 380 tests, 1981 assertions; PHPStan clean.
+
 ## [0.25.6] - 2026-10-08
 
 ### Changed

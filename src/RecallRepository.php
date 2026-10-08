@@ -411,6 +411,7 @@ final class RecallRepository
         $commands = $this->requiredStringList($data, 'validation_commands', $file);
         $ruleIdentifier = $this->requiredString($data, 'rule_identifier', $file);
         $tags = $data['tags'] ?? [];
+        $subjectPatterns = $this->optionalNonEmptyStringList($data, 'subject_patterns', $file);
 
         $this->assertCommandMatchesEngine($engine, $commands, $file);
 
@@ -423,7 +424,32 @@ final class RecallRepository
             $this->requiredString($data, 'source_proposal', $file),
             $this->requiredString($data, 'status', $file),
             is_array($tags) ? array_values(array_filter($tags, 'is_string')) : [],
+            $subjectPatterns,
         );
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     *
+     * @return list<string>
+     */
+    private function optionalNonEmptyStringList(array $data, string $key, string $file): array
+    {
+        if (!array_key_exists($key, $data)) {
+            return [];
+        }
+
+        $value = $data[$key];
+        if (!is_array($value) || !array_is_list($value)) {
+            throw new RuntimeException($key . ' must be a list of strings in ' . $file);
+        }
+        foreach ($value as $entry) {
+            if (!is_string($entry) || trim($entry) === '') {
+                throw new RuntimeException($key . ' must contain only non-empty strings in ' . $file);
+            }
+        }
+
+        return $value;
     }
 
     /**

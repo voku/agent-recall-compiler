@@ -17,6 +17,7 @@ use voku\AgentRecallCompiler\Provider\RecallProvider;
 use voku\AgentRecallCompiler\Provider\RecallProviderResult;
 use voku\AgentRecallCompiler\RecallCompilationBlockedException;
 use voku\AgentRecallCompiler\RecallDecisionEngine;
+use voku\AgentRecallCompiler\TaskFileContentReader;
 use voku\AgentRecallCompiler\RecallGuidance;
 use voku\AgentRecallCompiler\RecallRejection;
 use voku\AgentRecallCompiler\RecallResult;
@@ -92,6 +93,7 @@ final class RecallCompilationService
             $outcomes,
             $constraints,
             $retiredProposals,
+            $rootConfig->projectRoot === null || trim($rootConfig->projectRoot) === '' ? null : (new TaskFileContentReader($rootConfig->projectRoot))(...),
         );
         $selection = $this->preferLoadedCanonicalHomes($selection, $activeGuidance, $factResolution->facts);
         $this->assertSelectedGuidanceValidationEntryPointsAreLive($selection, $rootConfig->projectRoot);
@@ -117,7 +119,7 @@ final class RecallCompilationService
                 'validation_commands' => $item->validationCommands,
                 'status' => $item->status,
                 'tags' => $item->tags,
-            ], $selection->selectedConstraints),
+            ] + ($item->subjectPatterns === [] ? [] : ['subject_patterns' => $item->subjectPatterns]), $selection->selectedConstraints),
             'selected_rejections' => array_map(static fn ($item): string => $item->id, $selection->selectedRejections),
             'evaluated_guidance' => array_map(static fn ($item): array => $item->toArray(), $selection->evaluatedGuidance),
             'outcome_stats' => $selection->outcomeStats,

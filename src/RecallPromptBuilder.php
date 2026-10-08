@@ -364,6 +364,13 @@ final class RecallPromptBuilder
      */
     public function buildMetaJson(TaskBrief $task, RecallResult $result, ?string $compilationId = null, array $outputHashes = [], bool $blocked = false, ?string $blockReason = null, ?string $bundleDigest = null, ?string $snapshotDigest = null): string
     {
+        $constraintReasons = [];
+        foreach ($result->evaluatedGuidance as $evaluated) {
+            if ($evaluated->selected && $evaluated->selectionReason !== null) {
+                $constraintReasons[$evaluated->guidanceId] = $evaluated->selectionReason;
+            }
+        }
+
         $data = [
             'schema_version' => '1.0',
             'compilation_id' => $compilationId,
@@ -381,12 +388,12 @@ final class RecallPromptBuilder
                 'engine' => $c->engine,
                 'rule_identifier' => $c->ruleIdentifier,
                 'source_proposal' => $c->sourceProposal,
-                'selection_reason' => SelectionReason::CONSTRAINT_SCOPE->value,
+                'selection_reason' => ($constraintReasons[$c->id] ?? SelectionReason::CONSTRAINT_SCOPE)->value,
                 'scope' => $c->scope,
                 'validation_commands' => $c->validationCommands,
                 'status' => $c->status,
                 'tags' => $c->tags,
-            ], $result->selectedConstraints),
+            ] + ($c->subjectPatterns === [] ? [] : ['subject_patterns' => $c->subjectPatterns]), $result->selectedConstraints),
             'selected_rejections' => array_map(static fn(RecallRejection $rj) => $rj->id, $result->selectedRejections),
             'outcome_stats' => $result->outcomeStats,
             'warnings' => $result->warnings,
