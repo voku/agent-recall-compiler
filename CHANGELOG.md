@@ -4,6 +4,12 @@ All notable changes to `voku/agent-recall-compiler` will be documented in this f
 
 The format follows Keep a Changelog, and this project uses semantic versioning where practical.
 
+## [0.25.6] - 2026-10-08
+
+### Changed
+
+- Accept `voku/agent-map` `^0.20.0 || ^0.21.0`, so installs can resolve agent-map 0.21.0 (adds `agent-map watch`; no plan contract changes). The suite and PHPStan pass against agent-map 0.21.0.
+
 ## [0.25.5] - 2026-10-08
 
 ### Changed
