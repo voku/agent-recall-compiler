@@ -165,11 +165,11 @@ final class BundledOperatingPromptCatalogTest extends TestCase
 
         self::assertStringContainsString('discovery-first investigations', $skill);
         self::assertStringContainsString('[DISCOVERY.md](DISCOVERY.md)', $skill);
-        self::assertStringContainsString('not automatic recipe selection', $skill);
+        self::assertStringContainsString('**not** automatic recipe selection', $skill);
         self::assertStringContainsString('--operating-prompt-source bundled', $reference);
         self::assertStringContainsString('"id":"discovery-first","arguments":{}', $reference);
         self::assertStringContainsString('Constructing L1 is not conducting the investigation', $reference);
-        self::assertStringContainsString('not proof that the source file or its symbols do not exist', $reference);
+        self::assertStringContainsString('**not** proof that the source file or its symbols do not exist', $reference);
 
         $recipe = OperatingPromptCatalog::bundled()->recipe('discovery-first');
         self::assertSame(2, $recipe->level);
