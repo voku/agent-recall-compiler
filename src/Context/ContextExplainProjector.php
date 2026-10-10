@@ -73,11 +73,41 @@ final readonly class ContextExplainProjector
     {
         return match ($fact['type'] ?? null) {
             'edit_context' => $this->explainEditContext($fact),
+            'navigation_status' => $this->explainNavigationStatus($fact),
             'project_capabilities' => $this->explainCapabilities($task, $fact),
             'adr', 'skill' => [$this->explainDocument($task, $fact)],
             'operating_prompt' => $this->explainOperatingPrompt($fact),
             default => [],
         };
+    }
+
+    /**
+     * @param array<string, mixed> $fact
+     * @return list<ExplainItem>
+     */
+    private function explainNavigationStatus(array $fact): array
+    {
+        $payload = $this->payload($fact);
+        $path = $this->string($payload['path'] ?? null);
+        $paths = $this->strings($payload['paths'] ?? []);
+        $status = $this->string($payload['status'] ?? null) ?? 'unknown';
+        $what = $path ?? sprintf('PHP symbol context for %d declared file(s)', count($paths));
+
+        return [$this->item(
+            id: 'navigation-status:' . ($this->string($fact['id'] ?? null) ?? hash('sha256', $what)),
+            kind: 'navigation_status',
+            what: $what,
+            why: $this->string($payload['reason'] ?? null) ?? 'Map navigation status: ' . $status,
+            how: $status === 'unavailable'
+                ? 'No agent-map provider was registered for this compilation.'
+                : 'Agent-map reported a status for this declared path.',
+            authority: $this->string($fact['authority'] ?? null) ?? 'derived_navigation',
+            use: 'inspect_source_before_asserting_symbol_facts',
+            state: 'unknown',
+            selected: true,
+            sourceRef: $this->string($fact['source_ref'] ?? null),
+            evidenceIds: [],
+        )];
     }
 
     /**

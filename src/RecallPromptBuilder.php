@@ -81,6 +81,25 @@ final class RecallPromptBuilder
             $md[] = "";
         }
 
+        $navigationStatuses = array_values(array_filter(
+            $facts,
+            static fn (array $fact): bool => ($fact['type'] ?? null) === 'navigation_status',
+        ));
+        if ($navigationStatuses !== []) {
+            $md[] = '## Indexed Navigation Availability';
+            $md[] = 'Missing indexed navigation evidence does not prove that the declared source or its symbols are absent.';
+            foreach ($navigationStatuses as $fact) {
+                $payload = is_array($fact['payload'] ?? null) ? $fact['payload'] : [];
+                $status = is_string($payload['status'] ?? null) ? $payload['status'] : 'unknown';
+                $path = is_string($payload['path'] ?? null) ? ' for ' . $payload['path'] : '';
+                $reason = is_string($payload['reason'] ?? null)
+                    ? $payload['reason']
+                    : 'No indexed navigation evidence was returned for the declared path.';
+                $md[] = '- **' . strtoupper($status) . '**' . $path . ': ' . $reason;
+            }
+            $md[] = '';
+        }
+
         $navigationFacts = array_values(array_filter(
             $facts,
             static fn (array $fact): bool => ($fact['type'] ?? null) === 'navigation',
