@@ -12,6 +12,7 @@ use voku\AgentRecallCompiler\BundledOperatingPromptManifest;
 use voku\AgentRecallCompiler\Cli;
 use voku\AgentRecallCompiler\PackageResources;
 use voku\AgentRecallCompiler\OutcomeLogger;
+use voku\AgentRecallCompiler\OperatingPromptCatalog;
 use voku\AgentRecallCompiler\RecallSelectionEvent;
 use voku\AgentRecallCompiler\Reflection\GuidanceGapPromptBuilder;
 
@@ -153,6 +154,51 @@ final class BundledOperatingPromptCatalogTest extends TestCase
         self::assertStringContainsString('prompt guidance-gaps', $skill);
         self::assertStringContainsString('review first-draft', $skill);
         self::assertStringContainsString('"id":"todo-card-handoff","arguments":{}', $skill);
+    }
+
+    public function testConsumerDiscoveryEntrypointUsesTheActualBundledRecipe(): void
+    {
+        $skill = file_get_contents(dirname(__DIR__) . '/resources/skills/agent-recall-consumer/SKILL.md');
+        $reference = file_get_contents(dirname(__DIR__) . '/resources/skills/agent-recall-consumer/DISCOVERY.md');
+        self::assertIsString($skill);
+        self::assertIsString($reference);
+
+        self::assertStringContainsString('discovery-first investigations', $skill);
+        self::assertStringContainsString('[DISCOVERY.md](DISCOVERY.md)', $skill);
+        self::assertStringContainsString('**not** automatic recipe selection', $skill);
+        self::assertStringContainsString('--operating-prompt-source bundled', $reference);
+        self::assertStringContainsString('"id":"discovery-first","arguments":{}', $reference);
+        self::assertStringContainsString('Constructing L1 is not conducting the investigation', $reference);
+        self::assertStringContainsString('**not** proof that the source file or its symbols do not exist', $reference);
+
+        $recipe = OperatingPromptCatalog::bundled()->recipe('discovery-first');
+        self::assertSame(2, $recipe->level);
+        self::assertFalse($recipe->requiresMutationAuthority());
+
+        $output = $this->root . '/discovery-output';
+        self::assertSame(0, (new Cli())->run([
+            'agent-recall-compiler',
+            'compile',
+            '--root',
+            $this->root,
+            '--task',
+            'DISCOVERY-SKILL-1',
+            '--description',
+            'Re-ground an unclear current PR.',
+            '--operating-prompt-source',
+            'bundled',
+            '--operating-prompt',
+            '{"id":"discovery-first","arguments":{}}',
+            '--output-dir',
+            $output,
+            '--compilation-id',
+            'compilation.DISCOVERY-SKILL-1.fixed',
+        ]));
+
+        $system = file_get_contents($output . '/system.md');
+        self::assertIsString($system);
+        self::assertStringContainsString('### discovery-first (L2)', $system);
+        self::assertStringContainsString('Do not implement during the discovery pass', $system);
     }
 
     public function testConsumerSkillMatchesGuidanceGapPromptContract(): void

@@ -1,6 +1,6 @@
 ---
 name: agent-recall-consumer
-description: Use voku/agent-recall-compiler to compile task-scoped Recall briefings, embed Recall through its typed PHP API, apply explicit operating-prompt recipes, review implementations, and record evidence-backed outcomes.
+description: Use voku/agent-recall-compiler for task-scoped Recall, discovery-first investigations of unclear or stale repository work, explicit prompt recipes, PHP embedding, implementation review, and evidence-backed outcomes.
 ---
 
 # Agent Recall Consumer
@@ -87,6 +87,12 @@ vendor/bin/agent-recall-compiler compile \
 ```
 
 Recipe selection and arguments are task policy. A selected recipe may be L1 or L2; follow the generated `system.md` contract and do not treat prompt construction as implementation.
+
+## Discovery-first Investigation
+
+When investigating an unclear/stale task, a suspicious PR, or a request to "deep dive" / "follow the white rabbit", use the bundled `discovery-first` L2 recipe to construct a repository-grounded investigation contract. This skill's activation is **not** automatic recipe selection, permission to edit, or proof of completed discovery. The caller or approved task Contract must explicitly select the recipe; L2 prompt construction does not implement or validate the underlying task.
+
+Read [DISCOVERY.md](DISCOVERY.md) for a runnable CLI invocation, evidential stop conditions, and the distinction between missing indexed context and missing source facts.
 
 ## Review
 
