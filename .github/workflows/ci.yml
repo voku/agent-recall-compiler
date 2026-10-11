@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -42,12 +42,12 @@ jobs:
 
     steps:
       - name: Checkout candidate recall compiler
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
 
       - name: Checkout released-set-verified agent-loop baseline
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: voku/agent-loop
           ref: bf0f04bc0689e5dbbffc2872a8ddc77ca576da9f
