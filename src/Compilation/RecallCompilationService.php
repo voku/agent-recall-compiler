@@ -84,6 +84,31 @@ final class RecallCompilationService
             $snapshotProviders[] = ['manifest' => $manifest->toArray(), 'source_digest' => $result->sourceDigest];
         }
 
+        // An unconfigured Map provider means no indexed symbol facts were compiled.
+        // Do not mistake that absence for proof that declared PHP files lack symbols.
+        if (!isset($precomputedResults['agent-map'])) {
+            $phpFiles = array_values(array_filter(
+                $task->files,
+                static fn (string $path): bool => str_ends_with(strtolower($path), '.php'),
+            ));
+            if ($phpFiles !== []) {
+                sort($phpFiles, SORT_STRING);
+                $factCandidates[] = new RecallFact(
+                    id: 'map.symbol-context.unavailable',
+                    type: 'navigation_status',
+                    authority: 'compiler_configuration',
+                    sourceRef: $task->sourcePath ?? 'inline',
+                    scope: $phpFiles,
+                    payload: [
+                        'status' => 'unavailable',
+                        'reason_code' => 'map_index_not_configured',
+                        'reason' => 'No agent-map provider was configured; no indexed symbol evidence was compiled for the declared PHP files.',
+                        'paths' => $phpFiles,
+                    ],
+                );
+            }
+        }
+
         $factResolution = (new FactResolver())->resolve($factCandidates);
         $scopeResolution = (new TaskScopeResolver())->resolve($task, $factResolution->facts);
         $selection = $this->decisionEngine->decide(
