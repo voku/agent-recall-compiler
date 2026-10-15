@@ -25,6 +25,22 @@
       "arguments": []
     },
     {
+      "id": "clarify-missing-inputs",
+      "title": "Clarify missing inputs",
+      "description": "Turn evidence gaps into a bounded, ordered list of questions and commands needed before work can proceed.",
+      "purpose": "start",
+      "arguments": [
+        {
+          "name": "maximum_questions",
+          "type": "integer",
+          "required": true,
+          "description": "Maximum number of clarification questions to ask.",
+          "minimum": 1,
+          "examples": [3, 5]
+        }
+      ]
+    },
+    {
       "id": "continue-until-done",
       "title": "Continue until done",
       "description": "Continue authorized independent slices until an observable done condition, resumable checkpoint, or real blocker.",
