@@ -81,6 +81,41 @@ final class BundledOperatingPromptSourceTest extends TestCase
         self::assertStringContainsString('CLEAN remains valid', $system);
     }
 
+    public function testClarifyMissingInputsCompilesViaBundledConsumerSource(): void
+    {
+        $output = $this->root . '/clarify-output';
+        $request = json_encode([
+            'id' => 'clarify-missing-inputs',
+            'arguments' => ['maximum_questions' => 3],
+        ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
+
+        self::assertSame(0, (new CompileCommand(reportToStdout: false))->run([
+            '--root',
+            $this->root,
+            '--task',
+            'BUNDLED-CLARIFY-1',
+            '--description',
+            'Determine which missing evidence blocks the next engineering step.',
+            '--file',
+            'src/Example.php',
+            '--operating-prompt-source',
+            'bundled',
+            '--operating-prompt',
+            $request,
+            '--output-dir',
+            $output,
+            '--compilation-id',
+            'compilation.BUNDLED-CLARIFY-1.fixed',
+        ]));
+
+        $system = (string) file_get_contents($output . '/system.md');
+        self::assertStringContainsString('### clarify-missing-inputs (L2)', $system);
+        self::assertStringContainsString('Ask at most 3 questions', $system);
+        self::assertStringContainsString('HUMAN_DECISION_REQUIRED', $system);
+        self::assertStringNotContainsString('{{maximum_questions}}', $system);
+        self::assertStringContainsString('do not implement or approve anything', $system);
+    }
+
     public function testUnknownOperatingPromptSourceFailsClosed(): void
     {
         $this->expectException(InvalidArgumentException::class);
