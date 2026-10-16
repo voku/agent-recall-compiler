@@ -6,6 +6,14 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+### Added
+
+- Add the L2 operating-prompt recipe `clarify-missing-inputs` (purpose `start`, required integer argument `maximum_questions >= 1`). It builds a project-specific L1 prompt that separates what recall context already verifies from the gaps that block the next step, classifies each gap as MISSING, UNKNOWN, CONTRADICTED or HUMAN_DECISION_REQUIRED, names for each the exact information or command output needed and the cheapest source, and asks at most `maximum_questions` ordered questions only where evidence cannot answer. It never invents commands, files, scope or authority, never answers human or owner decisions, and stops after clarification. Like every recipe it is selected explicitly and carries no workflow authority.
+
+### Validation
+
+- `ClarifyMissingInputsPromptTest` covers the template invariants and the bundled catalog's argument validation.
+
 ## [0.25.8] - 2026-10-08
 
 ### Changed
