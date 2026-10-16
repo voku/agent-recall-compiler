@@ -34,6 +34,10 @@ final class ClarifyMissingInputsPromptTest extends TestCase
         $template = $prompt['template'];
         self::assertIsString($template);
         self::assertStringContainsString('Ask at most {{maximum_questions}} questions', $template);
+        self::assertStringContainsString('before the next authorized engineering step', $template);
+        self::assertStringContainsString('ask only the highest-priority unanswered question', $template);
+        self::assertStringContainsString('Never turn optional edge cases or speculative enhancements into new requirements', $template);
+        self::assertStringNotContainsString('before any planning or implementation', $template);
         self::assertStringContainsString('MISSING, UNKNOWN, CONTRADICTED, or HUMAN_DECISION_REQUIRED', $template);
         self::assertStringContainsString('the exact information or command output needed', $template);
         self::assertStringContainsString('Prefer resolving a gap from available evidence over asking', $template);
