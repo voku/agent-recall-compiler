@@ -50,6 +50,51 @@ final class ContextExplainRendererTest extends TestCase
         self::assertStringNotContainsString('proposal.active.002', $markdown);
     }
 
+    public function testGuidanceExcludedAsIrrelevantCollapsesButOtherExclusionsStayVisible(): void
+    {
+        $items = [];
+        for ($index = 0; $index < 12; ++$index) {
+            $items[] = $this->guidanceItem(sprintf('proposal.irrelevant.%02d', $index), 'no_scope_overlap');
+        }
+        $items[] = $this->guidanceItem('proposal.other.subject', 'no_subject_match');
+        $items[] = $this->guidanceItem('proposal.stale.001', 'stale');
+        $items[] = $this->guidanceItem('proposal.conflict.001', 'conflicting');
+
+        $markdown = (new ContextExplainRenderer())->render($items);
+
+        self::assertStringContainsString('**no_scope_overlap**: 12', $markdown);
+        self::assertStringContainsString('**no_subject_match**: 1', $markdown);
+        self::assertStringNotContainsString('proposal.irrelevant.11', $markdown);
+        self::assertStringContainsString('### proposal.stale.001', $markdown);
+        self::assertStringContainsString('- **Why not**: stale', $markdown);
+        self::assertStringContainsString('### proposal.conflict.001', $markdown);
+    }
+
+    /**
+     * @return array{
+     *     id: string, kind: string, what: string, why: string, how: string, authority: string,
+     *     use: string, state: string, selected: bool, source_ref: string|null,
+     *     evidence_ids: list<string>, why_not: string
+     * }
+     */
+    private function guidanceItem(string $id, string $whyNot): array
+    {
+        return [
+            'id' => 'guidance:' . $id,
+            'kind' => 'guidance_decision',
+            'what' => $id,
+            'why' => 'RecallDecisionEngine evaluated this guidance for the current task.',
+            'how' => 'Deterministic guidance eligibility and task-scope selection.',
+            'authority' => 'guidance_selection',
+            'use' => 'excluded_guidance_do_not_apply',
+            'state' => 'verified',
+            'selected' => false,
+            'source_ref' => null,
+            'evidence_ids' => [],
+            'why_not' => $whyNot,
+        ];
+    }
+
     /**
      * @return array{
      *     id: string,
