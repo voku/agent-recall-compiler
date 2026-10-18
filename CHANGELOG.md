@@ -6,6 +6,10 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+### Changed
+
+- Collapse guidance that was excluded only as irrelevant (`no_scope_overlap`, `no_subject_match`) into a bounded reason/count summary in `system.md`'s Context Explain Plan, as already done for project capabilities and Learning precedents. Exclusions that carry evidence (`stale`, `superseded`, `conflicting`, `rejected`, `invalid_schema`, `inactive`, `canonical_home_loaded`) stay rendered per item, and `selection-report.json.context_explain` is unchanged. On an eight-briefing agent-loop replay with no guidance selected, a briefing dropped from 17,636 to 13,743 bytes.
+
 ### Added
 
 - Add the L2 operating-prompt recipe `clarify-missing-inputs` (purpose `start`, required integer argument `maximum_questions >= 1`). It builds a project-specific L1 prompt that separates what recall context already verifies from the gaps that block the next step, classifies each gap as MISSING, UNKNOWN, CONTRADICTED or HUMAN_DECISION_REQUIRED, names for each the exact information or command output needed and the cheapest source, and asks at most `maximum_questions` ordered questions only where evidence cannot answer. It never invents commands, files, scope or authority, never answers human or owner decisions, and stops after clarification. Like every recipe it is selected explicitly and carries no workflow authority.

@@ -7,6 +7,13 @@ namespace voku\AgentRecallCompiler\Rendering;
 final readonly class ContextExplainRenderer
 {
     /**
+     * Exclusions that only say "this guidance does not concern the task". Every other
+     * exclusion reason (stale, superseded, conflicting, rejected, invalid_schema, ...)
+     * is evidence the agent may need and stays rendered per item.
+     */
+    private const array IRRELEVANT_GUIDANCE_REASONS = ['no_scope_overlap', 'no_subject_match'];
+
+    /**
      * @param list<array{
      *     id: string,
      *     kind: string,
@@ -40,9 +47,18 @@ final readonly class ContextExplainRenderer
         $omittedProjectCapabilities = [];
         /** @var array<string, int> $omittedLearningPrecedents */
         $omittedLearningPrecedents = [];
+        /** @var array<string, int> $omittedIrrelevantGuidance */
+        $omittedIrrelevantGuidance = [];
         foreach ($items as $item) {
             if (!$item['selected'] && $this->isOmittableProjectCapability($item['kind'])) {
                 $omittedProjectCapabilities[$item['kind']] = ($omittedProjectCapabilities[$item['kind']] ?? 0) + 1;
+
+                continue;
+            }
+
+            if ($item['kind'] === 'guidance_decision' && !$item['selected'] && in_array($item['why_not'] ?? null, self::IRRELEVANT_GUIDANCE_REASONS, true)) {
+                $reason = (string) $item['why_not'];
+                $omittedIrrelevantGuidance[$reason] = ($omittedIrrelevantGuidance[$reason] ?? 0) + 1;
 
                 continue;
             }
@@ -81,6 +97,17 @@ final readonly class ContextExplainRenderer
             $lines[] = '- **Durable detail**: complete per-capability provenance remains in `selection-report.json.context_explain`.';
             foreach ($omittedProjectCapabilities as $kind => $count) {
                 $lines[] = '- **' . $kind . '**: ' . $count;
+            }
+            $lines[] = '';
+        }
+
+        if ($omittedIrrelevantGuidance !== []) {
+            ksort($omittedIrrelevantGuidance, SORT_STRING);
+            $lines[] = '### Omitted Guidance (not relevant to this task)';
+            $lines[] = '- **Omitted from runtime context**: ' . array_sum($omittedIrrelevantGuidance);
+            $lines[] = '- **Durable detail**: complete per-guidance provenance remains in `selection-report.json.context_explain`.';
+            foreach ($omittedIrrelevantGuidance as $reason => $count) {
+                $lines[] = '- **' . $reason . '**: ' . $count;
             }
             $lines[] = '';
         }
