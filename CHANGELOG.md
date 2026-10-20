@@ -8,6 +8,8 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ### Changed
 
+- Task-backed code-review prompts now use first-draft falsification as the guaranteed default; optional engineering lenses can deepen a concern but their absence no longer blocks review.
+
 - Collapse guidance that was excluded only as irrelevant (`no_scope_overlap`, `no_subject_match`) into a bounded reason/count summary in `system.md`'s Context Explain Plan, as already done for project capabilities and Learning precedents. Exclusions that carry evidence (`stale`, `superseded`, `conflicting`, `rejected`, `invalid_schema`, `inactive`, `canonical_home_loaded`) stay rendered per item, and `selection-report.json.context_explain` is unchanged. On an eight-briefing agent-loop replay with no guidance selected, a briefing dropped from 17,636 to 13,743 bytes.
 
 ### Added
