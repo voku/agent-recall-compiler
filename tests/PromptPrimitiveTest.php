@@ -69,7 +69,8 @@ final class PromptPrimitiveTest extends TestCase
         self::assertStringStartsWith('# L2 code review prompt for ABC-123', $prompt);
         self::assertStringContainsString('## First-draft falsification lens', $prompt);
         self::assertStringContainsString('CLEAN is valid only after concrete attempts to falsify', $prompt);
-        self::assertStringContainsString('Select one dominant installed `code-review-*` engineering lens', $prompt);
+        self::assertStringContainsString('Use the guaranteed first-draft falsification review as the default correctness review', $prompt);
+        self::assertStringContainsString('An unavailable optional lens is not a blocker', $prompt);
     }
 
     public function testGuidanceGapPromptIsExplicitL2HumanInLoopTechnique(): void
