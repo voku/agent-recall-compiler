@@ -26,16 +26,10 @@ final class ReviewReportWriter
         if ($json === false) {
             throw new RuntimeException('Unable to encode review report JSON: ' . json_last_error_msg());
         }
-        if (file_put_contents($this->paths->json($report->taskId, $outputDir), $json . "\n") === false) {
-            throw new RuntimeException('Unable to write review JSON report.');
-        }
-        if (file_put_contents($this->paths->markdown($report->taskId, $outputDir), $this->toMarkdown($report)) === false) {
-            throw new RuntimeException('Unable to write review Markdown report.');
-        }
+        ReviewFileWriter::write($this->workspacePath, $this->paths->json($report->taskId, $outputDir), $json . "\n");
+        ReviewFileWriter::write($this->workspacePath, $this->paths->markdown($report->taskId, $outputDir), $this->toMarkdown($report));
         $prompt = (new BlindSpotPromptBuilder($this->workspacePath))->build($report, $outputDir, $promptOptions);
-        if (file_put_contents($this->paths->prompt($report->taskId, $outputDir), $prompt) === false) {
-            throw new RuntimeException('Unable to write review prompt.');
-        }
+        ReviewFileWriter::write($this->workspacePath, $this->paths->prompt($report->taskId, $outputDir), $prompt);
     }
 
     private function toMarkdown(ReviewReport $report): string
