@@ -14,14 +14,17 @@ final class RecallRepository
     public function loadMemory(string $root): string
     {
         $path = $root . '/MEMORY.md';
+        if (is_link($path)) {
+            return '';
+        }
         if (!is_file($path)) {
             // Also check parent directory if $root is infra/doc/agent-learning
             $parentPath = dirname($root) . '/MEMORY.md';
-            if (is_file($parentPath)) {
+            if (!is_link($parentPath) && is_file($parentPath)) {
                 $path = $parentPath;
             } else {
                 $grandParentPath = dirname($root, 2) . '/MEMORY.md';
-                if (is_file($grandParentPath)) {
+                if (!is_link($grandParentPath) && is_file($grandParentPath)) {
                     $path = $grandParentPath;
                 } else {
                     return '';

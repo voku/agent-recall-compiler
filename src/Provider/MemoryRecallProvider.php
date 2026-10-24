@@ -56,7 +56,15 @@ final class MemoryRecallProvider implements RecallProvider
         }
 
         $path = rtrim($rootConfig->projectRoot, '/\\') . '/MEMORY.md';
-        if (!is_file($path)) {
+        $realProject = realpath($rootConfig->projectRoot);
+        $realPath = realpath($path);
+        if (
+            is_link($path)
+            || !is_file($path)
+            || $realProject === false
+            || $realPath === false
+            || !str_starts_with($realPath, rtrim($realProject, '/\\') . DIRECTORY_SEPARATOR)
+        ) {
             return ['content' => '', 'sourceSha256' => null];
         }
 
