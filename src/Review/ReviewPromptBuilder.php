@@ -207,7 +207,16 @@ final class ReviewPromptBuilder
             return;
         }
         $path = $this->path($relative);
-        if (!is_file($path) || !is_readable($path)) {
+        if (is_link($path) || !is_file($path) || !is_readable($path)) {
+            return;
+        }
+        $realWorkspace = realpath($this->workspacePath);
+        $realPath = realpath($path);
+        if (
+            $realWorkspace === false
+            || $realPath === false
+            || !str_starts_with($realPath, rtrim($realWorkspace, '/\\') . DIRECTORY_SEPARATOR)
+        ) {
             return;
         }
 
