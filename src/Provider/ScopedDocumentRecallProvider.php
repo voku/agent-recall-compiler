@@ -72,6 +72,16 @@ final class ScopedDocumentRecallProvider implements RecallProvider
             if (!is_file($sourcePath)) {
                 throw new RuntimeException('document source not found for ' . $id . ': ' . $source);
             }
+            $containmentRoot = realpath($rootConfig->projectRoot ?? dirname($this->manifestPath));
+            $realSource = realpath($sourcePath);
+            if (
+                $containmentRoot === false
+                || $realSource === false
+                || !str_starts_with($realSource, rtrim($containmentRoot, '/\\') . DIRECTORY_SEPARATOR)
+            ) {
+                throw new RuntimeException('document ' . $id . ' source must stay inside the project root: ' . $source);
+            }
+            $sourcePath = $realSource;
             $content = file_get_contents($sourcePath);
             if ($content === false) {
                 throw new RuntimeException('cannot read document source for ' . $id . ': ' . $source);
