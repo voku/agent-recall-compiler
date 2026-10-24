@@ -6,6 +6,12 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.25.9] - 2026-10-24
+
+### Security
+
+- Constrain manifest source paths and review/report files to the project, and refuse symlinked MEMORY.md, review, and output paths.
+
 ### Changed
 
 - Task-backed code-review prompts now use first-draft falsification as the guaranteed default; optional engineering lenses can deepen a concern but their absence no longer blocks review.
