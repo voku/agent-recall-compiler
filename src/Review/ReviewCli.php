@@ -112,9 +112,7 @@ final class ReviewCli
 
         $prompt = (new CodeReviewPromptBuilder($this->workspacePath))->build($taskId, $outputDir, $promptOptions);
         $path = $directory . '/' . $taskId . '.code.prompt.md';
-        if (file_put_contents($path, $prompt) === false) {
-            throw new RuntimeException('Unable to write code review prompt: ' . $path);
-        }
+        ReviewFileWriter::write($this->workspacePath, $path, $prompt);
 
         echo 'Review code prompt for ' . $taskId . ': ' . $relativeDirectory . '/' . $taskId . ".code.prompt.md\n";
 
