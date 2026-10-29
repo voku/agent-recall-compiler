@@ -13,7 +13,10 @@
           "required": true,
           "description": "Minimum number of plausible failure-mode hypotheses to investigate.",
           "minimum": 1,
-          "examples": [3, 5]
+          "examples": [
+            3,
+            5
+          ]
         }
       ]
     },
@@ -36,7 +39,10 @@
           "required": true,
           "description": "Maximum number of clarification questions to ask.",
           "minimum": 1,
-          "examples": [3, 5]
+          "examples": [
+            3,
+            5
+          ]
         }
       ]
     },
@@ -70,14 +76,19 @@
           "required": true,
           "description": "Minimum percentage-point increase in coverage required by the prompt.",
           "minimum": 1,
-          "examples": [5, 10]
+          "examples": [
+            5,
+            10
+          ]
         },
         {
           "name": "mutation_command",
           "type": "string",
           "required": true,
           "description": "Repository-supported mutation-testing command to execute.",
-          "examples": ["composer infection"]
+          "examples": [
+            "composer infection"
+          ]
         }
       ]
     },
@@ -148,7 +159,10 @@
           "type": "string",
           "required": true,
           "description": "Planning search radius to expose dependencies beyond the current executable slice.",
-          "examples": ["three independently mergeable slices", "the next release boundary"]
+          "examples": [
+            "three independently mergeable slices",
+            "the next release boundary"
+          ]
         }
       ]
     },
@@ -178,7 +192,10 @@
           "required": true,
           "description": "Minimum number of concrete regression hypotheses or search targets to investigate.",
           "minimum": 1,
-          "examples": [3, 5]
+          "examples": [
+            3,
+            5
+          ]
         }
       ]
     },
@@ -208,14 +225,17 @@
           "required": true,
           "description": "Maximum repeated attributable failures allowed without new discriminating evidence.",
           "minimum": 1,
-          "examples": [2, 3]
+          "examples": [
+            2,
+            3
+          ]
         }
       ]
     },
     {
       "id": "test-driven-development",
       "title": "Use test-driven development",
-      "description": "Apply a RED-GREEN-REFACTOR loop to each behavior-changing slice.",
+      "description": "Apply RED-GREEN-REFACTOR with independent test oracles and post-GREEN resilience checks.",
       "purpose": "execute",
       "arguments": []
     },

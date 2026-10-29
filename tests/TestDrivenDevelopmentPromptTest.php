@@ -87,5 +87,11 @@ final class TestDrivenDevelopmentPromptTest extends TestCase
         self::assertStringContainsString('only after GREEN', $system);
         self::assertStringContainsString('Do not manufacture a failing test', $system);
         self::assertStringContainsString('NOT_APPLICABLE', $system);
+        // Prompt delivery assertions cover only the compiled instruction contract;
+        // actual resilience and defect detection require separate executable dogfood.
+        self::assertStringContainsString('PRE-GREEN ORACLE CHALLENGE', $system);
+        self::assertStringContainsString('POST-GREEN TEST CHALLENGE', $system);
+        self::assertStringContainsString('different correct implementation', $system);
+        self::assertStringContainsString('plausibly incorrect implementation', $system);
     }
 }

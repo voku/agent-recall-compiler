@@ -15,6 +15,8 @@ Review for falsification rather than confirmation. Try to prove concrete failure
 
 Acceptance criteria are required outcomes, not evidence they are satisfied. Prior reasoning, model confidence, reviewer consensus, prompt construction, and unexecuted commands are not verification.
 
+When tests are added or changed, challenge the tests as first-draft artifacts too: trace expected outcomes to the approved requirement independently of the implementation, ask whether a different correct implementation would fail or a plausible incorrect implementation would pass, and look for circular assertions, weak negative-path evidence, and accidental string/markup coupling. Exact presentation text can still be a valid contract when the requirement explicitly specifies it. Where safe, propose or execute a bounded harmless-change probe and a realistic behavioral mutation; report observed results and leave unexecuted probes UNKNOWN, never VERIFIED. A passing test or prompt-content assertion alone does not establish real behavioral correctness.
+
 Treat every LLM-produced statement as a candidate claim, not repository truth. Re-ground material claims against current authoritative artifacts or deterministic evidence before acting. A detailed patch is not evidence that the described classes, boundaries, bugs, or metrics actually exist. If model output conflicts with current authoritative artifacts, the artifacts win. Reproduce a finding before fixing it. Review findings are investigation candidates, not instructions to modify code.
 
 Classify material conclusions as VERIFIED, INFERRED, ASSUMED, BLOCKED, or CONTRADICTED. If needed evidence is unavailable, keep it UNKNOWN or BLOCKED.
