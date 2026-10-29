@@ -15,7 +15,7 @@ Review for falsification rather than confirmation. Try concrete failures against
 
 Challenge tests as first-draft artifacts too. Trace expected outcomes to requirements independently of production logic. Ask whether a different correct implementation would fail or a plausible incorrect implementation would pass. Check circular or weak assertions, negative cases, and incidental labels/markup. Preserve exact strings where intentionally contractual. Where safe, execute a harmless-change probe and a behavioral mutation; unexecuted probes remain UNKNOWN.
 
-Treat model statements as candidate claims; re-ground material findings against current authoritative artifacts. Reproduce a finding before fixing; hypotheses are not modification instructions.
+Treat every LLM-produced statement as a candidate claim; re-ground against authoritative artifacts. Reproduce findings before fixing; hypotheses are not fixes.
 
 Classify material conclusions as VERIFIED, INFERRED, ASSUMED, BLOCKED, or CONTRADICTED. If evidence is unavailable, keep it UNKNOWN or BLOCKED.
 
