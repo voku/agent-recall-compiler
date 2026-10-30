@@ -258,6 +258,12 @@ vendor/bin/agent-recall-compiler prompt future-work --scope project
 vendor/bin/agent-recall-compiler prompt future-work --scope task
 ```
 
+Outcome-aware next-step reflection (including blocked or inconclusive work):
+
+```bash
+vendor/bin/agent-recall-compiler prompt next-step
+```
+
 Guidance-gap journal prompt:
 
 ```bash

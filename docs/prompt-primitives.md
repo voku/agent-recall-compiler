@@ -36,6 +36,20 @@ agent-recall-compiler prompt future-work --scope task
 
 Reflection intentionally stays small and uses the agent's fresh work context. It does not get forced through `Goal / Context / Constraints / Verification / Done When`. Task reflection may return `RETURN_TO_REVIEW` when deeper scrutiny proves the task was not actually complete.
 
+## Outcome-aware next-step reflection
+
+When work is complete, still incomplete, blocked, or inconclusive, ask the agent what *it* recommends next without presupposing that the last attempt succeeded:
+
+```bash
+agent-recall-compiler prompt next-step
+```
+
+This context-light question explicitly starts with **"So what would you like to do next?"** and asks the agent to classify the observed outcome before proposing the single highest-value next action. It may recommend continuing an already-authorized slice, testing a new discriminating hypothesis, pivoting approach, preparing a follow-up, requesting an external decision, or doing nothing when no useful step is justified.
+
+Use it **after** the execution/review evidence is available or when the current approach has stalled, **before** deciding on a new plan or handoff. It is not a mandatory phase, an automatic retry loop, or a replacement for the current task's Done When, tests, and review. Recall only renders the suggestion; `agent-loop` or the calling harness decides *when* to invoke it and who can authorize the next action.
+
+`future-work --scope task|project` remains the narrower reflection for **verified completed work**. It can examine deeper optional investment without changing current task authority. `next-step` instead also handles failure, blockers, and inconclusive investigation without pretending the task is complete.
+
 ## Opt-in guidance-gap journal
 
 Use the guidance-gap technique when you want the implementation itself to expose where a coding agent had to interpret or guess instead of following a usable source of truth:
@@ -146,6 +160,9 @@ Need to audit your own supplied results/conclusions against task artifacts befor
 
 Need to audit an already-authoritative plan and then continue executing it?
     -> select the Recall-owned L1 `execute-plan-with-blind-spot-check`
+
+Need to reorient after actual completion, an unsuccessful attempt, a blocker, or inconclusive investigation?
+    -> prompt next-step
 
 Need to ask what to invest in next while completed-work context is still hot?
     -> prompt future-work --scope project
