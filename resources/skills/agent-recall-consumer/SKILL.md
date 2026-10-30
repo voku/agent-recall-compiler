@@ -117,6 +117,16 @@ vendor/bin/agent-recall-compiler prompt future-work --scope task
 
 It does not mutate workflow state or imply that follow-up work must be created.
 
+## Next-Step Reflection
+
+When a task reaches observed completion, stalls, or produces no substantiated solution, optionally ask the agent for its own highest-value next step:
+
+```bash
+vendor/bin/agent-recall-compiler prompt next-step
+```
+
+The prompt first checks the *actual* outcome and then distinguishes a still-authorized continuation from an alternate hypothesis, a blocked dependency, a candidate follow-up, or no useful next step. This is not an automatic workflow transition or permission to start new work. The consuming harness or `agent-loop` owns when to invoke it and whether any proposed action is approved. Use `future-work` for optional deepening after verified completion.
+
 ## Handoff TODO Cards
 
 Use the bundled `todo-card-handoff` L2 recipe when validated follow-up work must be persisted for another coding agent that will not have the current chat, Session-private context, hidden reasoning, or prior-agent memory:
