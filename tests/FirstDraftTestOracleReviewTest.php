@@ -22,5 +22,8 @@ final class FirstDraftTestOracleReviewTest extends TestCase
         self::assertStringContainsString('harmless-change probe', $prompt);
         self::assertStringContainsString('behavioral mutation', $prompt);
         self::assertStringContainsString('UNKNOWN', $prompt);
+        self::assertStringContainsString('durable regression tests', $prompt);
+        self::assertStringContainsString('exploratory work probes', $prompt);
+        self::assertStringContainsString('sanitized probe evidence', $prompt);
     }
 }
