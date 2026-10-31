@@ -6,6 +6,16 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.25.10] - 2026-10-31
+
+### Added
+
+- Add the explicit context-light `prompt next-step` reflection primitive. It re-grounds the observed task outcome (`DONE`, `INCOMPLETE`, `BLOCKED`, or `INCONCLUSIVE`) before recommending a single evidence-backed continuation, discriminating check, pivot, follow-up, external decision, or justified stop. It does not create workflow authority or assume successful completion.
+
+### Validation
+
+- `NextStepPromptTest` covers outcome classification, bounded recommendations, authority boundaries, CLI invocation, and rejection of unsupported arguments. GitHub Actions passed PHPUnit, PHPStan on PHP 8.3/8.4/8.5, and the installed `agent-loop` consumer dogfood at exact PR #249 head `a8f4c395dbf6213664fd9ffd4cf7aaa58c5c182c`.
+
 ## [0.25.9] - 2026-10-24
 
 ### Security
