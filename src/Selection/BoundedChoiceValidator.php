@@ -5,64 +5,62 @@ declare(strict_types=1);
 namespace voku\AgentRecallCompiler\Selection;
 
 use JsonException;
+use stdClass;
 
 /**
- * Validates the raw model output from a bounded-choice reranker.
- * Fails closed on any unexpected, hallucinated, or unparseable output.
+ * Validates a single closed-format model choice without trusting model prose.
+ *
+ * A failed or unavailable model response is never workflow authority.
  */
 final readonly class BoundedChoiceValidator
 {
     /**
-     * @param string $rawResponse The raw text returned by the model.
-     * @param list<string> $validCandidateIds The ordered list of authorized candidate IDs.
+     * @param string $rawResponse Raw, untrusted model output.
+     * @param list<string> $validCandidateIds Current ordered, verified candidate IDs.
      *
-     * @return string|null The selected candidate ID, or null if "none" or invalid (fail closed).
+     * @return string|null The selected verified candidate ID or null on 'none'/invalid.
      */
     public function validate(string $rawResponse, array $validCandidateIds): ?string
     {
-        $text = trim($rawResponse);
-        if ($text === '') {
+        if (trim($rawResponse) === '' || strlen($rawResponse) > 1024) {
             return null;
         }
 
-        $selected = null;
-
-        // Try parsing JSON first
         try {
-            $data = json_decode($text, true, 512, JSON_THROW_ON_ERROR);
-            if (is_array($data) && isset($data['selected']) && is_string($data['selected'])) {
-                $selected = trim($data['selected']);
-            }
+            $result = json_decode($rawResponse, false, 16, JSON_THROW_ON_ERROR);
         } catch (JsonException) {
-            // Fall back to extracting regex from non-strict responses
-            if (preg_match('/"selected"\s*:\s*"([^"]+)"/', $text, $matches) === 1) {
-                $selected = trim($matches[1]);
-            } elseif (preg_match('/\b(cand_\d+|none)\b/i', $text, $matches) === 1) {
-                $selected = strtolower(trim($matches[1]));
-            }
-        }
-
-        if ($selected === null || strtolower($selected) === 'none') {
             return null;
         }
 
-        // Check if selected is an index format: cand_<N>
-        if (preg_match('/\Acand_(\d+)\z/i', $selected, $matches) === 1) {
-            $index = (int) $matches[1];
-            if (isset($validCandidateIds[$index])) {
-                return $validCandidateIds[$index];
-            }
-
-            // Out-of-bounds candidate index -> fail closed
+        if (!$result instanceof stdClass) {
             return null;
         }
 
-        // Check if selected is directly one of the authorized candidate IDs
-        if (in_array($selected, $validCandidateIds, true)) {
-            return $selected;
+        $properties = get_object_vars($result);
+        if (count($properties) !== 1 || !array_key_exists('selected', $properties)) {
+            return null;
         }
 
-        // Any other unrecognized text or hallucinated ID -> fail closed
-        return null;
+        $selected = $properties['selected'];
+        if (!is_string($selected) || $selected === 'none') {
+            return null;
+        }
+
+        // Only canonical cand_N indexes from this single prompt are permitted.
+        // Direct IDs, prose, case variations, leading zeros and extra JSON
+        // properties must never be silently promoted to a decision.
+        if (preg_match('/\Acand_(0|[1-9][0-9]*)\z/D', $selected, $matches) !== 1) {
+            return null;
+        }
+
+        // Avoid conversion of arbitrarily large model-supplied integers.
+        $indexText = $matches[1];
+        if (strlen($indexText) > 9) {
+            return null;
+        }
+
+        $index = (int) $indexText;
+
+        return $validCandidateIds[$index] ?? null;
     }
 }
