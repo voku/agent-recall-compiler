@@ -7,6 +7,10 @@ on:
       - 'experiments/navi-json-recall/**'
       - 'resources/skills/agent-recall-consumer/operating-prompts.json'
       - 'resources/skills/agent-recall-consumer/operating-prompts.metadata.json'
+      - 'src/Selection/**'
+      - 'tests/Selection/**'
+      - 'src/OperatingPromptCatalog.php'
+      - 'src/OperatingPromptRecipe.php'
   workflow_dispatch:
 
 permissions:
