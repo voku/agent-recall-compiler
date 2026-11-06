@@ -58,3 +58,50 @@ untrusted cache before any use.
 
 The upstream's repository license must also be resolved before introducing
 a distributed binary or native implementation into the package.
+
+## Matched-output retrieval benchmark (experimental)
+
+`held-out-queries.json` fixes 30 labelled queries **outside the indexed source**
+before running native and SQLite retrieval: four exact IDs, 16 English
+paraphrases, six German paraphrases, and four unrelated no-answer controls.
+The expected identities are human-written **test labels**, not a model-vetted
+semantic truth set. Ambiguous examples should be revisited before treating
+them as high-stakes quality gates.
+
+`benchmark.py` compares four read-only selection policies on the exact same
+22 source prompt records:
+
+1. `json_exact_id`: direct current JSON identity lookup, no fuzzy retrieval.
+2. `sqlite_fts5`: SQLite FTS5 `unicode61` BM25 ranking over ID and template.
+3. `native_activate`: C `ACTIVATE` using a fixed native token limit, followed
+   by complete canonical-JSON byte verification.
+4. `json_first_fts5`: exact JSON ID when provided; otherwise SQLite FTS5.
+
+Each method is post-filtered using **complete identical source-bound envelopes**
+at 2,048 and 8,192 **UTF-8 bytes**, preserving order, never truncating a
+record. This equalizes delivered bytes, not candidate-generation algorithms,
+native tokens, startup cost, or query-processing overhead.
+
+The reported top-1 and top-3 measurements show only whether a prelabelled
+candidate is retrieved. For unrelated queries, they measure **whether a method
+abstains from proposing candidates**, not whether an LLM answers correctly.
+Candidates remain context-only and never grant authority.
+
+Timing is one small warmed Ubuntu runner sample, includes native transport and
+provenance checks, and is **not** a statistically significant benchmark.
+Do not claim a quality/performance win from a few milliseconds or the tiny
+prompt catalog. Evaluate with real previous-run outcomes and unseen tasks.
+
+The new offline fallback check stops the native daemon, then verifies that
+JSON identity and SQLite search still work without a running C process.
+Native failure therefore cannot become a prerequisite for deterministic
+Recall, although no production integration or runtime fallback is introduced.
+
+### Decision gate
+
+Do not make the native dependency mandatory or merge a production adapter until
+held-out task retrieval provides a reproducible advantage over an exact-ID plus
+SQLite FTS5 baseline at the same bounded output budget, with satisfactory
+negative-query abstention, explainable source provenance, and real multi-run
+coding-agent outcomes. If the simpler source-backed baseline performs equally
+well or better, retain it and drop the native dependency.
