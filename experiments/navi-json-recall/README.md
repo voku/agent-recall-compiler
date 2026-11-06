@@ -168,3 +168,23 @@ model is available.
 
 A policy that improves `none` at the cost of discarding real owner tasks is
 not a win. Keep source-of-truth and workflow authority deterministic.
+
+
+### Independent JSON/SQLite-only CI job
+
+\`offline_baseline.py\` executes all 46 registered queries against the **same
+source JSON and scorer functions** without invoking or installing Navi-Brain.
+It calls neither a C binary nor a native daemon; the GitHub Actions job runs
+in parallel with the native test, so native checkout, build, or service
+failures cannot suppress JSON/SQLite evidence.
+
+The independently uploaded \`offline-json-recall-evidence\` artifact contains
+all nonnative condition results, source and metadata SHA-256 digests, query
+fixture hashes, output-budget checks, and the observed cohort scores. The
+\`native-json-recall-evidence\` artifact remains separate. Both are ephemeral
+diagnostic outputs and never become authoritative workflow state.
+
+The independent path is verified at
+https://github.com/voku/agent-recall-compiler/actions/runs/42300810008
+alongside the regular PHP 8.3–8.5 Composer CI and the native test.
+The result confirms **test isolation**, not improvement to coding-agent outcomes.
