@@ -85,6 +85,9 @@ native tokens, startup cost, or query-processing overhead.
 The reported top-1 and top-3 measurements show only whether a prelabelled
 candidate is retrieved. For unrelated queries, they measure **whether a method
 abstains from proposing candidates**, not whether an LLM answers correctly.
+A candidate excluded because it exceeds the output byte budget is **not**
+counted as abstention. The artifact records `budget_censored_all_candidates`
+separately to prevent misleading apparent improvements on negative controls.
 Candidates remain context-only and never grant authority.
 
 Timing is one small warmed Ubuntu runner sample, includes native transport and
