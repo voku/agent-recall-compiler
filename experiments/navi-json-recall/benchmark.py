@@ -173,8 +173,11 @@ def metadata_bounded_rank(
     meta_by_id: dict[str, Any],
     indexed: dict[str, str],
     query: str,
+    min_query_coverage: float = 0.0,
 ) -> list[str]:
     """Weighted FTS5 candidate ranking; exact word evidence, not substring guesses."""
+    if not 0.0 <= min_query_coverage <= 1.0:
+        raise ValueError("Query coverage gate must be between 0 and 1")
     if query in indexed:
         return [query]
     tokens = query_content_tokens(query)
@@ -214,6 +217,8 @@ def metadata_bounded_rank(
         matched_tokens = sum(1 for token in tokens if token in source_terms)
         # Multi-token intent needs at least two whole-term matches.
         if len(tokens) >= 3 and matched_tokens < 2:
+            continue
+        if matched_tokens / len(tokens) < min_query_coverage:
             continue
         accepted.append(identity)
     return accepted
@@ -303,6 +308,7 @@ def main() -> int:
             "json_exact_id",
             "json_first_fts5",
             "metadata_bounded_choice",
+            "metadata_coverage_gate_0_6",
         ],
         "byte_budgets": BUDGETS,
         "no_llm": True,
@@ -358,12 +364,20 @@ def main() -> int:
                         meta_ids = metadata_bounded_rank(meta_fts, meta_by_id, indexed, query)
                         meta_ns = time.perf_counter_ns() - start
 
+                        start = time.perf_counter_ns()
+                        covered_ids = metadata_bounded_rank(
+                            meta_fts, meta_by_id, indexed, query,
+                            min_query_coverage=0.6,
+                        )
+                        covered_ns = time.perf_counter_ns() - start
+
                         all_results = {
                             "native_activate": (native_ids, native_ns),
                             "sqlite_fts5": (fts_ids, fts_ns),
                             "json_exact_id": (direct_ids, direct_ns),
                             "json_first_fts5": (hybrid_ids, hybrid_ns),
                             "metadata_bounded_choice": (meta_ids, meta_ns),
+                            "metadata_coverage_gate_0_6": (covered_ids, covered_ns),
                         }
                         if query in indexed and hybrid_ids != [query]:
                             raise AssertionError("Direct JSON authority was not preferred")
@@ -443,7 +457,7 @@ def main() -> int:
             }
         report["summary"] = summary
         report["status"] = "pass"
-        print("Native vs SQLite-FTS5 vs direct JSON vs JSON-first-FTS5: observational comparison")
+        print("Native / SQLite / JSON / metadata / coverage gates: observational comparison")
         for name, info in summary.items():
             print(name, "mean_ms", info["mean_warm_query_ms"])
             for byte_budget in BUDGETS:
