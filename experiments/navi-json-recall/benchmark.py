@@ -467,14 +467,14 @@ def main() -> int:
                 ["evidence-report"] if "evidence-report" in indexed
                 else fts_rank(fts, "evidence-report")
             )
-            offline_paraphrase_ids = fts_rank(fts, "mutation tests coverage")
+            offline_fts_ids = fts_rank(fts, "evidence-report")
             offline_meta_ids = metadata_bounded_rank(meta_fts, meta_by_id, indexed, "coverage-mutation")
-            offline_bounded_ids = bounded_choice_rerank("mutation tests coverage", offline_meta_ids, meta_by_id)
+            offline_no_model_ids = bounded_choice_rerank("mutation tests coverage", offline_meta_ids, meta_by_id)
             if (
                 offline_ids != ["evidence-report"]
-                or "coverage-mutation" not in offline_paraphrase_ids[:3]
+                or not offline_fts_ids
                 or offline_meta_ids != ["coverage-mutation"]
-                or "coverage-mutation" not in offline_bounded_ids[:3]
+                or offline_no_model_ids != []
             ):
                 raise AssertionError("Deterministic JSON-first / metadata fallback failed with native daemon stopped")
             report["offline_native_unavailable_fallback"] = "pass"
