@@ -147,6 +147,50 @@ class MetadataRetrievalContractTest(unittest.TestCase):
             benchmark.evaluate([], None, ["rule-scope"])["abstained"]
         )
 
+    def test_enrichment_ablation_disables_alias_only_matching(self) -> None:
+        self.metadata["recipes"][0]["aliases"] = ["verify oddball repository workflow"]
+        self.save_metadata()
+        enriched, enriched_meta = benchmark.build_metadata_fts(self.path, self.source)
+        without, without_meta = benchmark.build_metadata_fts(
+            self.path, self.source, include_enrichment=False,
+        )
+        self.addCleanup(enriched.close)
+        self.addCleanup(without.close)
+        query = "oddball repository workflow"
+        self.assertEqual(
+            ["rule-scope"],
+            benchmark.metadata_bounded_rank(enriched, enriched_meta, self.source, query),
+        )
+        self.assertEqual(
+            [],
+            benchmark.metadata_bounded_rank(without, without_meta, self.source, query),
+        )
+
+    def test_no_model_never_claims_a_bounded_choice(self) -> None:
+        candidates = ["rule-scope", "rule-test"]
+        self.assertEqual(
+            [],
+            benchmark.bounded_choice_rerank("review source code", candidates, {}, None),
+        )
+        self.assertEqual(
+            ["rule-test"],
+            benchmark.bounded_choice_rerank(
+                "review source code", candidates, {}, lambda query, choices: "rule-test",
+            ),
+        )
+        self.assertEqual(
+            [],
+            benchmark.bounded_choice_rerank(
+                "review source code", candidates, {}, lambda query, choices: "hallucinated",
+            ),
+        )
+        self.assertEqual(
+            [],
+            benchmark.bounded_choice_rerank(
+                "review source code", candidates, {}, lambda query, choices: "none",
+            ),
+        )
+
     def test_output_budget_cannot_return_partial_evidence(self) -> None:
         self.assertEqual(
             [],
