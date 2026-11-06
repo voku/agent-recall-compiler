@@ -111,7 +111,7 @@ def main() -> int:
         "queries_sha256": hashlib.sha256(fixture_bytes).hexdigest(),
         "native_upstream_sha": native["UPSTREAM_SHA"],
         "index_entries": len(indexed),
-        "conditions": ["native_activate", "sqlite_fts5", "json_exact_id"],
+        "conditions": ["native_activate", "sqlite_fts5", "json_exact_id", "json_first_fts5"],
         "byte_budgets": BUDGETS,
         "no_llm": True,
         "cases": [],
@@ -157,11 +157,21 @@ def main() -> int:
                         start = time.perf_counter_ns()
                         direct_ids = [query] if query in indexed else []
                         direct_ns = time.perf_counter_ns() - start
+                        start = time.perf_counter_ns()
+                        hybrid_ids = [query] if query in indexed else fts_rank(fts, query)
+                        hybrid_ns = time.perf_counter_ns() - start
                         all_results = {
                             "native_activate": (native_ids, native_ns),
                             "sqlite_fts5": (fts_ids, fts_ns),
                             "json_exact_id": (direct_ids, direct_ns),
+                            "json_first_fts5": (hybrid_ids, hybrid_ns),
                         }
+                        if query in indexed and hybrid_ids != [query]:
+                            raise AssertionError("Direct JSON authority was not preferred")
+                        # The hybrid path must remain usable when the native
+                        # daemon is gone: no native socket or tokmem dependency.
+                        if not isinstance(hybrid_ids, list):
+                            raise AssertionError("Fallback returned an invalid projection")
                         metrics: dict[str, Any] = {}
                         for name, (candidates, elapsed_ns) in all_results.items():
                             scores: dict[str, Any] = {
@@ -216,11 +226,13 @@ def main() -> int:
             }
         report["summary"] = summary
         report["status"] = "pass"
-        print("Native vs SQLite-FTS5 vs direct JSON: observational comparison")
+        print("Native vs SQLite-FTS5 vs direct JSON vs JSON-first-FTS5: observational comparison")
         for name, info in summary.items():
-            print(name, "mean_ms", info["mean_warm_query_ms"],
-                  "scores_at_8192", {k:(v["top1_correct"], v["at3_correct"])
-                                     for k,v in info["by_budget"]["8192"].items()})
+            print(name, "mean_ms", info["mean_warm_query_ms"])
+            for byte_budget in BUDGETS:
+                print(" budget", byte_budget, "cohorts(top1,at3):",
+                      {k:(v["top1_correct"], v["at3_correct"])
+                       for k,v in info["by_budget"][str(byte_budget)].items()})
     except Exception as exc:
         report["error"] = f"{type(exc).__name__}: {exc}"
         raise
