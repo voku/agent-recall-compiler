@@ -168,26 +168,27 @@ class MetadataRetrievalContractTest(unittest.TestCase):
 
     def test_no_model_never_claims_a_bounded_choice(self) -> None:
         candidates = ["rule-scope", "rule-test"]
+        metadata_by_id = {recipe["id"]: recipe for recipe in self.metadata["recipes"]}
         self.assertEqual(
             [],
-            benchmark.bounded_choice_rerank("review source code", candidates, {}, None),
+            benchmark.bounded_choice_rerank("review source code", candidates, metadata_by_id, None),
         )
         self.assertEqual(
             ["rule-test"],
             benchmark.bounded_choice_rerank(
-                "review source code", candidates, {}, lambda query, choices: "rule-test",
+                "review source code", candidates, metadata_by_id, lambda query, choices: "rule-test",
             ),
         )
         self.assertEqual(
             [],
             benchmark.bounded_choice_rerank(
-                "review source code", candidates, {}, lambda query, choices: "hallucinated",
+                "review source code", candidates, metadata_by_id, lambda query, choices: "hallucinated",
             ),
         )
         self.assertEqual(
             [],
             benchmark.bounded_choice_rerank(
-                "review source code", candidates, {}, lambda query, choices: "none",
+                "review source code", candidates, metadata_by_id, lambda query, choices: "none",
             ),
         )
 
