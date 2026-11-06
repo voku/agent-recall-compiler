@@ -1,0 +1,683 @@
+{
+  "status": "success",
+  "contamination_check": "PASS (0 exact matches, 0 subphrase matches)",
+  "case_count": 26,
+  "methods": [
+    "sqlite_fts5",
+    "metadata_lexical",
+    "metadata_60pct_gate",
+    "live_llm_bounded_choice"
+  ],
+  "cohort_summary": {
+    "sqlite_fts5": {
+      "blind_positive": {
+        "total": 10,
+        "top1_correct": 6,
+        "abstentions": 0
+      },
+      "blind_hard_negative": {
+        "total": 8,
+        "top1_correct": 0,
+        "abstentions": 0
+      },
+      "blind_out_of_catalog": {
+        "total": 8,
+        "top1_correct": 0,
+        "abstentions": 0
+      }
+    },
+    "metadata_lexical": {
+      "blind_positive": {
+        "total": 10,
+        "top1_correct": 7,
+        "abstentions": 0
+      },
+      "blind_hard_negative": {
+        "total": 8,
+        "top1_correct": 4,
+        "abstentions": 4
+      },
+      "blind_out_of_catalog": {
+        "total": 8,
+        "top1_correct": 7,
+        "abstentions": 7
+      }
+    },
+    "metadata_60pct_gate": {
+      "blind_positive": {
+        "total": 10,
+        "top1_correct": 0,
+        "abstentions": 10
+      },
+      "blind_hard_negative": {
+        "total": 8,
+        "top1_correct": 8,
+        "abstentions": 8
+      },
+      "blind_out_of_catalog": {
+        "total": 8,
+        "top1_correct": 8,
+        "abstentions": 8
+      }
+    },
+    "live_llm_bounded_choice": {
+      "blind_positive": {
+        "total": 10,
+        "top1_correct": 7,
+        "abstentions": 3
+      },
+      "blind_hard_negative": {
+        "total": 8,
+        "top1_correct": 8,
+        "abstentions": 8
+      },
+      "blind_out_of_catalog": {
+        "total": 8,
+        "top1_correct": 5,
+        "abstentions": 5
+      }
+    }
+  },
+  "cases": [
+    {
+      "query": "A user reported a 500 error when submitting the checkout form with an empty cart. Write a failing integration test demonstrating the bug before touching any handler code.",
+      "cohort": "blind_positive",
+      "expected_id": "reproduce-before-fix",
+      "predictions": {
+        "sqlite_fts5": [
+          "reproduce-before-fix",
+          "missingness-audit",
+          "test-driven-development"
+        ],
+        "metadata_lexical": [
+          "reproduce-before-fix",
+          "missingness-audit",
+          "test-driven-development"
+        ],
+        "metadata_60pct_gate": [],
+        "live_llm_bounded_choice": [
+          "reproduce-before-fix"
+        ]
+      },
+      "llm_raw_response": "{\"selected\": \"cand_0\"}",
+      "llm_candidates_offered": [
+        "reproduce-before-fix",
+        "missingness-audit",
+        "test-driven-development"
+      ]
+    },
+    {
+      "query": "Our code audit revealed dead PHP 7 compatibility shims and unused deprecated helper classes from 2021. Remove the dead code and verify existing tests still pass.",
+      "cohort": "blind_positive",
+      "expected_id": "deletion-first",
+      "predictions": {
+        "sqlite_fts5": [
+          "deletion-first",
+          "missingness-audit",
+          "test-driven-development"
+        ],
+        "metadata_lexical": [
+          "multi-pass-correctness-simplify",
+          "discovery-first",
+          "deletion-first"
+        ],
+        "metadata_60pct_gate": [],
+        "live_llm_bounded_choice": [
+          "deletion-first"
+        ]
+      },
+      "llm_raw_response": "{\"selected\": \"cand_2\"}",
+      "llm_candidates_offered": [
+        "multi-pass-correctness-simplify",
+        "discovery-first",
+        "deletion-first"
+      ]
+    },
+    {
+      "query": "The latency of our search endpoint increased by 300ms between v2.4 and v2.5. Use git bisect and profiling traces to locate the offending commit.",
+      "cohort": "blind_positive",
+      "expected_id": "regression-hunt",
+      "predictions": {
+        "sqlite_fts5": [
+          "plan-horizon",
+          "clarify-missing-inputs",
+          "retry-stop"
+        ],
+        "metadata_lexical": [
+          "plan-horizon"
+        ],
+        "metadata_60pct_gate": [],
+        "live_llm_bounded_choice": []
+      },
+      "llm_raw_response": "{\"selected\": \"none\"}",
+      "llm_candidates_offered": [
+        "plan-horizon"
+      ]
+    },
+    {
+      "query": "We want to rename the public method getStatus() to fetchCurrentStatus() in the core client SDK. Check all downstream consumers and deprecation policies.",
+      "cohort": "blind_positive",
+      "expected_id": "breaking-change-review",
+      "predictions": {
+        "sqlite_fts5": [
+          "execute-plan-with-blind-spot-check",
+          "production-ready-handoff",
+          "todo-card-handoff"
+        ],
+        "metadata_lexical": [
+          "breaking-change-review"
+        ],
+        "metadata_60pct_gate": [],
+        "live_llm_bounded_choice": [
+          "breaking-change-review"
+        ]
+      },
+      "llm_raw_response": "{\"selected\": \"cand_0\"}",
+      "llm_candidates_offered": [
+        "breaking-change-review"
+      ]
+    },
+    {
+      "query": "The incoming ticket only says notifications broken. Stop and ask the customer for the webhook payload, tenant ID, and timestamp before starting work.",
+      "cohort": "blind_positive",
+      "expected_id": "clarify-missing-inputs",
+      "predictions": {
+        "sqlite_fts5": [
+          "clarify-missing-inputs",
+          "regression-hunt",
+          "refine-l1-contract"
+        ],
+        "metadata_lexical": [
+          "clarify-missing-inputs",
+          "refine-l1-contract",
+          "retry-stop"
+        ],
+        "metadata_60pct_gate": [],
+        "live_llm_bounded_choice": [
+          "clarify-missing-inputs"
+        ]
+      },
+      "llm_raw_response": "{\"selected\": \"cand_0\"}",
+      "llm_candidates_offered": [
+        "clarify-missing-inputs",
+        "refine-l1-contract",
+        "retry-stop"
+      ]
+    },
+    {
+      "query": "Feature implementation is done, all PHPUnit gates pass, and changelog is written. Prepare the final release notes and verify the commit sha before handing off to ops.",
+      "cohort": "blind_positive",
+      "expected_id": "production-ready-handoff",
+      "predictions": {
+        "sqlite_fts5": [
+          "production-ready-handoff",
+          "plan-horizon",
+          "plan-as-draft"
+        ],
+        "metadata_lexical": [
+          "production-ready-handoff",
+          "todo-card-handoff",
+          "plan-horizon"
+        ],
+        "metadata_60pct_gate": [],
+        "live_llm_bounded_choice": []
+      },
+      "llm_raw_response": "",
+      "llm_candidates_offered": [
+        "production-ready-handoff",
+        "todo-card-handoff",
+        "plan-horizon"
+      ]
+    },
+    {
+      "query": "Create a new ValueObject for postal codes by first writing the specification tests for valid and invalid formats, then writing the implementation.",
+      "cohort": "blind_positive",
+      "expected_id": "test-driven-development",
+      "predictions": {
+        "sqlite_fts5": [
+          "clarify-missing-inputs",
+          "reject-and-restart",
+          "adversarial-review"
+        ],
+        "metadata_lexical": [
+          "reject-and-restart",
+          "reproduce-before-fix",
+          "execute-plan-with-blind-spot-check"
+        ],
+        "metadata_60pct_gate": [],
+        "live_llm_bounded_choice": []
+      },
+      "llm_raw_response": "{\"selected\": \"none\"}",
+      "llm_candidates_offered": [
+        "reject-and-restart",
+        "reproduce-before-fix",
+        "execute-plan-with-blind-spot-check"
+      ]
+    },
+    {
+      "query": "Play red-team devil's advocate on this newly implemented JWT validation logic and try to find bypass vectors or algorithmic edge cases.",
+      "cohort": "blind_positive",
+      "expected_id": "adversarial-review",
+      "predictions": {
+        "sqlite_fts5": [
+          "clarify-missing-inputs",
+          "test-driven-development",
+          "execute-plan-with-blind-spot-check"
+        ],
+        "metadata_lexical": [
+          "adversarial-review",
+          "missingness-audit",
+          "test-driven-development"
+        ],
+        "metadata_60pct_gate": [],
+        "live_llm_bounded_choice": [
+          "adversarial-review"
+        ]
+      },
+      "llm_raw_response": "{\"selected\": \"cand_0\"}",
+      "llm_candidates_offered": [
+        "adversarial-review",
+        "missingness-audit",
+        "test-driven-development"
+      ]
+    },
+    {
+      "query": "Inspect our new user registration workflow to identify what critical edge cases, rate limits, or error handling paths were forgotten entirely.",
+      "cohort": "blind_positive",
+      "expected_id": "missingness-audit",
+      "predictions": {
+        "sqlite_fts5": [
+          "missingness-audit",
+          "clarify-missing-inputs",
+          "retry-stop"
+        ],
+        "metadata_lexical": [
+          "missingness-audit",
+          "clarify-missing-inputs",
+          "discovery-first"
+        ],
+        "metadata_60pct_gate": [],
+        "live_llm_bounded_choice": [
+          "missingness-audit"
+        ]
+      },
+      "llm_raw_response": "{\"selected\": \"cand_0\"}",
+      "llm_candidates_offered": [
+        "missingness-audit",
+        "clarify-missing-inputs",
+        "discovery-first"
+      ]
+    },
+    {
+      "query": "We have 15 independent migrations to run in sequence; proceed autonomously through the queue without pausing for manual confirmation after each migration.",
+      "cohort": "blind_positive",
+      "expected_id": "continue-until-done",
+      "predictions": {
+        "sqlite_fts5": [
+          "continue-until-done",
+          "test-driven-development",
+          "todo-card-handoff"
+        ],
+        "metadata_lexical": [
+          "continue-until-done",
+          "clarify-missing-inputs",
+          "test-driven-development"
+        ],
+        "metadata_60pct_gate": [],
+        "live_llm_bounded_choice": [
+          "continue-until-done"
+        ]
+      },
+      "llm_raw_response": "{\"selected\": \"cand_0\"}",
+      "llm_candidates_offered": [
+        "continue-until-done",
+        "clarify-missing-inputs",
+        "test-driven-development"
+      ]
+    },
+    {
+      "query": "How should a city transit authority inspect water pipeline infrastructure for rust and pressure leaks?",
+      "cohort": "blind_hard_negative",
+      "expected_id": null,
+      "predictions": {
+        "sqlite_fts5": [
+          "missingness-audit",
+          "discovery-first",
+          "production-ready-handoff"
+        ],
+        "metadata_lexical": [
+          "missingness-audit"
+        ],
+        "metadata_60pct_gate": [],
+        "live_llm_bounded_choice": []
+      },
+      "llm_raw_response": "{\"selected\": \"none\"}",
+      "llm_candidates_offered": [
+        "missingness-audit"
+      ]
+    },
+    {
+      "query": "Drafting the legal terms for a corporate merger and stock acquisition between two retail companies.",
+      "cohort": "blind_hard_negative",
+      "expected_id": null,
+      "predictions": {
+        "sqlite_fts5": [
+          "retry-stop",
+          "clarify-missing-inputs",
+          "breaking-change-review"
+        ],
+        "metadata_lexical": [],
+        "metadata_60pct_gate": [],
+        "live_llm_bounded_choice": []
+      },
+      "llm_raw_response": "{\"selected\": \"none\"}",
+      "llm_candidates_offered": [
+        "retry-stop",
+        "clarify-missing-inputs",
+        "breaking-change-review"
+      ]
+    },
+    {
+      "query": "What are the best soil aeration and pruning techniques for an organic apple orchard in spring?",
+      "cohort": "blind_hard_negative",
+      "expected_id": null,
+      "predictions": {
+        "sqlite_fts5": [
+          "production-ready-handoff",
+          "retry-stop",
+          "evidence-report"
+        ],
+        "metadata_lexical": [],
+        "metadata_60pct_gate": [],
+        "live_llm_bounded_choice": []
+      },
+      "llm_raw_response": "{\"selected\": \"none\"}",
+      "llm_candidates_offered": [
+        "production-ready-handoff",
+        "retry-stop",
+        "evidence-report"
+      ]
+    },
+    {
+      "query": "Planning a multi-stage cycling sprint training schedule for an amateur road race team.",
+      "cohort": "blind_hard_negative",
+      "expected_id": null,
+      "predictions": {
+        "sqlite_fts5": [
+          "plan-horizon",
+          "execution-dispatch",
+          "multi-pass-correctness-simplify"
+        ],
+        "metadata_lexical": [
+          "plan-horizon"
+        ],
+        "metadata_60pct_gate": [],
+        "live_llm_bounded_choice": []
+      },
+      "llm_raw_response": "{\"selected\": \"none\"}",
+      "llm_candidates_offered": [
+        "plan-horizon"
+      ]
+    },
+    {
+      "query": "Financial audit checklist for reconciling corporate quarterly expense reports against bank statements.",
+      "cohort": "blind_hard_negative",
+      "expected_id": null,
+      "predictions": {
+        "sqlite_fts5": [
+          "missingness-audit",
+          "multi-pass-correctness-simplify",
+          "discovery-first"
+        ],
+        "metadata_lexical": [
+          "multi-pass-correctness-simplify",
+          "missingness-audit"
+        ],
+        "metadata_60pct_gate": [],
+        "live_llm_bounded_choice": []
+      },
+      "llm_raw_response": "{\"selected\": \"none\"}",
+      "llm_candidates_offered": [
+        "multi-pass-correctness-simplify",
+        "missingness-audit"
+      ]
+    },
+    {
+      "query": "How to resolve conflicting family schedules for Thanksgiving dinner and holiday travel bookings.",
+      "cohort": "blind_hard_negative",
+      "expected_id": null,
+      "predictions": {
+        "sqlite_fts5": [
+          "todo-card-handoff",
+          "breaking-change-review",
+          "discovery-first"
+        ],
+        "metadata_lexical": [
+          "todo-card-handoff"
+        ],
+        "metadata_60pct_gate": [],
+        "live_llm_bounded_choice": []
+      },
+      "llm_raw_response": "{\"selected\": \"none\"}",
+      "llm_candidates_offered": [
+        "todo-card-handoff"
+      ]
+    },
+    {
+      "query": "Organizing an emergency evacuation drill and perimeter fence inspection for a warehouse facility.",
+      "cohort": "blind_hard_negative",
+      "expected_id": null,
+      "predictions": {
+        "sqlite_fts5": [
+          "test-driven-development",
+          "regression-hunt",
+          "missingness-audit"
+        ],
+        "metadata_lexical": [],
+        "metadata_60pct_gate": [],
+        "live_llm_bounded_choice": []
+      },
+      "llm_raw_response": "{\"selected\": \"none\"}",
+      "llm_candidates_offered": [
+        "test-driven-development",
+        "regression-hunt",
+        "missingness-audit"
+      ]
+    },
+    {
+      "query": "Baking artisan sourdough bread: calculating hydration percentages and fermentation timing.",
+      "cohort": "blind_hard_negative",
+      "expected_id": null,
+      "predictions": {
+        "sqlite_fts5": [
+          "plan-as-draft",
+          "discovery-first",
+          "execute-plan-with-blind-spot-check"
+        ],
+        "metadata_lexical": [],
+        "metadata_60pct_gate": [],
+        "live_llm_bounded_choice": []
+      },
+      "llm_raw_response": "{\"selected\": \"none\"}",
+      "llm_candidates_offered": [
+        "plan-as-draft",
+        "discovery-first",
+        "execute-plan-with-blind-spot-check"
+      ]
+    },
+    {
+      "query": "Configure an Nginx reverse proxy to terminate SSL with Let's Encrypt certificates and HTTP/2.",
+      "cohort": "blind_out_of_catalog",
+      "expected_id": null,
+      "predictions": {
+        "sqlite_fts5": [
+          "refine-l1-contract",
+          "todo-card-handoff",
+          "regression-hunt"
+        ],
+        "metadata_lexical": [],
+        "metadata_60pct_gate": [],
+        "live_llm_bounded_choice": []
+      },
+      "llm_raw_response": "{\"selected\": \"none\"}",
+      "llm_candidates_offered": [
+        "refine-l1-contract",
+        "todo-card-handoff",
+        "regression-hunt"
+      ]
+    },
+    {
+      "query": "Design a responsive CSS grid layout with Tailwind for a multi-column pricing table.",
+      "cohort": "blind_out_of_catalog",
+      "expected_id": null,
+      "predictions": {
+        "sqlite_fts5": [
+          "adversarial-review",
+          "multi-pass-correctness-simplify",
+          "execute-plan-with-blind-spot-check"
+        ],
+        "metadata_lexical": [],
+        "metadata_60pct_gate": [],
+        "live_llm_bounded_choice": [
+          "multi-pass-correctness-simplify"
+        ]
+      },
+      "llm_raw_response": "{\"selected\": \"cand_1\"}",
+      "llm_candidates_offered": [
+        "adversarial-review",
+        "multi-pass-correctness-simplify",
+        "execute-plan-with-blind-spot-check"
+      ]
+    },
+    {
+      "query": "Tune PostgreSQL autovacuum settings and create a composite index on created_at and user_id.",
+      "cohort": "blind_out_of_catalog",
+      "expected_id": null,
+      "predictions": {
+        "sqlite_fts5": [
+          "continue-until-done",
+          "retry-stop",
+          "execution-dispatch"
+        ],
+        "metadata_lexical": [],
+        "metadata_60pct_gate": [],
+        "live_llm_bounded_choice": []
+      },
+      "llm_raw_response": "",
+      "llm_candidates_offered": [
+        "continue-until-done",
+        "retry-stop",
+        "execution-dispatch"
+      ]
+    },
+    {
+      "query": "Train a PyTorch convolutional neural network on CIFAR-10 with AdamW optimizer and cosine annealing.",
+      "cohort": "blind_out_of_catalog",
+      "expected_id": null,
+      "predictions": {
+        "sqlite_fts5": [
+          "continue-until-done",
+          "retry-stop",
+          "execution-dispatch"
+        ],
+        "metadata_lexical": [],
+        "metadata_60pct_gate": [],
+        "live_llm_bounded_choice": []
+      },
+      "llm_raw_response": "",
+      "llm_candidates_offered": [
+        "continue-until-done",
+        "retry-stop",
+        "execution-dispatch"
+      ]
+    },
+    {
+      "query": "Write an Ansible playbook to provision three Ubuntu 24.04 nodes with Docker and containerd.",
+      "cohort": "blind_out_of_catalog",
+      "expected_id": null,
+      "predictions": {
+        "sqlite_fts5": [
+          "multi-pass-correctness-simplify",
+          "todo-card-handoff",
+          "regression-hunt"
+        ],
+        "metadata_lexical": [],
+        "metadata_60pct_gate": [],
+        "live_llm_bounded_choice": [
+          "multi-pass-correctness-simplify"
+        ]
+      },
+      "llm_raw_response": "{\"selected\": \"cand_0\"}",
+      "llm_candidates_offered": [
+        "multi-pass-correctness-simplify",
+        "todo-card-handoff",
+        "regression-hunt"
+      ]
+    },
+    {
+      "query": "Setup a Prometheus exporter and Grafana dashboard for monitoring Redis cluster memory usage.",
+      "cohort": "blind_out_of_catalog",
+      "expected_id": null,
+      "predictions": {
+        "sqlite_fts5": [
+          "todo-card-handoff",
+          "production-ready-handoff",
+          "breaking-change-review"
+        ],
+        "metadata_lexical": [],
+        "metadata_60pct_gate": [],
+        "live_llm_bounded_choice": []
+      },
+      "llm_raw_response": "{\"selected\": \"none\"}",
+      "llm_candidates_offered": [
+        "todo-card-handoff",
+        "production-ready-handoff",
+        "breaking-change-review"
+      ]
+    },
+    {
+      "query": "Implement an AES-256-GCM hardware-accelerated encryption routine using ARM NEON intrinsics in assembly.",
+      "cohort": "blind_out_of_catalog",
+      "expected_id": null,
+      "predictions": {
+        "sqlite_fts5": [
+          "multi-pass-correctness-simplify",
+          "discovery-first",
+          "regression-hunt"
+        ],
+        "metadata_lexical": [
+          "multi-pass-correctness-simplify"
+        ],
+        "metadata_60pct_gate": [],
+        "live_llm_bounded_choice": [
+          "multi-pass-correctness-simplify"
+        ]
+      },
+      "llm_raw_response": "{\"selected\": \"cand_0\"}",
+      "llm_candidates_offered": [
+        "multi-pass-correctness-simplify"
+      ]
+    },
+    {
+      "query": "Create a Blender Python script to procedurally generate low-poly tree meshes for a video game.",
+      "cohort": "blind_out_of_catalog",
+      "expected_id": null,
+      "predictions": {
+        "sqlite_fts5": [
+          "adversarial-review",
+          "breaking-change-review",
+          "test-driven-development"
+        ],
+        "metadata_lexical": [],
+        "metadata_60pct_gate": [],
+        "live_llm_bounded_choice": []
+      },
+      "llm_raw_response": "",
+      "llm_candidates_offered": [
+        "adversarial-review",
+        "breaking-change-review",
+        "test-driven-development"
+      ]
+    }
+  ]
+}

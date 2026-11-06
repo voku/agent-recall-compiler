@@ -202,6 +202,28 @@ class MetadataRetrievalContractTest(unittest.TestCase):
             ),
         )
 
+    def test_blind_holdout_has_zero_contamination_with_catalog_metadata(self) -> None:
+        blind_file = Path(__file__).parent / "blind_holdout_queries.json"
+        if not blind_file.is_file():
+            self.skipTest("blind_holdout_queries.json not present")
+        with blind_file.open(encoding="utf-8") as f:
+            data = json.load(f)
+        queries = [q["query"] for q in data.get("queries", [])]
+
+        registered_phrases: set[str] = set()
+        for recipe in self.metadata["recipes"]:
+            for alias in recipe.get("aliases", []):
+                registered_phrases.add(" ".join(alias.casefold().split()))
+            for intent in recipe.get("intents", []):
+                registered_phrases.add(" ".join(intent.casefold().split()))
+
+        for query in queries:
+            normalized = " ".join(query.casefold().split())
+            self.assertNotIn(normalized, registered_phrases)
+            for reg in registered_phrases:
+                self.assertNotIn(reg, normalized, f"Query overlaps registered phrase: {reg}")
+
+
 
 if __name__ == "__main__":
     unittest.main()

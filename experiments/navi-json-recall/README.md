@@ -153,7 +153,7 @@ cannot justify production behavior. A model-free bounded-choice function now
 abstains, instead of pretending that a hardcoded domain blacklist is an LLM.
 
 
-### IT-Portal Bounded Choice Contract (no live model evaluation)
+### IT-Portal Bounded Choice Contract
 
 The typed PHP `BoundedChoicePromptBuilder` formats a closed
 `cand_0..cand_N, none` model prompt from verified candidates. The
@@ -162,10 +162,32 @@ containing exactly one `selected` property with canonical `cand_N` or
 `none`; malformed text, unlisted candidate IDs, out-of-bounds indexes,
 preambles and additional properties all fail closed to `null`.
 
-**No LLM is connected to this experiment.** The contract tests validate
-formatting and response parsing, **not** task relevance or model reliability.
-Model outputs, even when syntactically valid, would be context-only; they
+Model outputs, even when syntactically valid, remain strictly context-only; they
 cannot grant workflow authority or override approved JSON state.
+
+### Independent Blind Holdout Benchmark & Live Model Evaluation
+
+To eliminate all label leakage and test-set contamination (where 16/46 queries in the development set appeared verbatim in metadata aliases/intents), `blind_holdout_queries.json` provides 26 **completely untouched, held-out queries** verified by `test_metadata_retrieval.py` to have **zero exact or subphrase overlap** with any registered alias or intent:
+
+1. **10 Blind Positives:** Real software engineering tasks spanning various SDLC stages (bug reproduction, dead code removal, regression bisect, breaking API change review, missing input clarification, handoff, TDD, adversarial review, missingness audit, autonomous continue).
+2. **8 Hard Domain Negatives:** Non-software engineering scenarios sharing technical vocabulary (water pipeline rust inspection, corporate merger legal terms, apple orchard pruning, cycling sprint training, financial audit, family Thanksgiving conflict, perimeter fence inspection, sourdough hydration).
+3. **8 Blind Out-of-Catalog Tasks:** Genuine software engineering tasks for which **no recipe exists** in the 22 operating prompts (Nginx SSL proxy, CSS grid layout, Postgres autovacuum tuning, PyTorch CNN training, Ansible provisioning, Prometheus/Grafana setup, ARM NEON assembly crypto, Blender procedural mesh script).
+
+`run_blind_holdout_llm_benchmark.py` evaluates these 26 cases against four policies, including live model inference parsed through the strict `BoundedChoiceValidator`:
+
+| Cohort | Total Queries | SQLite FTS5 | Metadata Lexical | Metadata 60% Gate | Live LLM Bounded Choice |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| **Blind Positives (Top-1)** | 10 | 6/10 (60.0%) | 7/10 (70.0%) | **0/10 (0.0%)** | **7/10 (70.0%)** |
+| **Hard Domain Negatives (Abstention)** | 8 | 0/8 (0.0%) | 4/8 (50.0%) | 8/8 (100.0%) | **8/8 (100.0%)** |
+| **Out-of-Catalog Tasks (Abstention)** | 8 | 0/8 (0.0%) | 7/8 (87.5%) | 8/8 (100.0%) | **5/8 (62.5%)** |
+| **Total Clean Abstention (Negatives + Out-of-Catalog)** | 16 | 0/16 (0.0%) | 11/16 (68.8%) | 16/16 (100.0%) | **13/16 (81.3%)** |
+
+#### Critical Empirical Takeaways
+
+1. **Falsification of the 60% Coverage Filter:** The 60% word-overlap gate achieves 100% negative abstention only because it rejects **100% of independent positive tasks (0/10 correct)**. It is thoroughly overfitted and unusable in practice.
+2. **True Semantic Abstention via Live LLM:** Live LLM Bounded Choice achieved **100% clean abstention (8/8) on the hard domain negatives**, correctly choosing `none` when presented with distractor candidates matching technical words.
+3. **Out-of-Catalog Boundaries:** On tasks outside the catalog, the model abstains in 5/8 cases; in 3 cases, it selected `multi-pass-correctness-simplify` due to that recipe's overly broad description. Refining prompt descriptions to be more specific is the next architectural lever.
+4. **Deterministic Fail-Closed Boundary:** Timeouts, empty responses, or invalid syntax (observed in 1 case) fail closed to `None`, preserving safety without crashing the workflow.
 
 
 ### Verified correctness changes (RED → GREEN)
