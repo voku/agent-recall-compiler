@@ -113,6 +113,17 @@ jobs:
             --challenge experiments/navi-json-recall/issue-challenge-queries.json \
             --output evidence/offline-json-recall.json
 
+      - name: Replay committed local-model transcript against current source and candidates
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 experiments/navi-json-recall/replay_blind_holdout.py \
+            --source resources/skills/agent-recall-consumer/operating-prompts.json \
+            --metadata resources/skills/agent-recall-consumer/operating-prompts.metadata.json \
+            --queries experiments/navi-json-recall/blind_holdout_queries.json \
+            --recorded experiments/navi-json-recall/evidence/blind-holdout-benchmark.json \
+            --output evidence/blind-holdout-replay.json
+
       - name: Upload offline JSON baseline independently of native availability
         if: always()
         uses: actions/upload-artifact@v7
@@ -120,7 +131,9 @@ jobs:
           name: offline-json-recall-evidence
           retention-days: 14
           if-no-files-found: warn
-          path: evidence/offline-json-recall.json
+          path: |
+            evidence/offline-json-recall.json
+            evidence/blind-holdout-replay.json
 
   php-owner-matrix:
     name: Exact-head Composer CI (PHP ${{ matrix.php }})
