@@ -6,6 +6,7 @@ on:
       - '.github/workflows/native-json-recall.yml'
       - 'experiments/navi-json-recall/**'
       - 'resources/skills/agent-recall-consumer/operating-prompts.json'
+      - 'resources/skills/agent-recall-consumer/operating-prompts.metadata.json'
   workflow_dispatch:
 
 permissions:

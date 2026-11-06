@@ -48,6 +48,26 @@ def query_tokens(query: str) -> list[str]:
     return list(dict.fromkeys(w for w in words if len(w) >= 2))
 
 
+STOP_WORDS = {
+    "a", "an", "the", "in", "on", "at", "to", "for", "of", "with", "by", "from",
+    "is", "are", "was", "were", "be", "been", "being", "have", "has", "had",
+    "do", "does", "did", "can", "could", "will", "would", "shall", "should",
+    "may", "might", "must", "where", "what", "who", "when", "why", "how",
+    "which", "there", "this", "that", "these", "those", "i", "you", "he", "she",
+    "it", "we", "they", "me", "him", "her", "us", "them", "my", "your", "his",
+    "their", "our", "and", "or", "but", "not", "no", "nor", "so", "than", "too",
+    "very", "just", "during", "der", "die", "das", "ein", "eine", "einer", "und", "oder",
+    "im", "am", "auf", "aus", "bei", "mit", "nach", "von", "zu", "zum",
+    "zur", "sind", "war", "waren", "wird", "werden", "wer", "wie", "welche", "welcher"
+}
+
+
+def query_content_tokens(query: str) -> list[str]:
+    words = re.findall(r"[\w]+", query.casefold(), flags=re.UNICODE)
+    meaningful = [w for w in words if w not in STOP_WORDS and len(w) >= 2]
+    return list(dict.fromkeys(meaningful if meaningful else words))
+
+
 def fts_rank(conn: sqlite3.Connection, query: str) -> list[str]:
     tokens = query_tokens(query)
     if not tokens:
@@ -69,6 +89,75 @@ def build_fts(source: dict[str, str]) -> sqlite3.Connection:
          for identity, template in source.items()],
     )
     return conn
+
+
+def build_metadata_fts(metadata_file: Path, source: dict[str, str]) -> tuple[sqlite3.Connection, dict[str, Any]]:
+    conn = sqlite3.connect(":memory:")
+    conn.execute(
+        "CREATE VIRTUAL TABLE meta_prompts USING fts5("
+        "identity UNINDEXED, title, description, purpose, arguments, template, tokenize='unicode61'"
+        ")"
+    )
+    meta_by_id: dict[str, Any] = {}
+    if metadata_file.is_file():
+        meta_data = json.loads(metadata_file.read_bytes())
+        for recipe in meta_data.get("recipes", []):
+            meta_by_id[recipe["id"]] = recipe
+
+    for identity, template in source.items():
+        recipe = meta_by_id.get(identity, {})
+        title = recipe.get("title", identity.replace("-", " "))
+        desc = recipe.get("description", "")
+        purpose = recipe.get("purpose", "")
+        args_list = [
+            str(a.get("name", "")) + " " + str(a.get("description", ""))
+            for a in recipe.get("arguments", [])
+        ]
+        conn.execute(
+            "INSERT INTO meta_prompts VALUES (?, ?, ?, ?, ?, ?)",
+            (identity, title, desc, purpose, " ".join(args_list), template)
+        )
+    return conn, meta_by_id
+
+
+def metadata_bounded_rank(
+    conn: sqlite3.Connection,
+    meta_by_id: dict[str, Any],
+    indexed: dict[str, str],
+    query: str,
+) -> list[str]:
+    """IT-Portal Pattern: Structured metadata BM25 + Bounded Choice confidence gate."""
+    if query in indexed:
+        return [query]
+    tokens = query_content_tokens(query)
+    if not tokens:
+        return []
+    expr = " OR ".join(f'"{t.replace(chr(34), chr(34)+chr(34))}"' for t in tokens)
+    try:
+        rows = conn.execute(
+            "SELECT identity, bm25(meta_prompts, 0.0, 5.0, 3.0, 2.0, 2.0, 1.0) as score "
+            "FROM meta_prompts WHERE meta_prompts MATCH ? ORDER BY score ASC LIMIT 5",
+            (expr,)
+        ).fetchall()
+    except sqlite3.OperationalError:
+        return []
+    if not rows:
+        return []
+
+    accepted: list[str] = []
+    for identity_raw, _ in rows:
+        identity = str(identity_raw)
+        recipe = meta_by_id.get(identity, {})
+        full_text = (
+            identity + " " + recipe.get("title", "") + " "
+            + recipe.get("description", "") + " " + indexed.get(identity, "")
+        ).casefold()
+        matched_tokens = sum(1 for t in tokens if t in full_text)
+        # Bounded choice confidence gate: multi-token queries require >= 2 matches
+        if len(tokens) >= 3 and matched_tokens < 2:
+            continue
+        accepted.append(identity)
+    return accepted
 
 
 def evaluate(
@@ -113,13 +202,21 @@ def main() -> int:
     content = {identity: native["envelope"](identity, source_sha, template)
                for identity, template in indexed.items()}
     fts = build_fts(indexed)
+    metadata_file = source_file.with_name("operating-prompts.metadata.json")
+    meta_fts, meta_by_id = build_metadata_fts(metadata_file, indexed)
     report: dict[str, Any] = {
         "status": "fail",
         "source_sha256": source_sha,
         "queries_sha256": hashlib.sha256(fixture_bytes).hexdigest(),
         "native_upstream_sha": native["UPSTREAM_SHA"],
         "index_entries": len(indexed),
-        "conditions": ["native_activate", "sqlite_fts5", "json_exact_id", "json_first_fts5"],
+        "conditions": [
+            "native_activate",
+            "sqlite_fts5",
+            "json_exact_id",
+            "json_first_fts5",
+            "metadata_bounded_choice",
+        ],
         "byte_budgets": BUDGETS,
         "no_llm": True,
         "cases": [],
@@ -165,14 +262,21 @@ def main() -> int:
                         start = time.perf_counter_ns()
                         direct_ids = [query] if query in indexed else []
                         direct_ns = time.perf_counter_ns() - start
+
                         start = time.perf_counter_ns()
                         hybrid_ids = [query] if query in indexed else fts_rank(fts, query)
                         hybrid_ns = time.perf_counter_ns() - start
+
+                        start = time.perf_counter_ns()
+                        meta_ids = metadata_bounded_rank(meta_fts, meta_by_id, indexed, query)
+                        meta_ns = time.perf_counter_ns() - start
+
                         all_results = {
                             "native_activate": (native_ids, native_ns),
                             "sqlite_fts5": (fts_ids, fts_ns),
                             "json_exact_id": (direct_ids, direct_ns),
                             "json_first_fts5": (hybrid_ids, hybrid_ns),
+                            "metadata_bounded_choice": (meta_ids, meta_ns),
                         }
                         if query in indexed and hybrid_ids != [query]:
                             raise AssertionError("Direct JSON authority was not preferred")
@@ -218,8 +322,13 @@ def main() -> int:
                 else fts_rank(fts, "evidence-report")
             )
             offline_paraphrase_ids = fts_rank(fts, "mutation tests coverage")
-            if offline_ids != ["evidence-report"] or "coverage-mutation" not in offline_paraphrase_ids[:3]:
-                raise AssertionError("Deterministic JSON-first fallback failed with native daemon stopped")
+            offline_meta_ids = metadata_bounded_rank(meta_fts, meta_by_id, indexed, "mutation tests coverage")
+            if (
+                offline_ids != ["evidence-report"]
+                or "coverage-mutation" not in offline_paraphrase_ids[:3]
+                or "coverage-mutation" not in offline_meta_ids[:3]
+            ):
+                raise AssertionError("Deterministic JSON-first / metadata fallback failed with native daemon stopped")
             report["offline_native_unavailable_fallback"] = "pass"
 
         summary: dict[str, Any] = {}
