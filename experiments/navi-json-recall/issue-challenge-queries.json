@@ -1,0 +1,94 @@
+{
+  "schema_version": "1.0",
+  "purpose": "Adversarial second evaluation pack. Public agent-loop issue titles were inspected before labels were drafted; expected recipes are human hypotheses, NOT authoritative workflow decisions. No query or label is added to any index.",
+  "cases": [
+    {
+      "cohort": "agent_loop_issue",
+      "issue": "voku/agent-loop#921",
+      "query": "Investigate why bounded recall document excerpts lose review evidence at a cut boundary",
+      "expected_id": "missingness-audit"
+    },
+    {
+      "cohort": "agent_loop_issue",
+      "issue": "voku/agent-loop#892",
+      "query": "Avoid speculative concurrency and security complexity without evidence of an actual failure mode",
+      "expected_id": "deletion-first"
+    },
+    {
+      "cohort": "agent_loop_issue",
+      "issue": "voku/agent-loop#879",
+      "query": "Challenge whether forged standing approval actors can bypass workflow acknowledgement checks",
+      "expected_id": "adversarial-review"
+    },
+    {
+      "cohort": "agent_loop_issue",
+      "issue": "voku/agent-loop#865",
+      "query": "Reproduce the failure of retiring a run and then closing it before fixing the policy",
+      "expected_id": "reproduce-before-fix"
+    },
+    {
+      "cohort": "agent_loop_issue",
+      "issue": "voku/agent-loop#863",
+      "query": "Stop endless changes required build review loops after a bounded number of failed rounds",
+      "expected_id": "retry-stop"
+    },
+    {
+      "cohort": "agent_loop_issue",
+      "issue": "voku/agent-loop#889",
+      "query": "Report measured Git hook startup commands across WSL IDE and Docker with exact evidence",
+      "expected_id": "evidence-report"
+    },
+    {
+      "cohort": "agent_loop_issue",
+      "issue": "voku/agent-loop#947",
+      "query": "Inspect existing PHPStan and php cs fixer configuration before designing project aware init",
+      "expected_id": "discovery-first"
+    },
+    {
+      "cohort": "agent_loop_issue",
+      "issue": "voku/agent-loop#838",
+      "query": "Simplify checkpoint state store recovery implementation by deleting redundant replay code",
+      "expected_id": "deletion-first"
+    },
+    {
+      "cohort": "hard_unanswerable",
+      "query": "Review a film trailer and explain why the actors were not approved",
+      "expected_id": null
+    },
+    {
+      "cohort": "hard_unanswerable",
+      "query": "Create a production ready handoff for our weekend train itinerary",
+      "expected_id": null
+    },
+    {
+      "cohort": "hard_unanswerable",
+      "query": "Plan a birthday party with detailed tasks and validation of guest invitations",
+      "expected_id": null
+    },
+    {
+      "cohort": "hard_unanswerable",
+      "query": "List the next execution steps to assemble a wooden garden shed",
+      "expected_id": null
+    },
+    {
+      "cohort": "hard_unanswerable",
+      "query": "How should I review a job offer with a legal contract and verification documents",
+      "expected_id": null
+    },
+    {
+      "cohort": "hard_unanswerable",
+      "query": "Help me reproduce an antique painting by copying existing brush strokes",
+      "expected_id": null
+    },
+    {
+      "cohort": "hard_unanswerable",
+      "query": "I need a security review of my online banking login and transaction history",
+      "expected_id": null
+    },
+    {
+      "cohort": "hard_unanswerable",
+      "query": "Compare the final validation evidence for a hospital appointment",
+      "expected_id": null
+    }
+  ]
+}
