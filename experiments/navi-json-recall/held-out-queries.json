@@ -1,0 +1,156 @@
+{
+  "schema_version": "1.0",
+  "purpose": "Preregistered retrieval queries. Labels are test expectations and are never added to the native or SQLite index.",
+  "queries": [
+    {
+      "cohort": "exact_id",
+      "query": "adversarial-review",
+      "expected_id": "adversarial-review"
+    },
+    {
+      "cohort": "exact_id",
+      "query": "execution-dispatch",
+      "expected_id": "execution-dispatch"
+    },
+    {
+      "cohort": "exact_id",
+      "query": "evidence-report",
+      "expected_id": "evidence-report"
+    },
+    {
+      "cohort": "exact_id",
+      "query": "todo-card-handoff",
+      "expected_id": "todo-card-handoff"
+    },
+    {
+      "cohort": "english_paraphrase",
+      "query": "challenge the patch with attack scenarios and disprove imagined defects",
+      "expected_id": "adversarial-review"
+    },
+    {
+      "cohort": "english_paraphrase",
+      "query": "check public API users before removing an old interface",
+      "expected_id": "breaking-change-review"
+    },
+    {
+      "cohort": "english_paraphrase",
+      "query": "identify missing task information before any implementation",
+      "expected_id": "clarify-missing-inputs"
+    },
+    {
+      "cohort": "english_paraphrase",
+      "query": "keep working on independent authorized tasks without asking after every step",
+      "expected_id": "continue-until-done"
+    },
+    {
+      "cohort": "english_paraphrase",
+      "query": "make sure mutation tests kill regressions not just coverage percentages",
+      "expected_id": "coverage-mutation"
+    },
+    {
+      "cohort": "english_paraphrase",
+      "query": "delete unnecessary code instead of inventing abstractions",
+      "expected_id": "deletion-first"
+    },
+    {
+      "cohort": "english_paraphrase",
+      "query": "inspect the branch and current checkout evidence before proposing changes",
+      "expected_id": "discovery-first"
+    },
+    {
+      "cohort": "english_paraphrase",
+      "query": "inspect plan assumptions for blind spots before starting execution",
+      "expected_id": "execute-plan-with-blind-spot-check"
+    },
+    {
+      "cohort": "english_paraphrase",
+      "query": "give a coding worker only one approved execution slice with exact contract lineage",
+      "expected_id": "execution-dispatch"
+    },
+    {
+      "cohort": "english_paraphrase",
+      "query": "list actual verification commands and distinguish executed checks from assumptions",
+      "expected_id": "evidence-report"
+    },
+    {
+      "cohort": "english_paraphrase",
+      "query": "audit required artifacts that do not exist yet",
+      "expected_id": "missingness-audit"
+    },
+    {
+      "cohort": "english_paraphrase",
+      "query": "continue planning ahead with a moving time window and dependency frontier",
+      "expected_id": "plan-horizon"
+    },
+    {
+      "cohort": "english_paraphrase",
+      "query": "prepare a completely fresh coding agent with everything verified from the repository",
+      "expected_id": "production-ready-handoff"
+    },
+    {
+      "cohort": "english_paraphrase",
+      "query": "stop identical failing attempts when they bring no new diagnostic evidence",
+      "expected_id": "retry-stop"
+    },
+    {
+      "cohort": "english_paraphrase",
+      "query": "run red green refactor for every behavior-changing slice",
+      "expected_id": "test-driven-development"
+    },
+    {
+      "cohort": "english_paraphrase",
+      "query": "write standalone work cards that a separate engineer can pick up",
+      "expected_id": "todo-card-handoff"
+    },
+    {
+      "cohort": "german_paraphrase",
+      "query": "Prüfe die Rückwärtskompatibilität öffentlicher APIs vor einer Änderung",
+      "expected_id": "breaking-change-review"
+    },
+    {
+      "cohort": "german_paraphrase",
+      "query": "Beweise den Fehler erst mit einem fehlschlagenden automatisierten Test",
+      "expected_id": "reproduce-before-fix"
+    },
+    {
+      "cohort": "german_paraphrase",
+      "query": "Schreibe eine Übergabe für einen neuen Entwickler ohne Chatverlauf",
+      "expected_id": "production-ready-handoff"
+    },
+    {
+      "cohort": "german_paraphrase",
+      "query": "Suche fehlende Tests und fehlende Akzeptanzbelege",
+      "expected_id": "missingness-audit"
+    },
+    {
+      "cohort": "german_paraphrase",
+      "query": "Vereinfache den Code durch Löschen statt neue Abstraktionen",
+      "expected_id": "deletion-first"
+    },
+    {
+      "cohort": "german_paraphrase",
+      "query": "Verwerfe die ungültige Implementierung und beginne beim letzten geprüften Stand",
+      "expected_id": "reject-and-restart"
+    },
+    {
+      "cohort": "unanswerable",
+      "query": "Where can I buy train tickets to Berlin tomorrow?",
+      "expected_id": null
+    },
+    {
+      "cohort": "unanswerable",
+      "query": "Forecast rainfall in Lisbon during December",
+      "expected_id": null
+    },
+    {
+      "cohort": "unanswerable",
+      "query": "Who won the chess world championship in 1972?",
+      "expected_id": null
+    },
+    {
+      "cohort": "unanswerable",
+      "query": "What is the boiling point of liquid nitrogen?",
+      "expected_id": null
+    }
+  ]
+}
