@@ -94,7 +94,12 @@ def build_fts(source: dict[str, str]) -> sqlite3.Connection:
     return conn
 
 
-def build_metadata_fts(metadata_file: Path, source: dict[str, str]) -> tuple[sqlite3.Connection, dict[str, Any]]:
+def build_metadata_fts(
+    metadata_file: Path,
+    source: dict[str, str],
+    *,
+    include_enrichment: bool = True,
+) -> tuple[sqlite3.Connection, dict[str, Any]]:
     """Index owner-supplied metadata only if its schema exactly matches the canonical source."""
     if metadata_file.is_symlink() or not metadata_file.is_file():
         raise ValueError("Required metadata JSON is missing or is a symlink")
@@ -155,8 +160,8 @@ def build_metadata_fts(metadata_file: Path, source: dict[str, str]) -> tuple[sql
                 arg["name"] + " " + arg["description"]
                 for arg in recipe.get("arguments", [])
             )
-            aliases_text = " ".join(recipe.get("aliases", []))
-            intents_text = " ".join(recipe.get("intents", []))
+            aliases_text = " ".join(recipe.get("aliases", [])) if include_enrichment else ""
+            intents_text = " ".join(recipe.get("intents", [])) if include_enrichment else ""
             conn.execute(
                 "INSERT INTO meta_prompts VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 (
@@ -167,6 +172,11 @@ def build_metadata_fts(metadata_file: Path, source: dict[str, str]) -> tuple[sql
     except sqlite3.Error:
         conn.close()
         raise
+    if not include_enrichment:
+        meta_by_id = {
+            identity: {**recipe, "aliases": [], "intents": []}
+            for identity, recipe in meta_by_id.items()
+        }
     return conn, meta_by_id
 
 
