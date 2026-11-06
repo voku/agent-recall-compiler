@@ -24,6 +24,7 @@ METHODS = (
     "sqlite_fts5",
     "json_first_fts5",
     "metadata_bounded_choice",
+    "metadata_without_alias_intents",
     "metadata_coverage_gate_0_6",
 )
 
@@ -89,6 +90,9 @@ def evaluate(
     cases, digests = read_cases(original, challenge, indexed)
     # A missing, changed or malformed metadata catalog must fail before scoring.
     meta_fts, meta_by_id = benchmark.build_metadata_fts(metadata_path, indexed)
+    ablated_fts, ablated_meta = benchmark.build_metadata_fts(
+        metadata_path, indexed, include_enrichment=False,
+    )
     plain_fts = benchmark.build_fts(indexed)
     try:
         content = {
@@ -106,6 +110,28 @@ def evaluate(
             "byte_budgets": list(benchmark.BUDGETS),
             "cases": [],
         }
+        exact_label_overlap = []
+        for case in cases:
+            target = case["expected_id"]
+            if target is None:
+                continue
+            recipe = meta_by_id[target]
+            normalized = " ".join(case["query"].casefold().split())
+            labels = [
+                " ".join(value.casefold().split())
+                for value in [*recipe.get("aliases", []), *recipe.get("intents", [])]
+            ]
+            if normalized in labels:
+                exact_label_overlap.append({
+                    "cohort": case["cohort"],
+                    "expected_id": target,
+                    "query": case["query"],
+                })
+        report["evaluation_contamination"] = {
+            "exact_query_in_expected_recipe_alias_or_intent_count": len(exact_label_overlap),
+            "matches": exact_label_overlap,
+            "caveat": "In-sample evaluation: alias/intent text overlaps labelled queries; not a blinded holdout.",
+        }
         for case in cases:
             query = case["query"]
             start = time.perf_counter_ns()
@@ -119,6 +145,12 @@ def evaluate(
             metadata_ms = (time.perf_counter_ns() - start) / 1e6
 
             start = time.perf_counter_ns()
+            ablated_ids = benchmark.metadata_bounded_rank(
+                ablated_fts, ablated_meta, indexed, query,
+            )
+            ablated_ms = (time.perf_counter_ns() - start) / 1e6
+
+            start = time.perf_counter_ns()
             coverage_ids = benchmark.metadata_bounded_rank(
                 meta_fts, meta_by_id, indexed, query, min_query_coverage=0.6
             )
@@ -130,6 +162,7 @@ def evaluate(
                 "sqlite_fts5": (raw_fts, fts_ms),
                 "json_first_fts5": (exact if exact else raw_fts, fts_ms),
                 "metadata_bounded_choice": (metadata_ids, metadata_ms),
+                "metadata_without_alias_intents": (ablated_ids, ablated_ms),
                 "metadata_coverage_gate_0_6": (coverage_ids, coverage_ms),
             }
             method_evidence: dict[str, Any] = {}
@@ -185,6 +218,7 @@ def evaluate(
         return report
     finally:
         meta_fts.close()
+        ablated_fts.close()
         plain_fts.close()
 
 
