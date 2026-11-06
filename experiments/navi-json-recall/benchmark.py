@@ -116,7 +116,7 @@ def build_metadata_fts(metadata_file: Path, source: dict[str, str]) -> tuple[sql
         if not isinstance(identity, str) or not identity:
             raise ValueError("Invalid metadata identity")
         if identity in meta_by_id:
-            raise ValueError("Duplicate metadata identity: " + identity)
+            raise ValueError("duplicate metadata identity: " + identity)
         for field_name in ("title", "description", "purpose"):
             if not isinstance(recipe.get(field_name), str):
                 raise ValueError("Invalid metadata " + field_name + ": " + identity)
