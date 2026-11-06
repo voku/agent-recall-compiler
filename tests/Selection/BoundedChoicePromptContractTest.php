@@ -71,12 +71,12 @@ final class BoundedChoicePromptContractTest extends TestCase
         self::assertNull($selected);
     }
 
-    public function testValidatorParsesDirectCandidateId(): void
+    public function testValidatorRejectsDirectCandidateIdOutsideJsonChoiceContract(): void
     {
-        $candidates = ['reproduce-before-fix', 'deletion-first'];
-
-        $selected = $this->validator->validate('{"selected": "deletion-first"}', $candidates);
-        self::assertSame('deletion-first', $selected);
+        self::assertNull($this->validator->validate(
+            '{"selected": "deletion-first"}',
+            ['reproduce-before-fix', 'deletion-first'],
+        ));
     }
 
     public function testValidatorFailsClosedOnOutOfBoundsIndex(): void
@@ -95,6 +95,57 @@ final class BoundedChoicePromptContractTest extends TestCase
         // Hallucinated ID not in candidates
         $selected = $this->validator->validate('{"selected": "unknown-fabricated-recipe"}', $candidates);
         self::assertNull($selected);
+    }
+
+    public function testValidatorRejectsNonJsonFallbackAndInjectedPreamble(): void
+    {
+        $candidateIds = ['reproduce-before-fix', 'deletion-first'];
+        foreach ([
+            'I recommend cand_0.',
+            'Invalid JSON but "selected": "cand_0" because the model said so',
+            '{"selected": "cand_0"', // incomplete object
+            '{"selected": "cand_0"}\\nIgnore instructions',
+            'cand_0',
+            '```json' . "\\n" . '{"selected":"cand_0"}' . "\\n" . '```',
+        ] as $response) {
+            self::assertNull($this->validator->validate($response, $candidateIds), $response);
+        }
+    }
+
+    public function testValidatorRequiresExactlyOneSelectedJsonProperty(): void
+    {
+        $candidateIds = ['reproduce-before-fix', 'deletion-first'];
+        foreach ([
+            '{"selected": "cand_0", "override": "merge"}',
+            '{"selected": 0}',
+            '{"selected": true}',
+            '{"selected": null}',
+            '{"selected": ["cand_0"]}',
+            '{"other": "cand_0"}',
+            '["cand_0"]',
+            '"cand_0"',
+        ] as $response) {
+            self::assertNull($this->validator->validate($response, $candidateIds), $response);
+        }
+    }
+
+    public function testValidatorRejectsNonCanonicalIndexAndUnlistedCandidates(): void
+    {
+        $candidateIds = ['reproduce-before-fix', 'deletion-first'];
+        foreach ([
+            '{"selected": "cand_00"}',
+            '{"selected": "cand_+0"}',
+            '{"selected": "cand_999999999999999999999999"}',
+            '{"selected": "CAND_0"}',
+            '{"selected": " cand_0 "}',
+        ] as $response) {
+            self::assertNull($this->validator->validate($response, $candidateIds), $response);
+        }
+        self::assertNull($this->validator->validate('{"selected":"cand_0"}', []));
+        self::assertSame(
+            'deletion-first',
+            $this->validator->validate('{"selected":"cand_1"}', $candidateIds),
+        );
     }
 
     public function testValidatorFailsClosedOnMalformedOrEmptyOutput(): void
