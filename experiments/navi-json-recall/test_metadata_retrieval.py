@@ -202,27 +202,52 @@ class MetadataRetrievalContractTest(unittest.TestCase):
             ),
         )
 
-    def test_blind_holdout_has_zero_contamination_with_catalog_metadata(self) -> None:
+    def test_holdout_no_exact_or_subphrase_overlap_against_real_owner_catalog(self) -> None:
+        # Validate the real checked-in catalog, never the two-recipe setUp stub.
+        root = Path(__file__).resolve().parents[2]
         blind_file = Path(__file__).parent / "blind_holdout_queries.json"
-        if not blind_file.is_file():
-            self.skipTest("blind_holdout_queries.json not present")
-        with blind_file.open(encoding="utf-8") as f:
-            data = json.load(f)
-        queries = [q["query"] for q in data.get("queries", [])]
-
-        registered_phrases: set[str] = set()
-        for recipe in self.metadata["recipes"]:
-            for alias in recipe.get("aliases", []):
-                registered_phrases.add(" ".join(alias.casefold().split()))
-            for intent in recipe.get("intents", []):
-                registered_phrases.add(" ".join(intent.casefold().split()))
-
-        for query in queries:
-            normalized = " ".join(query.casefold().split())
-            self.assertNotIn(normalized, registered_phrases)
-            for reg in registered_phrases:
-                self.assertNotIn(reg, normalized, f"Query overlaps registered phrase: {reg}")
-
+        metadata_file = (
+            root / "resources/skills/agent-recall-consumer/operating-prompts.metadata.json"
+        )
+        source_file = root / "resources/skills/agent-recall-consumer/operating-prompts.json"
+        blind = json.loads(blind_file.read_text(encoding="utf-8"))
+        catalog = json.loads(metadata_file.read_text(encoding="utf-8"))
+        source = json.loads(source_file.read_text(encoding="utf-8"))
+        self.assertEqual(26, len(blind["queries"]))
+        self.assertEqual(
+            {"blind_positive": 10, "blind_hard_negative": 8, "blind_out_of_catalog": 8},
+            {cohort: sum(case["cohort"] == cohort for case in blind["queries"])
+             for cohort in ("blind_positive", "blind_hard_negative", "blind_out_of_catalog")},
+        )
+        real_ids = {item["id"] for item in source["prompts"]}
+        self.assertEqual(real_ids, {item["id"] for item in catalog["recipes"]})
+        registered_phrases = {
+            " ".join(phrase.casefold().split())
+            for recipe in catalog["recipes"]
+            for phrase in [*recipe.get("aliases", []), *recipe.get("intents", [])]
+            if phrase.strip()
+        }
+        self.assertTrue(registered_phrases)
+        self.assertEqual(
+            26, len({case["query"] for case in blind["queries"]}),
+            "Blind queries must be distinct",
+        )
+        for case in blind["queries"]:
+            query = " ".join(case["query"].casefold().split())
+            if case["cohort"] == "blind_positive":
+                self.assertIn(case["expected_id"], real_ids)
+            else:
+                self.assertIsNone(case["expected_id"])
+            for phrase in registered_phrases:
+                self.assertNotEqual(query, phrase)
+                self.assertNotIn(
+                    phrase, query,
+                    "Full alias/intent phrase overlaps blind query: " + phrase,
+                )
+                self.assertNotIn(
+                    query, phrase,
+                    "Blind query is contained in registered phrase: " + query,
+                )
 
 
 if __name__ == "__main__":
