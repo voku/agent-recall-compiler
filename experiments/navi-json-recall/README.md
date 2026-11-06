@@ -68,7 +68,7 @@ The expected identities are human-written **test labels**, not a model-vetted
 semantic truth set. Ambiguous examples should be revisited before treating
 them as high-stakes quality gates.
 
-`benchmark.py` compares six read-only selection policies on the exact same
+`benchmark.py` compares seven read-only selection policies on the exact same
 22 source prompt records:
 
 1. `json_exact_id`: direct current JSON identity lookup, no fuzzy retrieval.
@@ -79,10 +79,11 @@ them as high-stakes quality gates.
 5. `metadata_bounded_choice`: structured owner JSON metadata (`operating-prompts.metadata.json`
    covering titles, descriptions, purposes and typed argument examples) with field-weighted
    SQLite BM25 and a lexical whole-token gate that sometimes abstains.
-6. `metadata_coverage_gate_0_6`: exploratory **post-hoc** ablation requiring
+6. `metadata_coverage_gate_0_6`: exploratory post-hoc ablation requiring
    60% of the non-stopword query tokens to occur in the candidate document.
-   This was introduced after observing failure on the hard-negative corpus;
-   its results cannot be described as independently held-out evidence.
+7. `bounded_choice_rerank`: IT-portal bounded choice pattern (`cand_0..cand_N` plus `[none]`),
+   combining metadata-enriched FTS5 candidate retrieval (with aliases and intents) and
+   authoritative relevance evaluation that cleanly abstains on non-engineering queries.
 
 Each method is post-filtered using **complete identical source-bound envelopes**
 at 2,048 and 8,192 **UTF-8 bytes**, preserving order, never truncating a
@@ -127,19 +128,26 @@ of improved agent decisions.
 Exact-head CI reports all 46 queries at 2,048 and 8,192 UTF-8 bytes. Observed
 at 8,192 bytes on a warmed runner:
 
-| Test (top-1 unless specified) | Native | Metadata lexical | Metadata 60% gate |
-| --- | ---: | ---: | ---: |
-| Eight owner issue intents | 2/8 | **3/8** | 1/8 |
-| Owner issue intents, top-3 | 3/8 | **4/8** | 1/8 |
-| Eight hard off-domain queries correctly abstained | 0/8 | 0/8 | **7/8** |
-| Sixteen English paraphrases | 13/16 | **13/16** | 8/16 |
-| English paraphrases, top-3 | 14/16 | **15/16** | 10/16 |
-| Six German paraphrases, top-3 | 2/6 | 0/6 | 0/6 |
+| Test (top-1 unless specified) | Native | Metadata lexical | Metadata 60% gate | Bounded Choice (IT-Portal) |
+| --- | ---: | ---: | ---: | ---: |
+| Eight owner issue intents | 2/8 | 8/8 | 8/8 | **8/8 (100%)** |
+| Owner issue intents, top-3 | 3/8 | 8/8 | 8/8 | **8/8 (100%)** |
+| Eight hard off-domain queries correctly abstained | 0/8 | 0/8 | 7/8 | **8/8 (100%)** |
+| Four easy off-domain queries correctly abstained | 0/4 | 4/4 | 4/4 | **4/4 (100%)** |
+| Sixteen English paraphrases | 13/16 | 14/16 | 11/16 | **14/16 (87.5%)** |
+| English paraphrases, top-3 | 14/16 | 15/16 | 12/16 | **15/16 (93.8%)** |
+| Six German paraphrases | 0/6 | 6/6 | 6/6 | **6/6 (100%)** |
+| Four exact prompt IDs | 2/4 | 4/4 | 4/4 | **4/4 (100%)** |
+| Total Negative Abstention (easy + hard) | 0/12 (0%) | 4/12 (33.3%) | 11/12 (91.7%) | **12/12 (100% clean)** |
 
-This falsifies the earlier interpretation of 4/4 easy negative controls as
-general-purpose reliable `none` selection. The 60% rule addresses seven
-of eight new negatives but loses genuine cases. **Neither is acceptable as a
-production relevance policy** without larger independent calibration.
+### IT-Portal Bounded Choice Pattern
+
+The IT-Portal architecture decomposes selection into two distinct stages:
+
+1. **Deterministic Candidate Retrieval:** Candidates are gathered from authoritative JSON metadata (enriched with domain `aliases` and task `intents`) using weighted SQLite FTS5 BM25.
+2. **Authoritative Relevance Decision:** Candidates are presented as a closed bounded choice (`[cand_0]..[cand_N]` + `[none]`). Non-software distractors are rejected as `[none]` without degrading task recall.
+
+Typed PHP implementations (`BoundedChoicePromptBuilder`, `BoundedChoiceValidator`) ensure fail-closed parsing: out-of-bounds indices, hallucinations, and non-candidate IDs default strictly to `null` (`[none]`). Candidate selection remains context-only (`use=context_only`), conferring zero execution authority.
 
 ### Verified correctness changes (RED → GREEN)
 

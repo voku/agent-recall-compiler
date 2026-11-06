@@ -26,6 +26,8 @@ final readonly class OperatingPromptRecipe
 
     /**
      * @param list<OperatingPromptArgument> $arguments
+     * @param list<string> $aliases
+     * @param list<string> $intents
      */
     public function __construct(
         public string $id,
@@ -36,6 +38,8 @@ final readonly class OperatingPromptRecipe
         public array $arguments,
         public string $sourceRef,
         public string $templateSha256,
+        public array $aliases = [],
+        public array $intents = [],
     ) {
         if (preg_match('/\A[a-z][a-z0-9._-]*\z/', $id) !== 1) {
             throw new InvalidArgumentException('operating prompt id must match [a-z][a-z0-9._-]*: ' . $id);

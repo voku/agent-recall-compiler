@@ -23,7 +23,9 @@ use RuntimeException;
  *     title: string,
  *     description: string,
  *     purpose: string,
- *     arguments: array<string, ArgumentMetadata>
+ *     arguments: array<string, ArgumentMetadata>,
+ *     aliases?: list<string>,
+ *     intents?: list<string>
  * }
  */
 final readonly class OperatingPromptCatalog
@@ -99,6 +101,8 @@ final readonly class OperatingPromptCatalog
                     arguments: $this->arguments($id, $placeholders, $recipeMetadata['arguments'] ?? null),
                     sourceRef: $manifestPath . '#' . $id,
                     templateSha256: hash('sha256', $template),
+                    aliases: $recipeMetadata['aliases'] ?? [],
+                    intents: $recipeMetadata['intents'] ?? [],
                 );
 
                 $definitions[$id] = [
@@ -392,11 +396,37 @@ final readonly class OperatingPromptCatalog
             }
             ksort($arguments, SORT_STRING);
 
+            $rawAliases = $recipe['aliases'] ?? [];
+            if (!is_array($rawAliases)) {
+                throw new RuntimeException('operating prompt metadata aliases must be an array: ' . $id);
+            }
+            $aliases = [];
+            foreach ($rawAliases as $alias) {
+                if (!is_string($alias) || trim($alias) === '') {
+                    throw new RuntimeException('operating prompt metadata aliases must be non-empty strings: ' . $id);
+                }
+                $aliases[] = trim($alias);
+            }
+
+            $rawIntents = $recipe['intents'] ?? [];
+            if (!is_array($rawIntents)) {
+                throw new RuntimeException('operating prompt metadata intents must be an array: ' . $id);
+            }
+            $intents = [];
+            foreach ($rawIntents as $intent) {
+                if (!is_string($intent) || trim($intent) === '') {
+                    throw new RuntimeException('operating prompt metadata intents must be non-empty strings: ' . $id);
+                }
+                $intents[] = trim($intent);
+            }
+
             $metadata[$id] = [
                 'title' => trim($title),
                 'description' => trim($description),
                 'purpose' => trim($purpose),
                 'arguments' => $arguments,
+                'aliases' => $aliases,
+                'intents' => $intents,
             ];
         }
         ksort($metadata, SORT_STRING);

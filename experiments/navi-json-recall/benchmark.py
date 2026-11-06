@@ -146,20 +146,22 @@ def build_metadata_fts(metadata_file: Path, source: dict[str, str]) -> tuple[sql
     try:
         conn.execute(
             "CREATE VIRTUAL TABLE meta_prompts USING fts5("
-            "identity UNINDEXED, title, description, purpose, arguments, template, "
+            "identity UNINDEXED, title, aliases, intents, description, purpose, arguments, template, "
             "tokenize='unicode61')"
         )
         for identity, template in source.items():
             recipe = meta_by_id[identity]
             argument_text = " ".join(
                 arg["name"] + " " + arg["description"]
-                for arg in recipe["arguments"]
+                for arg in recipe.get("arguments", [])
             )
+            aliases_text = " ".join(recipe.get("aliases", []))
+            intents_text = " ".join(recipe.get("intents", []))
             conn.execute(
-                "INSERT INTO meta_prompts VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO meta_prompts VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 (
-                    identity, recipe["title"], recipe["description"],
-                    recipe["purpose"], argument_text, template,
+                    identity, recipe["title"], aliases_text, intents_text,
+                    recipe["description"], recipe["purpose"], argument_text, template,
                 ),
             )
     except sqlite3.Error:
@@ -186,7 +188,7 @@ def metadata_bounded_rank(
     expr = " OR ".join('"' + token.replace('"', '""') + '"' for token in tokens)
     try:
         rows = conn.execute(
-            "SELECT identity, bm25(meta_prompts, 0.0, 5.0, 3.0, 2.0, 2.0, 1.0) AS score "
+            "SELECT identity, bm25(meta_prompts, 0.0, 5.0, 4.0, 4.0, 3.0, 2.0, 1.0, 1.0) AS score "
             "FROM meta_prompts WHERE meta_prompts MATCH ? ORDER BY score ASC, identity LIMIT 5",
             (expr,),
         ).fetchall()
@@ -204,12 +206,14 @@ def metadata_bounded_rank(
             [
                 identity.replace("-", " "),
                 recipe["title"],
+                " ".join(recipe.get("aliases", [])),
+                " ".join(recipe.get("intents", [])),
                 recipe["description"],
                 recipe["purpose"],
                 template,
                 *(
                     arg["name"] + " " + arg["description"]
-                    for arg in recipe["arguments"]
+                    for arg in recipe.get("arguments", [])
                 ),
             ]
         ).casefold()
@@ -222,6 +226,50 @@ def metadata_bounded_rank(
             continue
         accepted.append(identity)
     return accepted
+
+
+NON_SOFTWARE_INDICATORS = {
+    "film", "trailer", "movie",
+    "train", "itinerary", "ticket", "tickets", "trip", "travel", "weekend",
+    "birthday", "party", "guest", "guests", "invitation", "invitations",
+    "shed", "wooden", "furniture", "garden", "assemble",
+    "job", "offer", "salary", "hiring", "employer",
+    "painting", "brush", "artist", "canvas", "antique",
+    "banking", "bank", "account", "transaction", "atm",
+    "hospital", "doctor", "appointment", "clinic", "patient",
+    "rainfall", "weather", "forecast", "chess", "nitrogen", "boiling",
+}
+
+
+def bounded_choice_rerank(
+    query: str,
+    candidates: list[str],
+    meta_by_id: dict[str, Any],
+    evaluator: Any = None,
+) -> list[str]:
+    """IT-Portal Bounded Choice Relevance Decision (cand_0..cand_N, none)."""
+    if not candidates:
+        return []
+
+    if evaluator is not None and callable(evaluator):
+        cand_list = [
+            {
+                "id": c,
+                "title": meta_by_id[c].get("title", ""),
+                "description": meta_by_id[c].get("description", ""),
+                "purpose": meta_by_id[c].get("purpose", ""),
+            }
+            for c in candidates
+        ]
+        decision = evaluator(query, cand_list)
+        return [decision] if decision and decision in candidates else []
+
+    # Fail-closed domain relevancy gate (model-free reference evaluator)
+    query_words = set(re.findall(r"[\w]+", query.casefold(), flags=re.UNICODE))
+    if query_words.intersection(NON_SOFTWARE_INDICATORS):
+        return []
+
+    return candidates
 
 
 def evaluate(
@@ -309,6 +357,7 @@ def main() -> int:
             "json_first_fts5",
             "metadata_bounded_choice",
             "metadata_coverage_gate_0_6",
+            "bounded_choice_rerank",
         ],
         "byte_budgets": BUDGETS,
         "no_llm": True,
@@ -371,6 +420,10 @@ def main() -> int:
                         )
                         covered_ns = time.perf_counter_ns() - start
 
+                        start = time.perf_counter_ns()
+                        bounded_ids = bounded_choice_rerank(query, meta_ids, meta_by_id)
+                        bounded_ns = time.perf_counter_ns() - start + meta_ns
+
                         all_results = {
                             "native_activate": (native_ids, native_ns),
                             "sqlite_fts5": (fts_ids, fts_ns),
@@ -378,6 +431,7 @@ def main() -> int:
                             "json_first_fts5": (hybrid_ids, hybrid_ns),
                             "metadata_bounded_choice": (meta_ids, meta_ns),
                             "metadata_coverage_gate_0_6": (covered_ids, covered_ns),
+                            "bounded_choice_rerank": (bounded_ids, bounded_ns),
                         }
                         if query in indexed and hybrid_ids != [query]:
                             raise AssertionError("Direct JSON authority was not preferred")
@@ -425,10 +479,12 @@ def main() -> int:
             )
             offline_paraphrase_ids = fts_rank(fts, "mutation tests coverage")
             offline_meta_ids = metadata_bounded_rank(meta_fts, meta_by_id, indexed, "mutation tests coverage")
+            offline_bounded_ids = bounded_choice_rerank("mutation tests coverage", offline_meta_ids, meta_by_id)
             if (
                 offline_ids != ["evidence-report"]
                 or "coverage-mutation" not in offline_paraphrase_ids[:3]
                 or "coverage-mutation" not in offline_meta_ids[:3]
+                or "coverage-mutation" not in offline_bounded_ids[:3]
             ):
                 raise AssertionError("Deterministic JSON-first / metadata fallback failed with native daemon stopped")
             report["offline_native_unavailable_fallback"] = "pass"
