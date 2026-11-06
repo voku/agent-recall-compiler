@@ -238,6 +238,42 @@ https://github.com/voku/agent-recall-compiler/actions/runs/42300810008
 alongside the regular PHP 8.3–8.5 Composer CI and the native test.
 The result confirms **test isolation**, not improvement to coding-agent outcomes.
 
+
+### Post-hoc candidate-fusion experiment (no metadata tuning)
+
+`candidate_fusion_ablation.py` evaluates a separate, fixed-hyperparameter
+**candidate discovery** step. It never calls a model, changes canonical JSON,
+or edits descriptions/aliases/intents. All candidate identities must originate
+from the owner catalog. The independent **native-free GitHub Actions** job
+writes `evidence/candidate-fusion-ablation.json` with per-query rankings,
+source digests and the fixed RRF constant (60).
+
+The 26 already-inspected blind-holdout cases are now **development data**.
+Any improvement here is diagnostic, not independent generalization.
+
+| Post-hoc source-backed strategy | Gold recipe offered in top 3 (10 positives) | Gold offered in top 5 | Hard-negative candidate exposures in top 3 (8 queries) | Out-of-catalog candidate exposures in top 3 (8 queries) |
+| --- | ---: | ---: | ---: | ---: |
+| Metadata alone | 8/10 | 8/10 | 5 | 1 |
+| Plain FTS5 alone | 6/10 | 7/10 | 24 | 24 |
+| Metadata-first union, capped 6 | 8/10 | **9/10** | **24** | **24** |
+| Reciprocal rank fusion, k=60, capped 6 | 7/10 | 9/10 | **24** | **24** |
+
+**Exposure** counts candidate suggestions, not model-selected false positives.
+They are the sum of offered candidates across eight tasks; 24 means three
+candidates per task. The union gains one possible positive candidate *only*
+by raising the candidate limit to five, while exposing many unrelated
+choices. The RRF strategy even loses one top-three positive. Neither is a
+production improvement, and neither attains the proposed 100% Recall@3 gate.
+
+**Separate the second lever:** The three previously recorded incorrect
+`multi-pass-correctness-simplify` outputs are attributed to selection only
+at the candidate-response boundary; the causal claim that its wording is
+too broad is untested. Do **not** edit that authoritative recipe against
+these already-seen negative cases and claim independent quality. Test a
+fixed, narrower proposal only against a *new* frozen corpus and real model
+invocations with version/configuration evidence, retaining negative controls
+and candidate-recall measurements.
+
 ### Final verification boundary
 
 The independent recorded-response replay was added at [GitHub Actions #42307637309](https://github.com/voku/agent-recall-compiler/actions/runs/42307637309), including the genuine PHP validator on PHP 8.3–8.5. In this sample, **8/10 target recipes were present among the offered candidates**, and **7/8 offered positives** were correctly selected; two failures were candidate-generation misses, and one was an empty recorded response. Recorded correct rejection is **13/16**, but only **10/16** outputs are explicit JSON `none` (8 hard negatives, 2 out-of-catalog). The other 3 are empty replies; the remaining three are incorrect selections.
