@@ -51,6 +51,17 @@ jobs:
             --source resources/skills/agent-recall-consumer/operating-prompts.json \
             --output evidence/native-json-recall.json
 
+      - name: Compare native activation vs SQLite FTS5 vs exact JSON under matched byte budgets
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile experiments/navi-json-recall/probe.py experiments/navi-json-recall/benchmark.py
+          python3 experiments/navi-json-recall/benchmark.py \
+            --binary "$RUNNER_TEMP/navi-brain/memories/build/tokmem" \
+            --source resources/skills/agent-recall-consumer/operating-prompts.json \
+            --queries experiments/navi-json-recall/held-out-queries.json \
+            --output evidence/native-json-benchmark.json
+
       - name: Upload structured experimental evidence even on failure
         if: always()
         uses: actions/upload-artifact@v7
@@ -58,4 +69,6 @@ jobs:
           name: native-json-recall-evidence
           retention-days: 14
           if-no-files-found: warn
-          path: evidence/native-json-recall.json
+          path: |
+            evidence/native-json-recall.json
+            evidence/native-json-benchmark.json
