@@ -81,6 +81,43 @@ jobs:
             evidence/native-json-recall.json
             evidence/native-json-benchmark.json
 
+  offline-json-baseline:
+    name: Source-backed JSON/SQLite baseline (no native build)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout authoritative JSON and experimental evaluator
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Run offline unit and metadata safety tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s experiments/navi-json-recall -p 'test_*.py' -v
+
+      - name: Evaluate 46 source-backed queries without C binary or daemon
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          python3 experiments/navi-json-recall/offline_baseline.py \
+            --source resources/skills/agent-recall-consumer/operating-prompts.json \
+            --metadata resources/skills/agent-recall-consumer/operating-prompts.metadata.json \
+            --queries experiments/navi-json-recall/held-out-queries.json \
+            --challenge experiments/navi-json-recall/issue-challenge-queries.json \
+            --output evidence/offline-json-recall.json
+
+      - name: Upload offline JSON baseline independently of native availability
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: offline-json-recall-evidence
+          retention-days: 14
+          if-no-files-found: warn
+          path: evidence/offline-json-recall.json
+
   php-owner-matrix:
     name: Exact-head Composer CI (PHP ${{ matrix.php }})
     runs-on: ubuntu-latest
