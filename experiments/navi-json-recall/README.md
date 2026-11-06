@@ -68,7 +68,7 @@ The expected identities are human-written **test labels**, not a model-vetted
 semantic truth set. Ambiguous examples should be revisited before treating
 them as high-stakes quality gates.
 
-`benchmark.py` compares five read-only selection policies on the exact same
+`benchmark.py` compares six read-only selection policies on the exact same
 22 source prompt records:
 
 1. `json_exact_id`: direct current JSON identity lookup, no fuzzy retrieval.
@@ -78,7 +78,11 @@ them as high-stakes quality gates.
 4. `json_first_fts5`: exact JSON ID when provided; otherwise SQLite FTS5.
 5. `metadata_bounded_choice`: structured owner JSON metadata (`operating-prompts.metadata.json`
    covering titles, descriptions, purposes and typed argument examples) with field-weighted
-   SQLite BM25 and a bounded choice confidence gate that genuinely abstains on unrelated queries.
+   SQLite BM25 and a lexical whole-token gate that sometimes abstains.
+6. `metadata_coverage_gate_0_6`: exploratory **post-hoc** ablation requiring
+   60% of the non-stopword query tokens to occur in the candidate document.
+   This was introduced after observing failure on the hard-negative corpus;
+   its results cannot be described as independently held-out evidence.
 
 Each method is post-filtered using **complete identical source-bound envelopes**
 at 2,048 and 8,192 **UTF-8 bytes**, preserving order, never truncating a
@@ -111,11 +115,56 @@ a running C process. Native failure therefore cannot become a prerequisite for
 deterministic Recall, although no production integration or runtime fallback
 is introduced.
 
+### Adversarial follow-up and real owner-task probes
+
+`issue-challenge-queries.json` is kept separate from the original 30 queries.
+It includes **eight public, current `voku/agent-loop` issues** (issue references
+included) and **eight hard off-domain controls** that deliberately share words
+with engineering workflow recipes. The issue-to-recipe labels are independently
+drafted *hypotheses*, **not** source-authoritative workflow choices or evidence
+of improved agent decisions.
+
+Exact-head CI reports all 46 queries at 2,048 and 8,192 UTF-8 bytes. Observed
+at 8,192 bytes on a warmed runner:
+
+| Test (top-1 unless specified) | Native | Metadata lexical | Metadata 60% gate |
+| --- | ---: | ---: | ---: |
+| Eight owner issue intents | 2/8 | **3/8** | 1/8 |
+| Owner issue intents, top-3 | 3/8 | **4/8** | 1/8 |
+| Eight hard off-domain queries correctly abstained | 0/8 | 0/8 | **7/8** |
+| Sixteen English paraphrases | 13/16 | **13/16** | 8/16 |
+| English paraphrases, top-3 | 14/16 | **15/16** | 10/16 |
+| Six German paraphrases, top-3 | 2/6 | 0/6 | 0/6 |
+
+This falsifies the earlier interpretation of 4/4 easy negative controls as
+general-purpose reliable `none` selection. The 60% rule addresses seven
+of eight new negatives but loses genuine cases. **Neither is acceptable as a
+production relevance policy** without larger independent calibration.
+
+### Verified correctness changes (RED → GREEN)
+
+The new `test_metadata_retrieval.py` regression suite first reproduced seven
+failures on the prior implementation. The native Actions workflow now executes
+that suite before compiling C, and independently runs `composer ci` on
+PHP 8.3, 8.4 and 8.5 against the **exact stacked PR head**. Fixed behaviors:
+
+- Missing, symlinked, invalid or oversized metadata JSON fails with context.
+- Duplicate, unknown, and missing metadata identities are rejected against
+  the current authoritative prompt catalog.
+- SQLite errors propagate as errors rather than silently returning `[]`.
+- A substring inside another word never constitutes another lexical match.
+- Stopword-only queries abstain; all candidate records are complete and
+  remain bounded by the same byte budget.
+
 ### Decision gate
 
-The benchmark proves that **structured owner metadata with a bounded choice gate outperforms both raw FTS5 and the native C-daemon**:
-- It achieves equal or superior English paraphrase recall (top-1 13/16, top-3 15/16).
-- It is the **only** fuzzy method that achieves 100% clean abstention (4/4) on unrelated queries, whereas raw native and raw FTS5 inject irrelevant distractor context on 100% of negative controls.
-- It runs in **0.07 ms** in-process, without native daemon processes, C17 compilers, or cross-process IPC failure modes.
+**Do not promote the native backend, the existing metadata lexical gate, or
+the 60% coverage gate to production.** Current evidence supports only the
+read-only authoritative JSON/provenance boundary and safe failure semantics.
+A useful next discriminating experiment requires a separate, not-tuned-on,
+representative sample of task intents and negative cases, a clear relevance
+oracle, and an independent bounded-choice semantic reranker *if* a permitted
+model is available.
 
-Therefore, do not introduce a native daemon dependency into production. Retain the authoritative JSON source, invest in typed owner metadata and bounded candidate validation, and keep native memory as an external benchmark baseline only.
+A policy that improves `none` at the cost of discarding real owner tasks is
+not a win. Keep source-of-truth and workflow authority deterministic.
