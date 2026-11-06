@@ -113,6 +113,16 @@ jobs:
             --challenge experiments/navi-json-recall/issue-challenge-queries.json \
             --output evidence/offline-json-recall.json
 
+      - name: Evaluate candidate fusion without changing catalog or invoking a model
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 experiments/navi-json-recall/candidate_fusion_ablation.py \
+            --source resources/skills/agent-recall-consumer/operating-prompts.json \
+            --metadata resources/skills/agent-recall-consumer/operating-prompts.metadata.json \
+            --queries experiments/navi-json-recall/blind_holdout_queries.json \
+            --output evidence/candidate-fusion-ablation.json
+
       - name: Replay committed local-model transcript against current source and candidates
         shell: bash
         run: |
@@ -134,6 +144,7 @@ jobs:
           path: |
             evidence/offline-json-recall.json
             evidence/blind-holdout-replay.json
+            evidence/candidate-fusion-ablation.json
 
   php-owner-matrix:
     name: Exact-head Composer CI (PHP ${{ matrix.php }})
