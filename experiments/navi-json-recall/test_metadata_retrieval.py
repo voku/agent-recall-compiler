@@ -71,6 +71,25 @@ class MetadataRetrievalContractTest(unittest.TestCase):
             ),
         )
 
+    def test_optional_coverage_filter_rejects_sparse_generic_overlap(self) -> None:
+        conn, meta = benchmark.build_metadata_fts(self.path, self.source)
+        self.addCleanup(conn.close)
+        query = "patch code unrelated exotic museum"
+        self.assertEqual(
+            ["rule-scope"],
+            benchmark.metadata_bounded_rank(conn, meta, self.source, query),
+        )
+        self.assertEqual(
+            [],
+            benchmark.metadata_bounded_rank(
+                conn, meta, self.source, query, min_query_coverage=0.6,
+            ),
+        )
+        with self.assertRaisesRegex(ValueError, "coverage"):
+            benchmark.metadata_bounded_rank(
+                conn, meta, self.source, query, min_query_coverage=1.5,
+            )
+
     def test_stop_word_only_query_is_not_a_search_intent(self) -> None:
         conn, meta = benchmark.build_metadata_fts(self.path, self.source)
         self.addCleanup(conn.close)
