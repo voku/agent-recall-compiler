@@ -68,7 +68,7 @@ The expected identities are human-written **test labels**, not a model-vetted
 semantic truth set. Ambiguous examples should be revisited before treating
 them as high-stakes quality gates.
 
-`benchmark.py` compares seven read-only selection policies on the exact same
+`benchmark.py` compares six read-only selection policies on the exact same
 22 source prompt records:
 
 1. `json_exact_id`: direct current JSON identity lookup, no fuzzy retrieval.
@@ -81,10 +81,6 @@ them as high-stakes quality gates.
    SQLite BM25 and a lexical whole-token gate that sometimes abstains.
 6. `metadata_coverage_gate_0_6`: exploratory post-hoc ablation requiring
    60% of the non-stopword query tokens to occur in the candidate document.
-7. `bounded_choice_rerank`: IT-portal bounded choice pattern (`cand_0..cand_N` plus `[none]`),
-   combining metadata-enriched FTS5 candidate retrieval (with aliases and intents) and
-   authoritative relevance evaluation that cleanly abstains on non-engineering queries.
-
 Each method is post-filtered using **complete identical source-bound envelopes**
 at 2,048 and 8,192 **UTF-8 bytes**, preserving order, never truncating a
 record. This equalizes delivered bytes, not candidate-generation algorithms,
@@ -128,30 +124,53 @@ of improved agent decisions.
 Exact-head CI reports all 46 queries at 2,048 and 8,192 UTF-8 bytes. Observed
 at 8,192 bytes on a warmed runner:
 
-| Test (top-1 unless specified) | Native | Metadata lexical | Metadata 60% gate | Bounded Choice (IT-Portal) |
-| --- | ---: | ---: | ---: | ---: |
-| Eight owner issue intents | 2/8 | 8/8 | 8/8 | **8/8 (100%)** |
-| Owner issue intents, top-3 | 3/8 | 8/8 | 8/8 | **8/8 (100%)** |
-| Eight hard off-domain queries correctly abstained | 0/8 | 0/8 | 7/8 | **8/8 (100%)** |
-| Four easy off-domain queries correctly abstained | 0/4 | 4/4 | 4/4 | **4/4 (100%)** |
-| Sixteen English paraphrases | 13/16 | 14/16 | 11/16 | **14/16 (87.5%)** |
-| English paraphrases, top-3 | 14/16 | 15/16 | 12/16 | **15/16 (93.8%)** |
-| Six German paraphrases | 0/6 | 6/6 | 6/6 | **6/6 (100%)** |
-| Four exact prompt IDs | 2/4 | 4/4 | 4/4 | **4/4 (100%)** |
-| Total Negative Abstention (easy + hard) | 0/12 (0%) | 4/12 (33.3%) | 11/12 (91.7%) | **12/12 (100% clean)** |
+| Test (top-1 unless specified) | Native | Metadata lexical | Metadata 60% gate |
+| --- | ---: | ---: | ---: |
+| Eight owner issue intents | 2/8 | 8/8 | 8/8 |
+| Owner issue intents, top-3 | 3/8 | 8/8 | 8/8 |
+| Eight hard off-domain queries correctly abstained | 0/8 | 0/8 | 7/8 |
+| Four easy off-domain queries correctly abstained | 0/4 | 4/4 | 4/4 |
+| Sixteen English paraphrases | 13/16 | 14/16 | 11/16 |
+| English paraphrases, top-3 | 14/16 | 15/16 | 12/16 |
+| Six German paraphrases | 0/6 | 6/6 | 6/6 |
+| Four exact prompt IDs | 2/4 | 4/4 | 4/4 |
+| Total negative abstention (easy + hard) | 0/12 | 4/12 | 11/12 |
 
-### IT-Portal Bounded Choice Pattern
+**These are in-sample observations, not independent evidence of retrieval
+quality.** In the source data at this PR head, **16 of 46 registered query
+strings occur verbatim in the expected recipe's owner metadata aliases/intents**,
+and two further queries contain or are contained in those phrases. These 46
+queries were part of the development feedback loop. The 8/8 owner-issue scores
+are therefore not a valid untouched test-set result. The new standalone
+`offline_baseline.py` now records exact label overlap in the evidence JSON and
+runs an additional `metadata_without_alias_intents` ablation to expose this.
 
-The IT-Portal architecture decomposes selection into two distinct stages:
+**Previous 12/12 result withdrawn:** The removed Python
+`bounded_choice_rerank` *default* used a fixture-specific list of words
+(`train`, `hospital`, `birthday`, etc.) to reject off-domain tasks. This was
+**not a model call or bounded semantic classification**; its 100% result
+cannot justify production behavior. A model-free bounded-choice function now
+abstains, instead of pretending that a hardcoded domain blacklist is an LLM.
 
-1. **Deterministic Candidate Retrieval:** Candidates are gathered from authoritative JSON metadata (enriched with domain `aliases` and task `intents`) using weighted SQLite FTS5 BM25.
-2. **Authoritative Relevance Decision:** Candidates are presented as a closed bounded choice (`[cand_0]..[cand_N]` + `[none]`). Non-software distractors are rejected as `[none]` without degrading task recall.
 
-Typed PHP implementations (`BoundedChoicePromptBuilder`, `BoundedChoiceValidator`) ensure fail-closed parsing: out-of-bounds indices, hallucinations, and non-candidate IDs default strictly to `null` (`[none]`). Candidate selection remains context-only (`use=context_only`), conferring zero execution authority.
+### IT-Portal Bounded Choice Contract (no live model evaluation)
+
+The typed PHP `BoundedChoicePromptBuilder` formats a closed
+`cand_0..cand_N, none` model prompt from verified candidates. The
+`BoundedChoiceValidator` now accepts **only** a well-formed JSON object
+containing exactly one `selected` property with canonical `cand_N` or
+`none`; malformed text, unlisted candidate IDs, out-of-bounds indexes,
+preambles and additional properties all fail closed to `null`.
+
+**No LLM is connected to this experiment.** The contract tests validate
+formatting and response parsing, **not** task relevance or model reliability.
+Model outputs, even when syntactically valid, would be context-only; they
+cannot grant workflow authority or override approved JSON state.
+
 
 ### Verified correctness changes (RED → GREEN)
 
-The new `test_metadata_retrieval.py` regression suite first reproduced seven
+The `test_metadata_retrieval.py` regression suite first reproduced seven
 failures on the prior implementation. The native Actions workflow now executes
 that suite before compiling C, and independently runs `composer ci` on
 PHP 8.3, 8.4 and 8.5 against the **exact stacked PR head**. Fixed behaviors:
@@ -196,3 +215,13 @@ The independent path is verified at
 https://github.com/voku/agent-recall-compiler/actions/runs/42300810008
 alongside the regular PHP 8.3–8.5 Composer CI and the native test.
 The result confirms **test isolation**, not improvement to coding-agent outcomes.
+
+### Final verification boundary
+
+A GREEN Actions job proves the implementation and test invariants execute;
+it does not confer independent semantic accuracy. Before any runtime
+integration, use a genuinely unseen set of relevant software and off-domain
+tasks, independently annotated candidate relevance, model selection and
+abstention metrics, and an explicit provider-neutral opt-in/failure policy.
+The typed selection contracts may be reviewed separately from the
+experiment, but these results do **not** validate an LLM as a decision-maker.
