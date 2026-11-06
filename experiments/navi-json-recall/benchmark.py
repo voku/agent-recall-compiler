@@ -228,48 +228,34 @@ def metadata_bounded_rank(
     return accepted
 
 
-NON_SOFTWARE_INDICATORS = {
-    "film", "trailer", "movie",
-    "train", "itinerary", "ticket", "tickets", "trip", "travel", "weekend",
-    "birthday", "party", "guest", "guests", "invitation", "invitations",
-    "shed", "wooden", "furniture", "garden", "assemble",
-    "job", "offer", "salary", "hiring", "employer",
-    "painting", "brush", "artist", "canvas", "antique",
-    "banking", "bank", "account", "transaction", "atm",
-    "hospital", "doctor", "appointment", "clinic", "patient",
-    "rainfall", "weather", "forecast", "chess", "nitrogen", "boiling",
-}
-
-
 def bounded_choice_rerank(
     query: str,
     candidates: list[str],
     meta_by_id: dict[str, Any],
     evaluator: Any = None,
 ) -> list[str]:
-    """IT-Portal Bounded Choice Relevance Decision (cand_0..cand_N, none)."""
-    if not candidates:
+    """Validate a supplied evaluator's selection; never simulate an LLM.
+
+    There is no model in these CI jobs. Without a genuine evaluator the
+    bounded-choice experiment must abstain and must not report accuracy.
+    """
+    if not candidates or evaluator is None:
         return []
-
-    if evaluator is not None and callable(evaluator):
-        cand_list = [
-            {
-                "id": c,
-                "title": meta_by_id[c].get("title", ""),
-                "description": meta_by_id[c].get("description", ""),
-                "purpose": meta_by_id[c].get("purpose", ""),
-            }
-            for c in candidates
-        ]
-        decision = evaluator(query, cand_list)
-        return [decision] if decision and decision in candidates else []
-
-    # Fail-closed domain relevancy gate (model-free reference evaluator)
-    query_words = set(re.findall(r"[\w]+", query.casefold(), flags=re.UNICODE))
-    if query_words.intersection(NON_SOFTWARE_INDICATORS):
+    if not callable(evaluator):
+        raise TypeError("Bounded-choice evaluator must be callable")
+    candidate_details = [
+        {
+            "id": identity,
+            "title": meta_by_id[identity].get("title", ""),
+            "description": meta_by_id[identity].get("description", ""),
+            "purpose": meta_by_id[identity].get("purpose", ""),
+        }
+        for identity in candidates
+    ]
+    decision = evaluator(query, candidate_details)
+    if decision is None or decision == "none":
         return []
-
-    return candidates
+    return [decision] if isinstance(decision, str) and decision in candidates else []
 
 
 def evaluate(
@@ -357,7 +343,6 @@ def main() -> int:
             "json_first_fts5",
             "metadata_bounded_choice",
             "metadata_coverage_gate_0_6",
-            "bounded_choice_rerank",
         ],
         "byte_budgets": BUDGETS,
         "no_llm": True,
@@ -420,10 +405,6 @@ def main() -> int:
                         )
                         covered_ns = time.perf_counter_ns() - start
 
-                        start = time.perf_counter_ns()
-                        bounded_ids = bounded_choice_rerank(query, meta_ids, meta_by_id)
-                        bounded_ns = time.perf_counter_ns() - start + meta_ns
-
                         all_results = {
                             "native_activate": (native_ids, native_ns),
                             "sqlite_fts5": (fts_ids, fts_ns),
@@ -431,7 +412,6 @@ def main() -> int:
                             "json_first_fts5": (hybrid_ids, hybrid_ns),
                             "metadata_bounded_choice": (meta_ids, meta_ns),
                             "metadata_coverage_gate_0_6": (covered_ids, covered_ns),
-                            "bounded_choice_rerank": (bounded_ids, bounded_ns),
                         }
                         if query in indexed and hybrid_ids != [query]:
                             raise AssertionError("Direct JSON authority was not preferred")
