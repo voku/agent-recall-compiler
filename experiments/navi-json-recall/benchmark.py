@@ -65,7 +65,7 @@ STOP_WORDS = {
 def query_content_tokens(query: str) -> list[str]:
     words = re.findall(r"[\w]+", query.casefold(), flags=re.UNICODE)
     meaningful = [w for w in words if w not in STOP_WORDS and len(w) >= 2]
-    return list(dict.fromkeys(meaningful if meaningful else words))
+    return list(dict.fromkeys(meaningful))
 
 
 def fts_rank(conn: sqlite3.Connection, query: str) -> list[str]:
@@ -92,31 +92,76 @@ def build_fts(source: dict[str, str]) -> sqlite3.Connection:
 
 
 def build_metadata_fts(metadata_file: Path, source: dict[str, str]) -> tuple[sqlite3.Connection, dict[str, Any]]:
-    conn = sqlite3.connect(":memory:")
-    conn.execute(
-        "CREATE VIRTUAL TABLE meta_prompts USING fts5("
-        "identity UNINDEXED, title, description, purpose, arguments, template, tokenize='unicode61'"
-        ")"
-    )
-    meta_by_id: dict[str, Any] = {}
-    if metadata_file.is_file():
-        meta_data = json.loads(metadata_file.read_bytes())
-        for recipe in meta_data.get("recipes", []):
-            meta_by_id[recipe["id"]] = recipe
+    """Index owner-supplied metadata only if its schema exactly matches the canonical source."""
+    if metadata_file.is_symlink() or not metadata_file.is_file():
+        raise ValueError("Required metadata JSON is missing or is a symlink")
+    raw = metadata_file.read_bytes()
+    if not raw or len(raw) > 1024 * 1024:
+        raise ValueError("Required metadata JSON is empty or oversized")
+    try:
+        document = json.loads(raw)
+    except (ValueError, UnicodeError) as exc:
+        raise ValueError("Required metadata JSON cannot be decoded") from exc
+    if not isinstance(document, dict) or document.get("schema_version") != "1.0":
+        raise ValueError("Unsupported metadata schema")
+    recipes = document.get("recipes")
+    if not isinstance(recipes, list):
+        raise ValueError("Required metadata recipes must be a list")
 
-    for identity, template in source.items():
-        recipe = meta_by_id.get(identity, {})
-        title = recipe.get("title", identity.replace("-", " "))
-        desc = recipe.get("description", "")
-        purpose = recipe.get("purpose", "")
-        args_list = [
-            str(a.get("name", "")) + " " + str(a.get("description", ""))
-            for a in recipe.get("arguments", [])
-        ]
-        conn.execute(
-            "INSERT INTO meta_prompts VALUES (?, ?, ?, ?, ?, ?)",
-            (identity, title, desc, purpose, " ".join(args_list), template)
+    meta_by_id: dict[str, Any] = {}
+    for recipe in recipes:
+        if not isinstance(recipe, dict):
+            raise ValueError("Invalid metadata recipe")
+        identity = recipe.get("id")
+        if not isinstance(identity, str) or not identity:
+            raise ValueError("Invalid metadata identity")
+        if identity in meta_by_id:
+            raise ValueError("Duplicate metadata identity: " + identity)
+        for field_name in ("title", "description", "purpose"):
+            if not isinstance(recipe.get(field_name), str):
+                raise ValueError("Invalid metadata " + field_name + ": " + identity)
+        arguments = recipe.get("arguments")
+        if not isinstance(arguments, list):
+            raise ValueError("Invalid metadata arguments: " + identity)
+        if any(
+            not isinstance(arg, dict)
+            or not isinstance(arg.get("name"), str)
+            or not isinstance(arg.get("description"), str)
+            for arg in arguments
+        ):
+            raise ValueError("Invalid metadata argument entry: " + identity)
+        meta_by_id[identity] = recipe
+
+    if meta_by_id.keys() != source.keys():
+        unknown = sorted(set(meta_by_id) - set(source))
+        missing = sorted(set(source) - set(meta_by_id))
+        raise ValueError(
+            f"Metadata identity mismatch: unknown={unknown}, missing={missing}"
         )
+
+    conn = sqlite3.connect(":memory:")
+    try:
+        conn.execute(
+            "CREATE VIRTUAL TABLE meta_prompts USING fts5("
+            "identity UNINDEXED, title, description, purpose, arguments, template, "
+            "tokenize='unicode61')"
+        )
+        for identity, template in source.items():
+            recipe = meta_by_id[identity]
+            argument_text = " ".join(
+                arg["name"] + " " + arg["description"]
+                for arg in recipe["arguments"]
+            )
+            conn.execute(
+                "INSERT INTO meta_prompts VALUES (?, ?, ?, ?, ?, ?)",
+                (
+                    identity, recipe["title"], recipe["description"],
+                    recipe["purpose"], argument_text, template,
+                ),
+            )
+    except sqlite3.Error:
+        conn.close()
+        raise
     return conn, meta_by_id
 
 
@@ -126,34 +171,45 @@ def metadata_bounded_rank(
     indexed: dict[str, str],
     query: str,
 ) -> list[str]:
-    """IT-Portal Pattern: Structured metadata BM25 + Bounded Choice confidence gate."""
+    """Weighted FTS5 candidate ranking; exact word evidence, not substring guesses."""
     if query in indexed:
         return [query]
     tokens = query_content_tokens(query)
     if not tokens:
         return []
-    expr = " OR ".join(f'"{t.replace(chr(34), chr(34)+chr(34))}"' for t in tokens)
+    expr = " OR ".join('"' + token.replace('"', '""') + '"' for token in tokens)
     try:
         rows = conn.execute(
-            "SELECT identity, bm25(meta_prompts, 0.0, 5.0, 3.0, 2.0, 2.0, 1.0) as score "
-            "FROM meta_prompts WHERE meta_prompts MATCH ? ORDER BY score ASC LIMIT 5",
-            (expr,)
+            "SELECT identity, bm25(meta_prompts, 0.0, 5.0, 3.0, 2.0, 2.0, 1.0) AS score "
+            "FROM meta_prompts WHERE meta_prompts MATCH ? ORDER BY score ASC, identity LIMIT 5",
+            (expr,),
         ).fetchall()
-    except sqlite3.OperationalError:
-        return []
-    if not rows:
-        return []
+    except sqlite3.Error as exc:
+        raise RuntimeError("Metadata FTS5 query failed") from exc
 
     accepted: list[str] = []
     for identity_raw, _ in rows:
         identity = str(identity_raw)
-        recipe = meta_by_id.get(identity, {})
-        full_text = (
-            identity + " " + recipe.get("title", "") + " "
-            + recipe.get("description", "") + " " + indexed.get(identity, "")
+        recipe = meta_by_id.get(identity)
+        template = indexed.get(identity)
+        if not isinstance(recipe, dict) or not isinstance(template, str):
+            raise ValueError("Metadata FTS5 returned unknown canonical identity")
+        terms = " ".join(
+            [
+                identity.replace("-", " "),
+                recipe["title"],
+                recipe["description"],
+                recipe["purpose"],
+                template,
+                *(
+                    arg["name"] + " " + arg["description"]
+                    for arg in recipe["arguments"]
+                ),
+            ]
         ).casefold()
-        matched_tokens = sum(1 for t in tokens if t in full_text)
-        # Bounded choice confidence gate: multi-token queries require >= 2 matches
+        source_terms = set(re.findall(r"[\w]+", terms, flags=re.UNICODE))
+        matched_tokens = sum(1 for token in tokens if token in source_terms)
+        # Multi-token intent needs at least two whole-term matches.
         if len(tokens) >= 3 and matched_tokens < 2:
             continue
         accepted.append(identity)
@@ -207,6 +263,7 @@ def main() -> int:
     report: dict[str, Any] = {
         "status": "fail",
         "source_sha256": source_sha,
+        "metadata_sha256": hashlib.sha256(metadata_file.read_bytes()).hexdigest(),
         "queries_sha256": hashlib.sha256(fixture_bytes).hexdigest(),
         "native_upstream_sha": native["UPSTREAM_SHA"],
         "index_entries": len(indexed),
