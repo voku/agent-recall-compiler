@@ -25,7 +25,6 @@ METHODS = (
     "json_first_fts5",
     "metadata_bounded_choice",
     "metadata_coverage_gate_0_6",
-    "bounded_choice_rerank",
 )
 
 
@@ -125,12 +124,6 @@ def evaluate(
             )
             coverage_ms = (time.perf_counter_ns() - start) / 1e6
 
-            start = time.perf_counter_ns()
-            bounded_ids = benchmark.bounded_choice_rerank(
-                query, metadata_ids, meta_by_id
-            )
-            bounded_ms = (time.perf_counter_ns() - start) / 1e6
-
             exact = [query] if query in indexed else []
             candidates: dict[str, tuple[list[str], float]] = {
                 "json_exact_id": (exact, 0.0),
@@ -138,7 +131,6 @@ def evaluate(
                 "json_first_fts5": (exact if exact else raw_fts, fts_ms),
                 "metadata_bounded_choice": (metadata_ids, metadata_ms),
                 "metadata_coverage_gate_0_6": (coverage_ids, coverage_ms),
-                "bounded_choice_rerank": (bounded_ids, metadata_ms + bounded_ms),
             }
             method_evidence: dict[str, Any] = {}
             for method, (identities, latency_ms) in candidates.items():
