@@ -162,3 +162,11 @@ jobs:
 
       - name: Run owner Composer CI
         run: composer ci
+
+      - name: Replay all 26 recorded local-model decisions against strict PHP validator
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l experiments/navi-json-recall/verify_php_blind_replay.php
+          php experiments/navi-json-recall/verify_php_blind_replay.php \
+            experiments/navi-json-recall/evidence/blind-holdout-benchmark.json
