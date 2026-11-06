@@ -20,7 +20,10 @@ from pathlib import Path
 from typing import Any, Callable
 
 BUDGETS = (2048, 8192)
-COHORTS = ("exact_id", "english_paraphrase", "german_paraphrase", "unanswerable")
+COHORTS = (
+    "exact_id", "english_paraphrase", "german_paraphrase", "unanswerable",
+    "agent_loop_issue", "hard_unanswerable",
+)
 EXPECTED_COUNTS = (4, 16, 6, 4)
 
 
@@ -239,6 +242,7 @@ def main() -> int:
     parser.add_argument("--binary", required=True, type=Path)
     parser.add_argument("--source", required=True, type=Path)
     parser.add_argument("--queries", required=True, type=Path)
+    parser.add_argument("--challenge", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     options = parser.parse_args()
     options.output.parent.mkdir(parents=True, exist_ok=True)
@@ -251,7 +255,31 @@ def main() -> int:
     assert fixture["schema_version"] == "1.0"
     cases = fixture["queries"]
     assert isinstance(cases, list)
-    assert [sum(int(x["cohort"] == category) for x in cases) for category in COHORTS] == list(EXPECTED_COUNTS)
+    assert [
+        sum(int(x["cohort"] == category) for x in cases)
+        for category in COHORTS[:4]
+    ] == list(EXPECTED_COUNTS), "Original thirty-query cohort changed"
+    challenge_bytes = options.challenge.resolve(strict=True).read_bytes()
+    challenge = json.loads(challenge_bytes)
+    assert challenge.get("schema_version") == "1.0"
+    challenge_cases = challenge.get("cases")
+    assert isinstance(challenge_cases, list)
+    assert [
+        sum(int(x["cohort"] == category) for x in challenge_cases)
+        for category in COHORTS[4:]
+    ] == [8, 8], "Unregistered challenge cohort size"
+    assert all(
+        x["cohort"] in COHORTS[4:] for x in challenge_cases
+    ), "Challenge cohort label is invalid"
+    assert all(
+        x.get("expected_id") is None for x in challenge_cases
+        if x["cohort"] == "hard_unanswerable"
+    ), "Negative challenge must remain unanswerable"
+    assert all(
+        isinstance(x.get("issue"), str) and x["issue"].startswith("voku/agent-loop#")
+        for x in challenge_cases if x["cohort"] == "agent_loop_issue"
+    ), "Issue challenge must identify real owner issues"
+    cases = [*cases, *challenge_cases]
     assert len(set((x["cohort"], x["query"]) for x in cases)) == len(cases)
     assert all(x["expected_id"] is None or x["expected_id"] in indexed for x in cases)
 
@@ -265,6 +293,8 @@ def main() -> int:
         "source_sha256": source_sha,
         "metadata_sha256": hashlib.sha256(metadata_file.read_bytes()).hexdigest(),
         "queries_sha256": hashlib.sha256(fixture_bytes).hexdigest(),
+        "issue_challenge_sha256": hashlib.sha256(challenge_bytes).hexdigest(),
+        "issue_challenge_count": len(challenge_cases),
         "native_upstream_sha": native["UPSTREAM_SHA"],
         "index_entries": len(indexed),
         "conditions": [
@@ -360,6 +390,7 @@ def main() -> int:
                         report["cases"].append({
                             "cohort": case["cohort"],
                             "query": query,
+                            "issue": case.get("issue"),
                             "expected_id": expected,
                             "methods": metrics,
                         })
