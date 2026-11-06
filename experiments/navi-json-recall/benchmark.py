@@ -71,13 +71,21 @@ def build_fts(source: dict[str, str]) -> sqlite3.Connection:
     return conn
 
 
-def evaluate(ids: list[str], target: str | None) -> dict[str, bool]:
+def evaluate(
+    ids: list[str], target: str | None, proposed: list[str]
+) -> dict[str, bool]:
+    """Budget rejection is NOT a valid negative-query abstention."""
     if target is None:
-        return {"correct_top1": not ids, "correct_at_3": not ids, "abstained": not ids}
+        genuinely_abstained = not proposed
+        return {
+            "correct_top1": genuinely_abstained,
+            "correct_at_3": genuinely_abstained,
+            "abstained": genuinely_abstained,
+        }
     return {
         "correct_top1": bool(ids) and ids[0] == target,
         "correct_at_3": target in ids[:3],
-        "abstained": not ids,
+        "abstained": not proposed,
     }
 
 
@@ -178,9 +186,10 @@ def main() -> int:
                             }
                             for budget in BUDGETS:
                                 trimmed = select_bounded(candidates, content, budget)
-                                measures = evaluate(trimmed, expected)
+                                measures = evaluate(trimmed, expected, candidates)
                                 scores[str(budget)] = {
                                     "ids": trimmed,
+                                    "budget_censored_all_candidates": bool(candidates and not trimmed),
                                     "output_bytes": sum(len(content[i]) for i in trimmed) + max(0, len(trimmed)-1)*2,
                                     **measures,
                                 }
