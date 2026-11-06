@@ -67,6 +67,7 @@ jobs:
             --binary "$RUNNER_TEMP/navi-brain/memories/build/tokmem" \
             --source resources/skills/agent-recall-consumer/operating-prompts.json \
             --queries experiments/navi-json-recall/held-out-queries.json \
+            --challenge experiments/navi-json-recall/issue-challenge-queries.json \
             --output evidence/native-json-benchmark.json
 
       - name: Upload structured experimental evidence even on failure
