@@ -52,6 +52,48 @@ final class BoundedChoicePromptContractTest extends TestCase
         $this->builder->build('   ', []);
     }
 
+    public function testOptInApplicabilityContractDistinguishesWorkflowFromTopicalOverlap(): void
+    {
+        $candidates = [
+            [
+                'id' => 'multi-pass-correctness-simplify',
+                'title' => 'Implement, audit, simplify',
+                'description' => 'Implement requested change, audit its correctness, then simplify.',
+                'purpose' => 'execute',
+            ],
+        ];
+        $task = 'Implement a CSS layout in the existing application.';
+        $baseline = $this->builder->build($task, $candidates);
+        $experiment = $this->builder->build($task, $candidates, enforceWorkflowApplicability: true);
+
+        self::assertStringNotContainsString('WORKFLOW_APPLICABILITY_EXPERIMENT', $baseline);
+        self::assertStringContainsString('WORKFLOW_APPLICABILITY_EXPERIMENT', $experiment);
+        self::assertStringContainsString('not merely because the task uses related technical vocabulary', $experiment);
+        self::assertStringContainsString('the requested workflow or method', $experiment);
+        self::assertStringContainsString('A generic process recipe may apply across languages and stacks', $experiment);
+        self::assertStringContainsString('select "none"', $experiment);
+        self::assertStringContainsString('{"selected": "cand_<index>"}', $experiment);
+    }
+
+    public function testOptInApplicabilityContractNeverChangesCandidateIdentities(): void
+    {
+        $candidate = [
+            'id' => 'adversarial-review',
+            'title' => 'Adversarial review',
+            'description' => 'Challenge implementation with concrete counterexamples.',
+            'purpose' => 'review',
+        ];
+        $prompt = $this->builder->build(
+            'Review the code for bypasses and try to falsify the current assumptions.',
+            [$candidate],
+            enforceWorkflowApplicability: true,
+        );
+
+        self::assertStringContainsString('[cand_0] id: "adversarial-review"', $prompt);
+        self::assertStringContainsString('[none]', $prompt);
+        self::assertStringNotContainsString('[cand_1]', $prompt);
+    }
+
     public function testValidatorParsesJsonCandIndexCorrectly(): void
     {
         $candidates = ['reproduce-before-fix', 'deletion-first'];
