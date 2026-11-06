@@ -249,6 +249,43 @@ class MetadataRetrievalContractTest(unittest.TestCase):
                     "Blind query is contained in registered phrase: " + query,
                 )
 
+    def test_agent_loop_project_benchmark_has_zero_contamination_against_real_catalog(self) -> None:
+        root = Path(__file__).resolve().parents[2]
+        proj_file = Path(__file__).parent / "agent_loop_project_queries.json"
+        if not proj_file.is_file():
+            self.skipTest("agent_loop_project_queries.json not present")
+        metadata_file = (
+            root / "resources/skills/agent-recall-consumer/operating-prompts.metadata.json"
+        )
+        source_file = root / "resources/skills/agent-recall-consumer/operating-prompts.json"
+        proj_data = json.loads(proj_file.read_text(encoding="utf-8"))
+        catalog = json.loads(metadata_file.read_text(encoding="utf-8"))
+        source = json.loads(source_file.read_text(encoding="utf-8"))
+        real_ids = {item["id"] for item in source["prompts"]}
+        registered_phrases = {
+            " ".join(phrase.casefold().split())
+            for recipe in catalog["recipes"]
+            for phrase in [*recipe.get("aliases", []), *recipe.get("intents", [])]
+            if phrase.strip()
+        }
+        self.assertEqual(18, len(proj_data["queries"]))
+        for case in proj_data["queries"]:
+            query = " ".join(case["query"].casefold().split())
+            if case["cohort"] == "project_positive":
+                self.assertIn(case["expected_id"], real_ids)
+            else:
+                self.assertIsNone(case["expected_id"])
+            for phrase in registered_phrases:
+                self.assertNotEqual(query, phrase)
+                self.assertNotIn(
+                    phrase, query,
+                    "Alias/intent phrase overlaps project query: " + phrase,
+                )
+                self.assertNotIn(
+                    query, phrase,
+                    "Project query is contained in registered phrase: " + query,
+                )
+
 
 if __name__ == "__main__":
     unittest.main()

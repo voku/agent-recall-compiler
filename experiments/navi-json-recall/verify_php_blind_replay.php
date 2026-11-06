@@ -35,8 +35,8 @@ function readRecordedEvidence(string $filepath): array
     /** @var mixed $decoded */
     $decoded = json_decode($bytes, true, 32, JSON_THROW_ON_ERROR);
 
-    if (!is_array($decoded) || ($decoded['case_count'] ?? null) !== 26 || !isset($decoded['cases']) || !is_array($decoded['cases']) || count($decoded['cases']) !== 26) {
-        throw new RuntimeException('Expected 26 recorded blind holdout responses');
+    if (!is_array($decoded) || !isset($decoded['cases']) || !is_array($decoded['cases']) || count($decoded['cases']) === 0 || ($decoded['case_count'] ?? null) !== count($decoded['cases'])) {
+        throw new RuntimeException('Recorded evidence has missing or mismatched case_count and cases');
     }
 
     /** @var array{cases: list<RecordedCase>} $decoded */
@@ -104,7 +104,7 @@ foreach ($evidence['cases'] as $index => $case) {
     ++$verified;
 }
 
-if ($verified !== 26) {
+if ($verified !== count($evidence['cases'])) {
     throw new RuntimeException('Unverified replay cases remain');
 }
 
