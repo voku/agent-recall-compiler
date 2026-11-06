@@ -168,10 +168,8 @@ def main() -> int:
                         }
                         if query in indexed and hybrid_ids != [query]:
                             raise AssertionError("Direct JSON authority was not preferred")
-                        # The hybrid path must remain usable when the native
-                        # daemon is gone: no native socket or tokmem dependency.
                         if not isinstance(hybrid_ids, list):
-                            raise AssertionError("Fallback returned an invalid projection")
+                            raise AssertionError("JSON-first FTS returned invalid identifiers")
                         metrics: dict[str, Any] = {}
                         for name, (candidates, elapsed_ns) in all_results.items():
                             scores: dict[str, Any] = {
@@ -201,6 +199,19 @@ def main() -> int:
                                     capture_output=True, timeout=15)
             if result.returncode != 0:
                 raise AssertionError("Native post-benchmark integrity failed")
+
+            # Explicit stop-and-recover: verify the JSON-first search does not
+            # depend on a running daemon, its socket, or retained native memory.
+            if daemon.poll() is None:
+                raise AssertionError("Native process still alive during fallback check")
+            offline_ids = (
+                ["evidence-report"] if "evidence-report" in indexed
+                else fts_rank(fts, "evidence-report")
+            )
+            offline_paraphrase_ids = fts_rank(fts, "mutation tests coverage")
+            if offline_ids != ["evidence-report"] or "coverage-mutation" not in offline_paraphrase_ids[:3]:
+                raise AssertionError("Deterministic JSON-first fallback failed with native daemon stopped")
+            report["offline_native_unavailable_fallback"] = "pass"
 
         summary: dict[str, Any] = {}
         for method in report["conditions"]:
