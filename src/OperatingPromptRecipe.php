@@ -67,6 +67,17 @@ final readonly class OperatingPromptRecipe
             throw new InvalidArgumentException('operating prompt template digest must be sha256: ' . $id);
         }
 
+        foreach (['aliases' => $aliases, 'intents' => $intents] as $field => $values) {
+            if (!array_is_list($values)) {
+                throw new InvalidArgumentException('operating prompt ' . $field . ' must be a list: ' . $id);
+            }
+            foreach ($values as $value) {
+                if (!is_string($value) || trim($value) === '') {
+                    throw new InvalidArgumentException('operating prompt ' . $field . ' must contain non-empty strings: ' . $id);
+                }
+            }
+        }
+
         $this->level = $level;
         $this->purpose = $purpose;
     }
