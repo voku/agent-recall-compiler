@@ -134,6 +134,17 @@ jobs:
             --recorded experiments/navi-json-recall/evidence/blind-holdout-benchmark.json \
             --output evidence/blind-holdout-replay.json
 
+      - name: Replay all 18 agent-loop project decisions against current JSON
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 experiments/navi-json-recall/replay_agent_loop_project.py \
+            --source resources/skills/agent-recall-consumer/operating-prompts.json \
+            --metadata resources/skills/agent-recall-consumer/operating-prompts.metadata.json \
+            --queries experiments/navi-json-recall/agent_loop_project_queries.json \
+            --recorded experiments/navi-json-recall/evidence/agent-loop-project-benchmark.json \
+            --output evidence/agent-loop-project-replay.json
+
       - name: Replay recorded A/B contrast without a live model
         shell: bash
         run: |
@@ -157,6 +168,7 @@ jobs:
             evidence/blind-holdout-replay.json
             evidence/candidate-fusion-ablation.json
             evidence/applicability-ab-replay.json
+            evidence/agent-loop-project-replay.json
 
   php-owner-matrix:
     name: Exact-head Composer CI (PHP ${{ matrix.php }})
@@ -193,6 +205,13 @@ jobs:
           php -l experiments/navi-json-recall/verify_php_applicability_ab.php
           php experiments/navi-json-recall/verify_php_applicability_ab.php \
             experiments/navi-json-recall/evidence/applicability-ab-benchmark.json
+
+      - name: Replay all 18 project decisions through actual PHP validator
+        shell: bash
+        run: |
+          set -euo pipefail
+          php experiments/navi-json-recall/verify_php_blind_replay.php \
+            experiments/navi-json-recall/evidence/agent-loop-project-benchmark.json
 
       - name: Replay all 26 recorded local-model decisions against strict PHP validator
         shell: bash
