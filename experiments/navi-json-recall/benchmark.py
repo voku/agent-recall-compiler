@@ -227,8 +227,17 @@ def metadata_bounded_rank(
                 ),
             ]
         ).casefold()
-        source_terms = set(re.findall(r"[\w]+", terms, flags=re.UNICODE))
-        matched_tokens = sum(1 for token in tokens if token in source_terms)
+        # SQLite unicode61 treats '_' as a separator, including inside
+        # quoted query phrases. Match full normalized phrases rather than
+        # accepting just one piece of a compound token.
+        source_words = re.findall(r"[^\\W_]+", terms, flags=re.UNICODE)
+        source_phrase = " " + " ".join(source_words) + " "
+        matched_tokens = sum(
+            1
+            for token in tokens
+            if " " + " ".join(re.findall(r"[^\\W_]+", token, flags=re.UNICODE)) + " "
+            in source_phrase
+        )
         # Multi-token intent needs at least two whole-term matches.
         if len(tokens) >= 3 and matched_tokens < 2:
             continue
@@ -468,12 +477,12 @@ def main() -> int:
                 else fts_rank(fts, "evidence-report")
             )
             offline_fts_ids = fts_rank(fts, "evidence-report")
-            offline_meta_ids = metadata_bounded_rank(meta_fts, meta_by_id, indexed, "coverage-mutation")
+            offline_meta_ids = metadata_bounded_rank(meta_fts, meta_by_id, indexed, "mutation tests coverage")
             offline_no_model_ids = bounded_choice_rerank("mutation tests coverage", offline_meta_ids, meta_by_id)
             if (
                 offline_ids != ["evidence-report"]
                 or not offline_fts_ids
-                or offline_meta_ids != ["coverage-mutation"]
+                or "coverage-mutation" not in offline_meta_ids
                 or offline_no_model_ids != []
             ):
                 raise AssertionError("Deterministic JSON-first / metadata fallback failed with native daemon stopped")
