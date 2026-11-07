@@ -7,6 +7,7 @@ on:
       - '.github/workflows/opportunity-research.yml'
       - 'research/opportunity-scan-fixtures.json'
       - 'tools/research/record_prompt_comparison.py'
+      - 'tools/research/audit_prompt_comparison.py'
       - 'docs/research/opportunity-reflection-evaluation.md'
 
 permissions:
@@ -50,7 +51,7 @@ jobs:
         run: composer install --working-dir=baseline --no-interaction --prefer-dist --no-progress
 
       - name: Lint research runner
-        run: python3 -m py_compile tools/research/record_prompt_comparison.py
+        run: python3 -m py_compile tools/research/record_prompt_comparison.py tools/research/audit_prompt_comparison.py
 
       - name: Run pinned CPU model against three released prompts
         shell: bash
@@ -98,6 +99,16 @@ jobs:
             exit 1
           fi
           python3 tools/research/record_prompt_comparison.py
+
+      - name: Audit evidence integrity and count dispositions without grading quality
+        if: always()
+        shell: bash
+        run: |
+          if [[ -f "$EVAL_OUTPUT/responses.jsonl" ]]; then
+            python3 tools/research/audit_prompt_comparison.py "$EVAL_OUTPUT"
+          else
+            echo "No inference responses present; skip mechanical summary." >&2
+          fi
 
       - name: Upload raw inference records even if a step fails
         if: always()
