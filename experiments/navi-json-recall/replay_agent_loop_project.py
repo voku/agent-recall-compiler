@@ -14,7 +14,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from benchmark import build_metadata_fts, metadata_bounded_rank
+from benchmark import build_fts, build_metadata_fts, fts_rank, metadata_bounded_rank
 from run_applicability_ab_test import validate_choice
 
 COHORTS = ("project_positive", "project_out_of_catalog", "hard_domain_negative")
@@ -58,6 +58,7 @@ def replay(
         raise ValueError("Missing transcript entries")
 
     conn, meta = build_metadata_fts(metadata, indexed)
+    plain = build_fts(indexed)
     summaries = {
         name: {
             "total": 0,
@@ -93,8 +94,15 @@ def replay(
             if len(offered) > 3 or len(offered) != len(set(offered)) or not set(offered) <= set(indexed):
                 raise ValueError(f"Unverified or unbounded candidates at case {n}")
             ranked = metadata_bounded_rank(conn, meta, indexed, expected["query"])[:3]
+            if not ranked:
+                # The original benchmark explicitly used plain FTS5
+                # distractors whenever metadata yielded no candidates.
+                ranked = fts_rank(plain, expected["query"])[:3]
             if offered != ranked:
-                raise ValueError(f"Candidate ranking differs from current owner metadata at case {n}")
+                raise ValueError(
+                    f"Candidate ranking differs from metadata→plain-FTS fallback at case {n}: "
+                    f"expected={ranked!r}, recorded={offered!r}"
+                )
 
             raw = actual.get("llm_raw_response")
             if not isinstance(raw, str):
@@ -135,6 +143,7 @@ def replay(
                 })
     finally:
         conn.close()
+        plain.close()
 
     overall = {
         "total": sum(x["total"] for x in summaries.values()),
