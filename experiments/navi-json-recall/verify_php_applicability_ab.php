@@ -26,8 +26,8 @@ if (!is_array($report) || ($report['case_count'] ?? null) !== 10
 
 $validator = new BoundedChoiceValidator();
 $counts = [
-    'variant_a_legacy' => ['correct_with_fail_closed' => 0, 'empty_response' => 0, 'explicit_none' => 0],
-    'variant_b_contract' => ['correct_with_fail_closed' => 0, 'empty_response' => 0, 'explicit_none' => 0],
+    'variant_a_legacy' => ['correct_with_fail_closed' => 0, 'empty_response' => 0, 'model_error' => 0, 'explicit_none' => 0],
+    'variant_b_contract' => ['correct_with_fail_closed' => 0, 'empty_response' => 0, 'model_error' => 0, 'explicit_none' => 0],
 ];
 
 foreach ($report['cases'] as $index => $case) {
@@ -62,17 +62,25 @@ foreach ($report['cases'] as $index => $case) {
             throw new RuntimeException(sprintf('Missing model output in case %d (%s)', $index, $variant));
         }
 
+        /** @var mixed $modelError */
+        $modelError = $record['model_error'] ?? null;
+        if ($modelError !== null && (!is_string($modelError) || $modelError === '' || $record['raw'] !== '')) {
+            throw new RuntimeException(sprintf('Invalid model transport error at case %d (%s)', $index, $variant));
+        }
         $selected = $validator->validate($record['raw'], $candidateIds);
+        $correct = $modelError === null && $selected === $contractExpected;
         if (($record['selected'] ?? null) !== $selected
-            || ($record['correct_vs_contract'] ?? null) !== ($selected === $contractExpected)
+            || ($record['correct_vs_contract'] ?? null) !== $correct
         ) {
             throw new RuntimeException(sprintf('PHP replay disagrees with A/B evidence at case %d (%s)', $index, $variant));
         }
 
-        if ($selected === $contractExpected) {
+        if ($correct) {
             ++$metrics['correct_with_fail_closed'];
         }
-        if (trim($record['raw']) === '') {
+        if ($modelError !== null) {
+            ++$metrics['model_error'];
+        } elseif (trim($record['raw']) === '') {
             ++$metrics['empty_response'];
         }
         if (preg_match('/^\s*\{\s*"selected"\s*:\s*"none"\s*\}\s*$/D', $record['raw']) === 1) {
