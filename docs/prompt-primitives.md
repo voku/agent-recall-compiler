@@ -50,6 +50,18 @@ Use it **after** the execution/review evidence is available or when the current 
 
 `future-work --scope task|project` remains the narrower reflection for **verified completed work**. It can examine deeper optional investment without changing current task authority. `next-step` instead also handles failure, blockers, and inconclusive investigation without pretending the task is complete.
 
+## Cross-context opportunity scan
+
+For open-ended research or discussion where a useful insight may transfer beyond the current task or project:
+
+```bash
+agent-recall-compiler prompt opportunity-scan
+```
+
+This context-light lens asks for **one non-obvious, evidence-grounded transferable opportunity** without assuming a completed task, repository, or existing execution Contract. It can return `INVESTIGATE`, `PREPARE_FOLLOW_UP`, `REQUEST_EVIDENCE`, or `NO_OPPORTUNITY`. It does not invoke a model or authorize follow-up work.
+
+Use `next-step` when reorienting an existing task after observed outcomes, and `future-work --scope task|project` when reflecting on verified completed work. Do not stack all three to manufacture more suggestions. See [opportunity-scan evaluation and routing cases](opportunity-scan.md) for discriminating examples and evidence limits.
+
 ## Opt-in guidance-gap journal
 
 Use the guidance-gap technique when you want the implementation itself to expose where a coding agent had to interpret or guess instead of following a usable source of truth:
@@ -169,6 +181,9 @@ Need to ask what to invest in next while completed-work context is still hot?
 
 Need to examine whether this exact completed task deserves deeper scrutiny?
     -> prompt future-work --scope task
+
+Need to discover a transferable opportunity during open-ended research or discussion, without a completed task?
+    -> prompt opportunity-scan
 
 Need to expose where implementation had to guess because process guidance was missing?
     -> prompt guidance-gaps

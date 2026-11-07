@@ -127,6 +127,16 @@ vendor/bin/agent-recall-compiler prompt next-step
 
 The prompt first checks the *actual* outcome and then distinguishes a still-authorized continuation from an alternate hypothesis, a blocked dependency, a candidate follow-up, or no useful next step. This is not an automatic workflow transition or permission to start new work. The consuming harness or `agent-loop` owns when to invoke it and whether any proposed action is approved. Use `future-work` for optional deepening after verified completion.
 
+## Opportunity Scan
+
+For an open-ended investigation, design discussion, or external comparison that may reveal a useful connection to a different problem or project, without assuming a finished task:
+
+```bash
+vendor/bin/agent-recall-compiler prompt opportunity-scan
+```
+
+Prefer this only when the original task/outcome and completed-project premises of `next-step` and `future-work` do not fit. Request one evidence-grounded transferable hypothesis and a bounded discriminating check, or `NO_OPPORTUNITY` when none is justified. The command renders context-light text only; it does not invoke an LLM, grant cross-project access, create follow-up tasks, or authorize execution. See `docs/opportunity-scan.md` for routing examples and evaluation limits.
+
 ## Handoff TODO Cards
 
 Use the bundled `todo-card-handoff` L2 recipe when validated follow-up work must be persisted for another coding agent that will not have the current chat, Session-private context, hidden reasoning, or prior-agent memory:

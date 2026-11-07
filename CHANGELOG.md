@@ -6,6 +6,10 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+### Added
+
+- Add opt-in `prompt opportunity-scan` for open-ended, cross-context insight transfer without assuming a completed task or repository. The lens asks for one evidence-grounded opportunity or justified abstention, and never grants workflow authority. Focused PHPUnit coverage checks deterministic output and CLI argument rejection; documented comparison cases are not claimed as live-model benchmarks.
+
 ## [0.26.0] - 2026-11-07
 
 ### Added
