@@ -258,6 +258,12 @@ vendor/bin/agent-recall-compiler prompt future-work --scope project
 vendor/bin/agent-recall-compiler prompt future-work --scope task
 ```
 
+Open-ended exploration, without assuming completed work or creating tasks:
+
+```bash
+vendor/bin/agent-recall-compiler prompt explore
+```
+
 Outcome-aware next-step reflection (including blocked or inconclusive work):
 
 ```bash
