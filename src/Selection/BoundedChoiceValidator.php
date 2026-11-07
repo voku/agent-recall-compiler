@@ -31,7 +31,7 @@ final readonly class BoundedChoiceValidator
         // or escaped property names cannot change the selected candidate.
         // Valid JSON whitespace is space, tab, CR and LF only.
         if (preg_match(
-            '/\\A[ \\t\\r\\n]*\\{[ \\t\\r\\n]*"selected"[ \\t\\r\\n]*:[ \\t\\r\\n]*"(?:none|cand_(?:0|[1-9][0-9]*))"[ \\t\\r\\n]*\\}[ \\t\\r\\n]*\\z/D',
+            '/\A[ \t\r\n]*\{[ \t\r\n]*"selected"[ \t\r\n]*:[ \t\r\n]*"(?:none|cand_(?:0|[1-9][0-9]*))"[ \t\r\n]*\}[ \t\r\n]*\z/D',
             $rawResponse,
         ) !== 1) {
             return null;
