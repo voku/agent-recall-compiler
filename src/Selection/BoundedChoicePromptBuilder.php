@@ -36,7 +36,34 @@ final readonly class BoundedChoicePromptBuilder
             '## Candidate Recipes',
         ];
 
+        if (!array_is_list($candidates)) {
+            throw new InvalidArgumentException('candidates must be a zero-indexed list');
+        }
+
+        $seen = [];
         foreach ($candidates as $index => $candidate) {
+            foreach (['id', 'title', 'description'] as $field) {
+                if (!isset($candidate[$field]) || !is_string($candidate[$field]) || trim($candidate[$field]) === '') {
+                    throw new InvalidArgumentException(sprintf('candidate %d requires a non-empty string %s', $index, $field));
+                }
+                if (preg_match('/[\\x00-\\x1F\\x7F]/', $candidate[$field]) === 1) {
+                    throw new InvalidArgumentException(sprintf('candidate %d %s contains a control character', $index, $field));
+                }
+            }
+            if (preg_match('/\\A[a-z][a-z0-9._-]*\\z/D', $candidate['id']) !== 1) {
+                throw new InvalidArgumentException(sprintf('candidate %d has an invalid id', $index));
+            }
+            if (isset($seen[$candidate['id']])) {
+                throw new InvalidArgumentException('duplicate candidate id: ' . $candidate['id']);
+            }
+            $seen[$candidate['id']] = true;
+            if (isset($candidate['purpose']) && (
+                !is_string($candidate['purpose'])
+                || preg_match('/\\A[a-z][a-z0-9._-]*\\z/D', $candidate['purpose']) !== 1
+            )) {
+                throw new InvalidArgumentException(sprintf('candidate %d has an invalid purpose', $index));
+            }
+
             $id = $candidate['id'];
             $title = $candidate['title'];
             $desc = $candidate['description'];
