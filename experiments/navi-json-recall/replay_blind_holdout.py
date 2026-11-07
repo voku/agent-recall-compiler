@@ -18,6 +18,7 @@ from run_blind_holdout_llm_benchmark import (
     evaluate_blind_holdout,
     validate_bounded_choice_response,
 )
+from bounded_choice_wire import is_explicit_none_response
 
 
 def replay(
@@ -80,20 +81,37 @@ def replay(
         expected = fresh["expected_id"]
         cohort = fresh["cohort"]
         stats = counters[cohort]
+        model_error = old.get("model_error")
+        if model_error is not None and (not isinstance(model_error, str) or not model_error):
+            raise ValueError(f"Invalid model_error field at case {n}")
+        legacy_error = raw.startswith("ERROR:")
+        explicit_none = (
+            model_error is None and not legacy_error
+            and is_explicit_none_response(raw)
+        )
+        output_status = (
+            "model_error" if model_error is not None or legacy_error else
+            "selected" if decision is not None else
+            "explicit_none" if explicit_none else
+            "invalid_output"
+        )
+        logged_status = old.get("response_status")
+        if logged_status is not None and logged_status != output_status:
+            raise ValueError(f"Recorded response_status drift at case {n}")
         stats["total"] += 1
         if expected is not None and expected in offered:
             stats["gold_in_candidates"] += 1
-        if expected is not None and decision == expected:
+        if expected is not None and decision == expected and output_status == "selected":
             stats["correct_positive"] += 1
-        if expected is None and decision is None:
+        if expected is None and output_status == "explicit_none":
             stats["recorded_abstention"] += 1
         if expected is None and decision is not None:
             stats["false_positive"] += 1
         if not raw:
             stats["empty_response"] += 1
-        elif raw.startswith("ERROR:"):
+        if output_status == "model_error":
             stats["execution_error"] += 1
-        elif decision is None and raw.strip() != '{"selected": "none"}' and raw.strip() != '{"selected":"none"}':
+        elif output_status == "invalid_output":
             stats["unselected_or_invalid_format"] += 1
         if expected is not None and expected not in offered:
             mismatches.append({
@@ -113,6 +131,11 @@ def replay(
                 "selected_id": decision,
                 "reason": "incorrect_out_of_catalog_selection",
             })
+        elif expected is None and output_status != "explicit_none":
+            mismatches.append({
+                "cohort": cohort,
+                "reason": "model_error_or_invalid_output_is_not_abstention",
+            })
         recaps.append({
             "case": n,
             "cohort": cohort,
@@ -120,6 +143,7 @@ def replay(
             "offered_count": len(offered),
             "gold_in_candidates": expected in offered if expected is not None else None,
             "raw_response_empty": not raw,
+            "response_status": output_status,
             "selected": decision,
         })
     return {
