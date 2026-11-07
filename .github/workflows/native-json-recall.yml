@@ -134,6 +134,17 @@ jobs:
             --recorded experiments/navi-json-recall/evidence/blind-holdout-benchmark.json \
             --output evidence/blind-holdout-replay.json
 
+      - name: Replay recorded A/B contrast without a live model
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 experiments/navi-json-recall/replay_applicability_ab.py \
+            --source resources/skills/agent-recall-consumer/operating-prompts.json \
+            --metadata resources/skills/agent-recall-consumer/operating-prompts.metadata.json \
+            --queries experiments/navi-json-recall/applicability_ab_queries.json \
+            --recorded experiments/navi-json-recall/evidence/applicability-ab-benchmark.json \
+            --output evidence/applicability-ab-replay.json
+
       - name: Upload offline JSON baseline independently of native availability
         if: always()
         uses: actions/upload-artifact@v7
@@ -145,6 +156,7 @@ jobs:
             evidence/offline-json-recall.json
             evidence/blind-holdout-replay.json
             evidence/candidate-fusion-ablation.json
+            evidence/applicability-ab-replay.json
 
   php-owner-matrix:
     name: Exact-head Composer CI (PHP ${{ matrix.php }})
@@ -173,6 +185,14 @@ jobs:
 
       - name: Run owner Composer CI
         run: composer ci
+
+      - name: Verify A/B local transcript through actual PHP bounded choice validator
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l experiments/navi-json-recall/verify_php_applicability_ab.php
+          php experiments/navi-json-recall/verify_php_applicability_ab.php \
+            experiments/navi-json-recall/evidence/applicability-ab-benchmark.json
 
       - name: Replay all 26 recorded local-model decisions against strict PHP validator
         shell: bash
