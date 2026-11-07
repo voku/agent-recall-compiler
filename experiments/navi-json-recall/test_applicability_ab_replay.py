@@ -54,6 +54,20 @@ class ApplicabilityABReplayTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "candidates drifted"):
             replay(self.source, self.meta, self.queries, path)
 
+    def test_transport_failure_is_not_counted_as_semantic_none(self) -> None:
+        evidence = json.loads(self.recorded.read_text(encoding="utf-8"))
+        case = evidence["cases"][0]["variant_a_legacy"]
+        self.assertEqual("", case["raw"])
+        case["model_error"] = "timeout"
+        case["correct_vs_contract"] = False
+
+        tmp, path = self.mutated_file(evidence)
+        self.addCleanup(tmp.cleanup)
+        report = replay(self.source, self.meta, self.queries, path)
+        self.assertEqual(1, report["metrics"]["legacy"]["model_error"])
+        self.assertEqual(1, report["metrics"]["legacy"]["empty_response"])
+        self.assertEqual(7, report["metrics"]["legacy"]["correct_with_fail_closed"])
+
     def test_gold_label_drift_is_rejected(self) -> None:
         evidence = json.loads(self.recorded.read_text(encoding="utf-8"))
         evidence["cases"][1]["expected_contract"] = None
