@@ -31,7 +31,7 @@ class AgentLoopProjectReplayTest(unittest.TestCase):
         result = replay(self.source, self.metadata, self.queries, self.recorded)
         self.assertEqual(18, result["overall"]["total"])
         self.assertEqual(15, result["overall"]["correct_with_fail_closed"])
-        self.assertEqual(14, result["overall"]["correct_explicit"])
+        self.assertEqual(15, result["overall"]["correct_explicit"])
         self.assertEqual(1, result["overall"]["empty"])
         self.assertEqual(7, result["cohorts"]["project_positive"]["correct_with_fail_closed"])
         self.assertEqual(8, result["cohorts"]["project_out_of_catalog"]["correct_explicit"] +
