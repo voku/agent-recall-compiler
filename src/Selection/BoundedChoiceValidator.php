@@ -22,6 +22,10 @@ final readonly class BoundedChoiceValidator
      */
     public function validate(string $rawResponse, array $validCandidateIds): ?string
     {
+        if (!array_is_list($validCandidateIds)) {
+            return null;
+        }
+
         if (trim($rawResponse) === '' || strlen($rawResponse) > 1024) {
             return null;
         }
