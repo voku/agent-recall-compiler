@@ -180,7 +180,10 @@ Need to audit your own supplied results/conclusions against task artifacts befor
 Need to audit an already-authoritative plan and then continue executing it?
     -> select the Recall-owned L1 `execute-plan-with-blind-spot-check`
 
-Need to investigate an interesting connection or open question without selecting work?\n    -> prompt explore\n\nNeed to reorient after actual completion, an unsuccessful attempt, a blocker, or inconclusive investigation?
+Need to investigate an interesting connection or open question without selecting work?
+    -> prompt explore
+
+Need to reorient after actual completion, an unsuccessful attempt, a blocker, or inconclusive investigation?
     -> prompt next-step
 
 Need to ask what to invest in next while completed-work context is still hot?
