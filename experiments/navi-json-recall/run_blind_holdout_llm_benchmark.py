@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any
 
 import benchmark
-from bounded_choice_wire import validate_bounded_choice_response
+from bounded_choice_wire import is_explicit_none_response, validate_bounded_choice_response
 
 
 def check_zero_contamination(
@@ -120,9 +120,9 @@ def evaluate_blind_holdout(
 
     for method in methods:
         cohort_stats[method] = {
-            "blind_positive": {"total": 0, "top1_correct": 0, "abstentions": 0},
-            "blind_hard_negative": {"total": 0, "top1_correct": 0, "abstentions": 0},
-            "blind_out_of_catalog": {"total": 0, "top1_correct": 0, "abstentions": 0},
+            "blind_positive": {"total": 0, "top1_correct": 0, "abstentions": 0, "invalid_outputs": 0, "model_errors": 0},
+            "blind_hard_negative": {"total": 0, "top1_correct": 0, "abstentions": 0, "invalid_outputs": 0, "model_errors": 0},
+            "blind_out_of_catalog": {"total": 0, "top1_correct": 0, "abstentions": 0, "invalid_outputs": 0, "model_errors": 0},
         }
 
     for case_idx, case in enumerate(cases):
@@ -172,25 +172,46 @@ def evaluate_blind_holdout(
             # Present top candidates from metadata; if empty, supply plain FTS distractors
             cand_pool = meta_ranked if meta_ranked else raw_fts
             prompt = build_bounded_prompt(query, cand_pool, meta_by_id)
+            model_error: str | None = None
             try:
                 raw_llm = call_live_llm(prompt)
-                llm_choice = validate_bounded_choice_response(raw_llm, cand_pool)
             except Exception as e:
-                raw_llm = f"ERROR: {e}"
-                llm_choice = None
+                # Transport errors are not model output and cannot count as abstentions.
+                raw_llm = ""
+                model_error = type(e).__name__
+
+            llm_choice = (
+                validate_bounded_choice_response(raw_llm, cand_pool)
+                if model_error is None
+                else None
+            )
+            explicit_none = model_error is None and is_explicit_none_response(raw_llm)
+            response_status = (
+                "model_error" if model_error is not None else
+                "selected" if llm_choice is not None else
+                "explicit_none" if explicit_none else
+                "invalid_output"
+            )
 
             case_eval["predictions"]["live_llm_bounded_choice"] = [llm_choice] if llm_choice else []
             case_eval["llm_raw_response"] = raw_llm
             case_eval["llm_candidates_offered"] = cand_pool
+            case_eval["model_error"] = model_error
+            case_eval["response_status"] = response_status
 
-            cohort_stats["live_llm_bounded_choice"][cohort]["total"] += 1
-            if llm_choice is None:
-                cohort_stats["live_llm_bounded_choice"][cohort]["abstentions"] += 1
-                if expected_id is None:
-                    cohort_stats["live_llm_bounded_choice"][cohort]["top1_correct"] += 1
-            else:
+            metrics = cohort_stats["live_llm_bounded_choice"][cohort]
+            metrics["total"] += 1
+            if llm_choice is not None:
                 if llm_choice == expected_id:
-                    cohort_stats["live_llm_bounded_choice"][cohort]["top1_correct"] += 1
+                    metrics["top1_correct"] += 1
+            elif explicit_none:
+                metrics["abstentions"] += 1
+                if expected_id is None:
+                    metrics["top1_correct"] += 1
+            elif model_error is not None:
+                metrics["model_errors"] += 1
+            else:
+                metrics["invalid_outputs"] += 1
 
             print(
                 f"[{case_idx+1:02d}/{len(cases):02d}] {cohort:22s} | expected: {str(expected_id):25s} | LLM choice: {str(llm_choice):25s} | raw: {raw_llm}"
@@ -241,7 +262,7 @@ def main() -> int:
             corr = stats["top1_correct"]
             ab = stats["abstentions"]
             pct = (corr / tot * 100) if tot else 0.0
-            print(f"  {cname:24s}: {corr}/{tot} correct ({pct:5.1f}%) | abstentions: {ab}/{tot}")
+            print(f"  {cname:24s}: {corr}/{tot} correct ({pct:5.1f}%) | abstentions: {ab}/{tot} | invalid: {stats['invalid_outputs']}/{tot} | errors: {stats['model_errors']}/{tot}")
 
     return 0
 
