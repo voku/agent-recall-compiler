@@ -13,6 +13,49 @@ The caller selects prompt requests. The compiler validates and resolves the sele
 
 Recall ships its first-party tool-coupled recipe catalog beside the consumer skill at `resources/skills/agent-recall-consumer/operating-prompts.json`. Installed Composer consumers can reference `vendor/voku/agent-recall-compiler/resources/skills/agent-recall-consumer/operating-prompts.json`. Bundling that catalog does not make selection implicit: callers still select recipe IDs and supply every required argument explicitly.
 
+## Optional bounded-choice candidate selection (since 0.26.0)
+
+When a host already has a **source-verified, ordered set of recipe candidates**, it may use Recall's read-only PHP contract to construct a *selection prompt* and validate the model's response. This does not invoke an LLM or automatically select or execute a recipe.
+
+```php
+<?php
+
+declare(strict_types=1);
+
+use voku\AgentRecallCompiler\OperatingPromptCatalog;
+use voku\AgentRecallCompiler\Selection\BoundedChoicePromptBuilder;
+use voku\AgentRecallCompiler\Selection\BoundedChoiceValidator;
+
+$recipe = OperatingPromptCatalog::bundled()->recipe('reproduce-before-fix');
+$candidates = [[
+    'id' => $recipe->id,
+    'title' => $recipe->title,
+    'description' => $recipe->description,
+    'purpose' => $recipe->purpose,
+]];
+
+$prompt = (new BoundedChoicePromptBuilder())->build(
+    'Reproduce the bug with a failing test before fixing it.',
+    $candidates,
+    enforceWorkflowApplicability: true, // opt-in experiment
+);
+
+// The host decides whether to call a model, and must handle model/CLI errors
+// separately from an explicit none. This string is an illustrative response.
+$untrustedModelOutput = '{"selected":"cand_0"}';
+
+$selectedId = (new BoundedChoiceValidator())->validate(
+    $untrustedModelOutput,
+    [$recipe->id],
+);
+
+// $selectedId is 'reproduce-before-fix' here, or null for none/invalid input.
+```
+
+**Authority boundary:** The input candidate list must be built from the canonical owner catalog, not from model-generated IDs. The builder rejects sparse lists, duplicate IDs, malformed fields, and invalid candidate identifiers. The validator accepts only one literal `selected` JSON key containing `none` or a canonical in-range `cand_N`; malformed/duplicate/escaped fields fail closed. `null` means **no verified selection**, not necessarily an explicit semantic abstention. Keep transport failures separate.
+
+A selected ID is **context only**. It is neither a task approval nor authorization to modify files. Rendering or executing a selected recipe still requires the existing explicit `OperatingPromptRequest`, argument validation, and any applicable workflow-owner decisions. No production LLM adapter, implicit routing, or native memory service is bundled with this feature.
+
 ## The target shape
 
 A project-specific L1 operational prompt should have exactly five parts:
