@@ -36,6 +36,25 @@ agent-recall-compiler prompt future-work --scope task
 
 Reflection intentionally stays small and uses the agent's fresh work context. It does not get forced through `Goal / Context / Constraints / Verification / Done When`. Task reflection may return `RETURN_TO_REVIEW` when deeper scrutiny proves the task was not actually complete.
 
+## Context-light exploration (not work)
+
+For an open-ended question such as "Is there anything else you want to explore?", in a conversation, investigation, design discussion, or unfinished task:
+
+```bash
+agent-recall-compiler prompt explore
+```
+
+Exploration searches for **one evidence-backed question worth understanding**: a surprising connection, contradiction, assumption, alternative explanation, or useful unknown. It does not assume successful task completion or even the presence of a repository. The agent must distinguish observed evidence from hypotheses, provide the cheapest **non-mutating** investigative probe, and may return `NOTHING_TO_EXPLORE`. The prompt itself invokes no model.
+
+This differs deliberately from **work**:
+
+- `explore` asks what might be worth understanding; it does not select work or authorize edits.
+- `next-step` reasons about a task's observed outcome and potential continuation, pivot, or stop.
+- `future-work` examines optional investment after **verified completion**, at task or project level.
+- `continue-until-done` executes already-authorized independent slices toward an observed done condition.
+
+An interesting finding may later motivate a task, but exploration neither writes the task nor approves execution. Use the appropriate task/workflow owner for a separate decision. Do not automatically chain exploration into a new Contract or backlog.
+
 ## Outcome-aware next-step reflection
 
 When work is complete, still incomplete, blocked, or inconclusive, ask the agent what *it* recommends next without presupposing that the last attempt succeeded:
@@ -161,7 +180,7 @@ Need to audit your own supplied results/conclusions against task artifacts befor
 Need to audit an already-authoritative plan and then continue executing it?
     -> select the Recall-owned L1 `execute-plan-with-blind-spot-check`
 
-Need to reorient after actual completion, an unsuccessful attempt, a blocker, or inconclusive investigation?
+Need to investigate an interesting connection or open question without selecting work?\n    -> prompt explore\n\nNeed to reorient after actual completion, an unsuccessful attempt, a blocker, or inconclusive investigation?
     -> prompt next-step
 
 Need to ask what to invest in next while completed-work context is still hot?
