@@ -24,7 +24,7 @@ ARMS: dict[str, tuple[str, ...]] = {
     "future-work-project": ("future-work", "--scope", "project"),
 }
 REPEATS = 2
-MAX_TOKENS = 256
+MAX_TOKENS = 640
 
 
 def sha256(data: bytes) -> str:
