@@ -8,7 +8,6 @@ using identical candidate pools and live model inference.
 from __future__ import annotations
 
 import json
-import re
 import shutil
 import subprocess
 import sys
@@ -16,28 +15,11 @@ from pathlib import Path
 from typing import Any
 
 import benchmark
+from bounded_choice_wire import validate_bounded_choice_response
 
 
 def validate_choice(raw: str, candidates: list[str]) -> str | None:
-    text = raw.strip()
-    if not text or len(text) > 1024:
-        return None
-    try:
-        data = json.loads(text)
-    except Exception:
-        return None
-    if not isinstance(data, dict) or list(data.keys()) != ["selected"]:
-        return None
-    sel = data["selected"]
-    if not isinstance(sel, str) or sel == "none":
-        return None
-    match = re.fullmatch(r"cand_(0|[1-9][0-9]*)", sel)
-    if not match:
-        return None
-    idx = int(match.group(1))
-    if idx < 0 or idx >= len(candidates):
-        return None
-    return candidates[idx]
+    return validate_bounded_choice_response(raw, candidates)
 
 
 def build_prompt(
