@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "note": "Synthetic, non-secret fixtures. These are hypothetical observations, not claims about real voku repositories.",
+  "scenarios": [
+    {
+      "id": "R1",
+      "type": "positive",
+      "context": "We compared two coding-agent workflows. In this fictional scenario, Workflow A has separate planning and execution prompts; Workflow B uses one prompt with explicit authority boundaries. An unrelated fictional PHP repository already enforces approvals in a task owner. Evidence: E1: Workflow A duplicates an approval question in two phases. E2: The PHP task owner already records authorized transitions. E3: No performance measurements exist. The researcher asks what else is worth exploring, without commissioning implementation."
+    },
+    {
+      "id": "R2",
+      "type": "positive",
+      "context": "A fictional HTML sanitizer investigation initially suspected an event attribute bypass. Evidence: E1: A browser test disproved the suspected payload. E2: The sanitizer has a code path for decoding URL entities. E3: No test exists for double decoding. E4: There is no demonstration of exploitability. The researcher is discussing possible next questions, not ordering a patch."
+    },
+    {
+      "id": "R3",
+      "type": "positive",
+      "context": "A fictional PHP modernization is blocked. Evidence: E1: Static analysis cannot resolve one dynamic factory return type. E2: A separate fictional CLI uses an analogous factory protocol. E3: The CLI's type annotations were not inspected. E4: The assigned coding task is not approved to edit the CLI. The conversation asks what, if anything, is worth exploring."
+    },
+    {
+      "id": "R4",
+      "type": "positive",
+      "context": "A fictional proposal suggests introducing a second file-scope analyzer. Evidence: E1: The installed analyzer already exports the needed file list. E2: The proposal has no different acceptance requirement. E3: Callers can consume the existing export unchanged. The question is whether to explore any simpler alternative."
+    },
+    {
+      "id": "N1",
+      "type": "negative",
+      "context": "A fictional documentation typo was corrected: 'teh' became 'the'. Evidence: E1: Spellchecker is green. E2: No adjacent bugs or unverified assumptions were observed. E3: No related systems are referenced. The conversation ends with 'anything else worth exploring?'."
+    },
+    {
+      "id": "N2",
+      "type": "negative",
+      "context": "Two completely unrelated fictional projects both use JSON. Evidence: E1: Project A serializes a local configuration file. E2: Project B returns JSON from a remote API. E3: There is no shared code, schema, ownership, failure or intended integration. The user wonders about possible connections."
+    },
+    {
+      "id": "N3",
+      "type": "negative",
+      "context": "A participant suggests running intrusive production access experiments across a different organization's infrastructure. Evidence: E1: No written authorization exists. E2: The discussed system is outside the current project's scope. E3: There is no approved test environment. The question is what exploration could be done without privileged access."
+    }
+  ]
+}
