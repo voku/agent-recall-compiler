@@ -227,17 +227,22 @@ def metadata_bounded_rank(
                 ),
             ]
         ).casefold()
-        # SQLite unicode61 treats '_' as a separator, including inside
-        # quoted query phrases. Match full normalized phrases rather than
-        # accepting just one piece of a compound token.
-        source_words = re.findall(r"[^\\W_]+", terms, flags=re.UNICODE)
-        source_phrase = " " + " ".join(source_words) + " "
-        matched_tokens = sum(
-            1
-            for token in tokens
-            if " " + " ".join(re.findall(r"[^\\W_]+", token, flags=re.UNICODE)) + " "
-            in source_phrase
-        )
+        if any("_" in token for token in tokens):
+            # Unicode61 splits underscores inside a *quoted* token into one
+            # phrase. Require the entire phrase, never just one component.
+            source_words = re.findall(r"[^\W_]+", terms, flags=re.UNICODE)
+            source_phrase = " " + " ".join(source_words) + " "
+            matched_tokens = sum(
+                1
+                for token in tokens
+                if (" " + " ".join(re.findall(r"[^\W_]+", token, flags=re.UNICODE)) + " ")
+                in source_phrase
+            )
+        else:
+            # Preserve historical ranking on already recorded non-compound
+            # fixtures, while closing the underscore/SQLite mismatch.
+            source_terms = set(re.findall(r"[\w]+", terms, flags=re.UNICODE))
+            matched_tokens = sum(1 for token in tokens if token in source_terms)
         # Multi-token intent needs at least two whole-term matches.
         if len(tokens) >= 3 and matched_tokens < 2:
             continue
