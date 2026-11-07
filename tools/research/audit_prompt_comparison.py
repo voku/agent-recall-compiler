@@ -116,7 +116,7 @@ def main(directory: pathlib.Path) -> int:
         },
         "multiple_disposition_labels": rows_with_multiple_labels,
         "adjudication": "not_performed",
-        "generalizability": "none: synthetic cases and one 0.6B model",
+        "generalizability": "none: synthetic cases, single local model, no blinded semantic grading",
     }
     (directory / "mechanical-audit.json").write_text(
         json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8"

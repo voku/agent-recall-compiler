@@ -21,8 +21,8 @@ jobs:
     env:
       RECALL_COMMIT: f51306bdcdae8cf23557bd21f69449aec5d85bfe
       LLAMA_COMMIT: f7591a6a01f9273de03331732bdc0b39721168be
-      MODEL_REVISION: 1eaf4d9657fe65ad10a51eab76a8db5b363bddaa
-      MODEL_SHA256: 9465e63a22add5354d9bb4b99e90117043c7124007664907259bd16d043bb031
+      MODEL_REVISION: a9a60d009fa7ff9606305047c2bf77ac25dbec49
+      MODEL_SHA256: 7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5
       RECALL_BASELINE: ${{ github.workspace }}/baseline
       EVAL_OUTPUT: ${{ github.workspace }}/build/research-evidence
 
@@ -64,9 +64,9 @@ jobs:
           cmake -S "$RUNNER_TEMP/llama/repo" -B "$RUNNER_TEMP/llama/build" -DCMAKE_BUILD_TYPE=Release -DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON
           cmake --build "$RUNNER_TEMP/llama/build" --parallel 4 --target llama-server
 
-          model_path="$RUNNER_TEMP/llama/Qwen3-0.6B-Q8_0.gguf"
+          model_path="$RUNNER_TEMP/llama/Qwen3-4B-Q4_K_M.gguf"
           curl --fail --location --silent --show-error --retry 3 --retry-delay 5 \
-            "https://huggingface.co/Qwen/Qwen3-0.6B-GGUF/resolve/${MODEL_REVISION}/Qwen3-0.6B-Q8_0.gguf" \
+            "https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/${MODEL_REVISION}/Qwen3-4B-Q4_K_M.gguf" \
             --output "$model_path"
           printf '%s  %s\n' "$MODEL_SHA256" "$model_path" | sha256sum --check
 
