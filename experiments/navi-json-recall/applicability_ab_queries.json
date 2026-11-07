@@ -1,0 +1,106 @@
+{
+  "schema_version": "1.0",
+  "purpose": "Paired contrast benchmark evaluating Default Bounded Choice vs. Workflow Applicability Contract v0. Frozen before model evaluation.",
+  "pairs": [
+    {
+      "pair_id": "pair_01_three_pass",
+      "target_recipe": "multi-pass-correctness-simplify",
+      "cases": [
+        {
+          "variant_role": "topic_only",
+          "query": "Refactor the legacy user authentication controller to use dependency injection.",
+          "expected_legacy": "multi-pass-correctness-simplify",
+          "expected_contract": null,
+          "rationale": "Ordinary refactoring task. Under legacy topic matching, multi-pass may match; under workflow contract, no process is demanded, so none is expected."
+        },
+        {
+          "variant_role": "workflow_demanded",
+          "query": "Generate a three-pass execution prompt to refactor the user auth controller: first change dependencies, then verify contracts, then simplify.",
+          "expected_legacy": "multi-pass-correctness-simplify",
+          "expected_contract": "multi-pass-correctness-simplify",
+          "rationale": "Explicitly requests a three-pass execution workflow prompt."
+        }
+      ]
+    },
+    {
+      "pair_id": "pair_02_adversarial_review",
+      "target_recipe": "adversarial-review",
+      "cases": [
+        {
+          "variant_role": "topic_only",
+          "query": "Implement a cryptographic signature verification endpoint for incoming webhooks.",
+          "expected_legacy": null,
+          "expected_contract": null,
+          "rationale": "Security-relevant implementation, but does not ask for an adversarial review."
+        },
+        {
+          "variant_role": "workflow_demanded",
+          "query": "Challenge our webhook signature verification with adversarial bypass scenarios and falsify assumed security properties.",
+          "expected_legacy": "adversarial-review",
+          "expected_contract": "adversarial-review",
+          "rationale": "Explicitly requests adversarial review and attack scenarios."
+        }
+      ]
+    },
+    {
+      "pair_id": "pair_03_tdd",
+      "target_recipe": "test-driven-development",
+      "cases": [
+        {
+          "variant_role": "topic_only",
+          "query": "Add validation for international phone numbers conforming to E.164 standard.",
+          "expected_legacy": null,
+          "expected_contract": null,
+          "rationale": "Feature validation task, but does not request TDD discipline."
+        },
+        {
+          "variant_role": "workflow_demanded",
+          "query": "Apply test-driven development to build the E.164 phone validator, writing failing specification tests before implementation code.",
+          "expected_legacy": "test-driven-development",
+          "expected_contract": "test-driven-development",
+          "rationale": "Explicitly requests TDD red-green discipline."
+        }
+      ]
+    },
+    {
+      "pair_id": "pair_04_clarify_inputs",
+      "target_recipe": "clarify-missing-inputs",
+      "cases": [
+        {
+          "variant_role": "topic_only",
+          "query": "The order export worker stopped processing jobs at midnight.",
+          "expected_legacy": null,
+          "expected_contract": null,
+          "rationale": "Problem report, but does not instruct to stop and clarify missing inputs."
+        },
+        {
+          "variant_role": "workflow_demanded",
+          "query": "The order export worker ticket has no reproduction steps or logs. Halt and formulate a clarification prompt asking for the missing payload and queue state.",
+          "expected_legacy": "clarify-missing-inputs",
+          "expected_contract": "clarify-missing-inputs",
+          "rationale": "Explicitly requests halting to clarify missing requirements."
+        }
+      ]
+    },
+    {
+      "pair_id": "pair_05_deletion_first",
+      "target_recipe": "deletion-first",
+      "cases": [
+        {
+          "variant_role": "topic_only",
+          "query": "Clean up the repository root by removing obsolete build scripts.",
+          "expected_legacy": null,
+          "expected_contract": null,
+          "rationale": "Routine file cleanup chore, no deletion-first methodology demanded."
+        },
+        {
+          "variant_role": "workflow_demanded",
+          "query": "Evaluate deletion-first simplification on the build scripts: identify dead scripts to delete before touching active configurations.",
+          "expected_legacy": "deletion-first",
+          "expected_contract": "deletion-first",
+          "rationale": "Explicitly requests deletion-first simplification."
+        }
+      ]
+    }
+  ]
+}

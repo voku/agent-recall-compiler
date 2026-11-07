@@ -2,3 +2,5 @@
 /.phpunit.result.cache
 /composer.lock
 /.idea/
+__pycache__/
+*.pyc

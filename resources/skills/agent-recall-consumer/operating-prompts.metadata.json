@@ -13,8 +13,23 @@
           "required": true,
           "description": "Minimum number of plausible failure-mode hypotheses to investigate.",
           "minimum": 1,
-          "examples": [3, 5]
+          "examples": [
+            3,
+            5
+          ]
         }
+      ],
+      "aliases": [
+        "adversarial review",
+        "security review",
+        "attack scenarios",
+        "failure mode hypotheses",
+        "standing approval bypass"
+      ],
+      "intents": [
+        "challenge implementation with attack scenarios",
+        "challenge whether forged standing approval actors can bypass workflow checks",
+        "disprove imagined defects"
       ]
     },
     {
@@ -22,7 +37,18 @@
       "title": "Review breaking changes",
       "description": "Review compatibility and coordinated migration boundaries.",
       "purpose": "review",
-      "arguments": []
+      "arguments": [],
+      "aliases": [
+        "breaking changes",
+        "backwards compatibility",
+        "API migration",
+        "Rückwärtskompatibilität"
+      ],
+      "intents": [
+        "check public API users before removing an old interface",
+        "Prüfe die Rückwärtskompatibilität öffentlicher APIs vor einer Änderung",
+        "review compatibility boundaries"
+      ]
     },
     {
       "id": "clarify-missing-inputs",
@@ -36,8 +62,21 @@
           "required": true,
           "description": "Maximum number of clarification questions to ask.",
           "minimum": 1,
-          "examples": [3, 5]
+          "examples": [
+            3,
+            5
+          ]
         }
+      ],
+      "aliases": [
+        "clarify missing inputs",
+        "information gap",
+        "prerequisite questions",
+        "fehlende Eingaben"
+      ],
+      "intents": [
+        "identify missing task information before any implementation",
+        "ask questions before starting unclear task"
       ]
     },
     {
@@ -56,6 +95,16 @@
             "closing the current chat would not lose information required to understand completed work, remaining work, blockers, or the next safe step because that state is already represented in durable authoritative artifacts"
           ]
         }
+      ],
+      "aliases": [
+        "continue until done",
+        "autonomous execution",
+        "independent slices",
+        "resumable checkpoint"
+      ],
+      "intents": [
+        "keep working on independent authorized tasks without asking after every step",
+        "continue authorized slices to checkpoint"
       ]
     },
     {
@@ -70,15 +119,32 @@
           "required": true,
           "description": "Minimum percentage-point increase in coverage required by the prompt.",
           "minimum": 1,
-          "examples": [5, 10]
+          "examples": [
+            5,
+            10
+          ]
         },
         {
           "name": "mutation_command",
           "type": "string",
           "required": true,
           "description": "Repository-supported mutation-testing command to execute.",
-          "examples": ["composer infection"]
+          "examples": [
+            "composer infection"
+          ]
         }
+      ],
+      "aliases": [
+        "coverage mutation",
+        "mutation testing",
+        "infection testing",
+        "test hardening",
+        "Mutationsprüfung"
+      ],
+      "intents": [
+        "harden tests with mutation testing",
+        "mutation tests coverage",
+        "test meaningful coverage increase"
       ]
     },
     {
@@ -86,56 +152,139 @@
       "title": "Simplify deletion first",
       "description": "Prefer safe deletion and deduplication before extension or abstraction.",
       "purpose": "simplify",
-      "arguments": []
+      "arguments": [],
+      "aliases": [
+        "deletion first",
+        "simplify deletion",
+        "code deduplication",
+        "avoid speculative complexity",
+        "Code löschen",
+        "Entfernen statt Abstraktion"
+      ],
+      "intents": [
+        "avoid speculative concurrency and security complexity without evidence of an actual failure mode",
+        "simplify checkpoint state store recovery implementation by deleting redundant replay code",
+        "Vereinfache den Code durch Löschen statt neue Abstraktionen",
+        "prefer safe deletion before extension"
+      ]
     },
     {
       "id": "discovery-first",
       "title": "Re-ground with discovery",
       "description": "Re-ground an unclear or stale task against current repository evidence before editing.",
       "purpose": "start",
-      "arguments": []
+      "arguments": [],
+      "aliases": [
+        "discovery first",
+        "re ground task",
+        "explore repo before edit",
+        "initial investigation",
+        "Ist-Zustand prüfen"
+      ],
+      "intents": [
+        "inspect existing PHPStan and php cs fixer configuration before designing project aware init",
+        "re ground an unclear task against repository evidence before editing"
+      ]
     },
     {
       "id": "execute-plan-with-blind-spot-check",
       "title": "Execute plan with blind-spot check",
       "description": "Challenge material plan assumptions, amend only disproved steps, then continue execution.",
       "purpose": "execute",
-      "arguments": []
+      "arguments": [],
+      "aliases": [
+        "blind spot check",
+        "execute plan",
+        "challenge plan assumptions",
+        "Planprüfung"
+      ],
+      "intents": [
+        "challenge material plan assumptions and execute plan",
+        "execute plan with blind spot check"
+      ]
     },
     {
       "id": "execution-dispatch",
       "title": "Dispatch one execution slice",
       "description": "Create a bounded current execution prompt from an existing durable task and authority.",
       "purpose": "handoff",
-      "arguments": []
+      "arguments": [],
+      "aliases": [
+        "execution dispatch",
+        "dispatch task slice",
+        "create execution prompt"
+      ],
+      "intents": [
+        "dispatch one execution slice from durable task",
+        "create bounded execution prompt from authority"
+      ]
     },
     {
       "id": "evidence-report",
       "title": "Produce evidence report",
       "description": "Require completion claims to be bounded by observable verification evidence.",
       "purpose": "report",
-      "arguments": []
+      "arguments": [],
+      "aliases": [
+        "evidence report",
+        "completion evidence",
+        "measured startup commands",
+        "Abschlussbericht",
+        "Nachweis"
+      ],
+      "intents": [
+        "report measured Git hook startup commands across WSL IDE and Docker with exact evidence",
+        "require completion claims to be bounded by observable verification evidence"
+      ]
     },
     {
       "id": "missingness-audit",
       "title": "Audit missing pieces",
       "description": "Find evidence-backed gaps in required artifacts, scope, verification, recovery, observability or boundaries.",
       "purpose": "review",
-      "arguments": []
+      "arguments": [],
+      "aliases": [
+        "missingness audit",
+        "evidence omission",
+        "cut boundary loss",
+        "truncation audit",
+        "fehlende Akzeptanzbelege"
+      ],
+      "intents": [
+        "investigate why bounded recall document excerpts lose review evidence at a cut boundary",
+        "Suche fehlende Tests und fehlende Akzeptanzbelege",
+        "find evidence-backed gaps in artifacts, scope, or boundaries"
+      ]
     },
     {
       "id": "multi-pass-correctness-simplify",
       "title": "Implement, audit, simplify",
       "description": "Run implementation, correctness and simplification as separate evidence-backed passes.",
       "purpose": "execute",
-      "arguments": []
+      "arguments": [],
+      "aliases": [
+        "multi pass",
+        "implement audit simplify",
+        "separate passes"
+      ],
+      "intents": [
+        "run implementation, correctness, and simplification as separate passes"
+      ]
     },
     {
       "id": "plan-as-draft",
       "title": "Strengthen an existing plan",
       "description": "Treat an existing plan as the minimum floor and strengthen only evidence-backed gaps.",
       "purpose": "plan",
-      "arguments": []
+      "arguments": [],
+      "aliases": [
+        "plan as draft",
+        "strengthen existing plan",
+        "amend plan gaps"
+      ],
+      "intents": [
+        "treat existing plan as floor and strengthen evidence gaps"
+      ]
     },
     {
       "id": "plan-horizon",
@@ -148,8 +297,19 @@
           "type": "string",
           "required": true,
           "description": "Planning search radius to expose dependencies beyond the current executable slice.",
-          "examples": ["three independently mergeable slices", "the next release boundary"]
+          "examples": [
+            "three independently mergeable slices",
+            "the next release boundary"
+          ]
         }
+      ],
+      "aliases": [
+        "plan horizon",
+        "rolling search radius",
+        "lookahead planning"
+      ],
+      "intents": [
+        "plan a wider horizon beyond immediate task slice"
       ]
     },
     {
@@ -157,14 +317,32 @@
       "title": "Prepare production-ready handoff",
       "description": "Create one bounded self-contained execution handoff for a fresh coding agent.",
       "purpose": "handoff",
-      "arguments": []
+      "arguments": [],
+      "aliases": [
+        "production ready handoff",
+        "developer handoff",
+        "self-contained handoff",
+        "Übergabe an neuen Entwickler"
+      ],
+      "intents": [
+        "Schreibe eine Übergabe für einen neuen Entwickler ohne Chatverlauf",
+        "create self-contained execution handoff for a fresh coding agent"
+      ]
     },
     {
       "id": "refine-l1-contract",
       "title": "Refine an L1 contract",
       "description": "Apply the smallest semantic delta to an existing L1 without scope or detail inflation.",
       "purpose": "plan",
-      "arguments": []
+      "arguments": [],
+      "aliases": [
+        "refine l1 contract",
+        "contract delta",
+        "scope refinement"
+      ],
+      "intents": [
+        "apply smallest semantic delta to existing L1 contract"
+      ]
     },
     {
       "id": "regression-hunt",
@@ -178,8 +356,20 @@
           "required": true,
           "description": "Minimum number of concrete regression hypotheses or search targets to investigate.",
           "minimum": 1,
-          "examples": [3, 5]
+          "examples": [
+            3,
+            5
+          ]
         }
+      ],
+      "aliases": [
+        "regression hunt",
+        "hunt regressions",
+        "investigate regressions",
+        "Regressionssuche"
+      ],
+      "intents": [
+        "investigate high-risk regression hypotheses with concrete evidence"
       ]
     },
     {
@@ -187,14 +377,36 @@
       "title": "Reproduce before fixing",
       "description": "Require a failing automated reproduction before changing production code for a bug.",
       "purpose": "start",
-      "arguments": []
+      "arguments": [],
+      "aliases": [
+        "reproduce before fix",
+        "reproduce bug first",
+        "failing reproduction test",
+        "Fehler reproduzieren",
+        "automatisierter Test vor Bugfix"
+      ],
+      "intents": [
+        "reproduce the failure of retiring a run and then closing it before fixing the policy",
+        "Beweise den Fehler erst mit einem fehlschlagenden automatisierten Test",
+        "require failing automated reproduction before changing production code"
+      ]
     },
     {
       "id": "reject-and-restart",
       "title": "Reject and restart",
       "description": "Discard an implementation that violated the approved contract while preserving valid evidence.",
       "purpose": "recover",
-      "arguments": []
+      "arguments": [],
+      "aliases": [
+        "reject and restart",
+        "discard bad implementation",
+        "Verwerfe Implementierung",
+        "Neubeginn ab letztem Stand"
+      ],
+      "intents": [
+        "Verwerfe die ungültige Implementierung und beginne beim letzten geprüften Stand",
+        "discard implementation that violated approved contract"
+      ]
     },
     {
       "id": "retry-stop",
@@ -208,8 +420,22 @@
           "required": true,
           "description": "Maximum repeated attributable failures allowed without new discriminating evidence.",
           "minimum": 1,
-          "examples": [2, 3]
+          "examples": [
+            2,
+            3
+          ]
         }
+      ],
+      "aliases": [
+        "retry stop",
+        "bound retries",
+        "cap review rounds",
+        "stop review ping-pong",
+        "Wiederholungen begrenzen"
+      ],
+      "intents": [
+        "stop endless changes required build review loops after a bounded number of failed rounds",
+        "stop speculative retries when repeated failures produce no new evidence"
       ]
     },
     {
@@ -217,14 +443,32 @@
       "title": "Use test-driven development",
       "description": "Apply a RED-GREEN-REFACTOR loop to each behavior-changing slice.",
       "purpose": "execute",
-      "arguments": []
+      "arguments": [],
+      "aliases": [
+        "test driven development",
+        "tdd",
+        "red green refactor",
+        "TDD-Schleife"
+      ],
+      "intents": [
+        "apply red green refactor loop to behavior changing slice",
+        "use test driven development"
+      ]
     },
     {
       "id": "todo-card-handoff",
       "title": "Prepare durable work package",
       "description": "Create durable resumable task-card content without turning it into execution authority.",
       "purpose": "handoff",
-      "arguments": []
+      "arguments": [],
+      "aliases": [
+        "todo card handoff",
+        "durable work package",
+        "resumable task card"
+      ],
+      "intents": [
+        "create durable resumable task-card content without execution authority"
+      ]
     }
   ]
 }

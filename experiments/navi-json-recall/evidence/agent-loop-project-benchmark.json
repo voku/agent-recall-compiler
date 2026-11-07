@@ -1,0 +1,303 @@
+{
+  "status": "success",
+  "source": "voku/agent-loop",
+  "case_count": 18,
+  "cases": [
+    {
+      "reference": "current-recall-idea",
+      "cohort": "project_positive",
+      "query": "Evaluate the experimental Navi-Brain C17 memory daemon against SQLite FTS5 for operating prompt recall. Do not claim success beyond observable evidence; record exact byte budgets, latency, and provenance checks, and reject unverified claims.",
+      "expected_id": "evidence-report",
+      "rationale": "Evidence-first evaluation rule: record observable metrics and provenance without unverified claims.",
+      "llm_candidates_offered": [
+        "evidence-report",
+        "production-ready-handoff",
+        "todo-card-handoff"
+      ],
+      "llm_raw_response": "{\"selected\": \"cand_0\"}",
+      "predictions": {
+        "live_llm_bounded_choice": [
+          "evidence-report"
+        ]
+      }
+    },
+    {
+      "reference": "current-idea-falsification",
+      "cohort": "project_positive",
+      "query": "Challenge the claimed 100% precision of the lexical confidence gate by subjecting it to hard domain-confusion negative queries and adversarial counterexamples to disprove imagined accuracy before promotion.",
+      "expected_id": "adversarial-review",
+      "rationale": "Adversarial testing: treat the current implementation as suspect and test boundary failure modes.",
+      "llm_candidates_offered": [
+        "adversarial-review",
+        "execute-plan-with-blind-spot-check",
+        "production-ready-handoff"
+      ],
+      "llm_raw_response": "{\"selected\": \"cand_0\"}",
+      "predictions": {
+        "live_llm_bounded_choice": [
+          "adversarial-review"
+        ]
+      }
+    },
+    {
+      "reference": "voku/agent-loop#890",
+      "cohort": "project_positive",
+      "query": "Prove whether the new Recall test-oracle guidance actually changes real coding-agent test behavior. Apply the red-green-refactor discipline, record agent-authored test suites, and independently grade discrimination against benign vs breaking mutations.",
+      "expected_id": "test-driven-development",
+      "rationale": "Issue #890: TDD oracle dogfooding and red-green-refactor test authoring.",
+      "llm_candidates_offered": [
+        "test-driven-development",
+        "production-ready-handoff",
+        "todo-card-handoff"
+      ],
+      "llm_raw_response": "{\"selected\": \"cand_0\"}",
+      "predictions": {
+        "live_llm_bounded_choice": [
+          "test-driven-development"
+        ]
+      }
+    },
+    {
+      "reference": "voku/agent-loop#898",
+      "cohort": "project_positive",
+      "query": "Candidate git-tree identities are unpinned and vanish after git gc --prune=now. Write a deterministic failing test reproducing the unreachable object error before modifying any workspace retention code.",
+      "expected_id": "reproduce-before-fix",
+      "rationale": "Issue #898: Bug reproduction: write a failing regression test before modifying production code.",
+      "llm_candidates_offered": [
+        "reproduce-before-fix",
+        "test-driven-development",
+        "retry-stop"
+      ],
+      "llm_raw_response": "{\"selected\": \"cand_0\"}",
+      "predictions": {
+        "live_llm_bounded_choice": [
+          "reproduce-before-fix"
+        ]
+      }
+    },
+    {
+      "reference": "voku/agent-loop#863",
+      "cohort": "project_positive",
+      "query": "Limit execution cycles to 3 and support standing approvals for unattended overnight agent loops, proceeding autonomously through approved tasks without pausing for confirmation after each step.",
+      "expected_id": "continue-until-done",
+      "rationale": "Issue #863: Unattended autonomous loop execution with review round capping.",
+      "llm_candidates_offered": [
+        "continue-until-done",
+        "retry-stop",
+        "todo-card-handoff"
+      ],
+      "llm_raw_response": "{\"selected\": \"cand_0\"}",
+      "predictions": {
+        "live_llm_bounded_choice": [
+          "continue-until-done"
+        ]
+      }
+    },
+    {
+      "reference": "voku/agent-loop#921",
+      "cohort": "project_positive",
+      "query": "A self-shaping Recall document loses the review-evidence qualification clause under the 12,000 UTF-8 byte excerpt boundary. Audit the task definition and prerequisites for missing inputs before changing any document manifests.",
+      "expected_id": "missingness-audit",
+      "rationale": "Issue #921: Prerequisite audit for missing inputs before changing document manifests.",
+      "llm_candidates_offered": [
+        "missingness-audit",
+        "clarify-missing-inputs",
+        "execute-plan-with-blind-spot-check"
+      ],
+      "llm_raw_response": "",
+      "predictions": {
+        "live_llm_bounded_choice": []
+      }
+    },
+    {
+      "reference": "voku/agent-loop#884",
+      "cohort": "project_positive",
+      "query": "Remove legacy deprecated helper methods and unused private shims in the execution gateway, verifying that all existing composer ci checks pass after deletion.",
+      "expected_id": "deletion-first",
+      "rationale": "Cleanup task: simplify code by removing obsolete shims before adding features.",
+      "llm_candidates_offered": [
+        "production-ready-handoff",
+        "breaking-change-review",
+        "multi-pass-correctness-simplify"
+      ],
+      "llm_raw_response": "{\"selected\": \"cand_2\"}",
+      "predictions": {
+        "live_llm_bounded_choice": [
+          "multi-pass-correctness-simplify"
+        ]
+      }
+    },
+    {
+      "reference": "voku/agent-loop#889",
+      "cohort": "project_positive",
+      "query": "Measure non-login shell execution overhead in githooks. Investigate whether recent commits introduced a performance regression in git status or hook dispatch.",
+      "expected_id": "regression-hunt",
+      "rationale": "Issue #889: Performance regression hunting across commits.",
+      "llm_candidates_offered": [
+        "evidence-report",
+        "regression-hunt",
+        "execution-dispatch"
+      ],
+      "llm_raw_response": "{\"selected\": \"cand_1\"}",
+      "predictions": {
+        "live_llm_bounded_choice": [
+          "regression-hunt"
+        ]
+      }
+    },
+    {
+      "reference": "voku/agent-loop#859",
+      "cohort": "project_positive",
+      "query": "Implementation of the typed shell scope notice is complete and verified on fix/859-typed-scope-notice. Prepare the final release notes, verify exact commit SHA, and format the clean handoff.",
+      "expected_id": "production-ready-handoff",
+      "rationale": "Issue #859: Production-ready handoff check on completed branch.",
+      "llm_candidates_offered": [
+        "todo-card-handoff",
+        "production-ready-handoff",
+        "regression-hunt"
+      ],
+      "llm_raw_response": "{\"selected\": \"cand_1\"}",
+      "predictions": {
+        "live_llm_bounded_choice": [
+          "production-ready-handoff"
+        ]
+      }
+    },
+    {
+      "reference": "voku/agent-loop#879",
+      "cohort": "project_positive",
+      "query": "The standing approval request for candidate authorization lacks the risk owner identity and allowed workspace bounds. Stop and request the missing governance parameters before executing the run.",
+      "expected_id": "clarify-missing-inputs",
+      "rationale": "Issue #879: Clarification of missing governance inputs before proceeding.",
+      "llm_candidates_offered": [
+        "adversarial-review",
+        "retry-stop",
+        "execute-plan-with-blind-spot-check"
+      ],
+      "llm_raw_response": "{\"selected\": \"none\"}",
+      "predictions": {
+        "live_llm_bounded_choice": []
+      }
+    },
+    {
+      "reference": "agent-loop-chore-dep-bump",
+      "cohort": "project_out_of_catalog",
+      "query": "Update composer.json to require phpstan/phpstan ^2.3.4 and bump composer.lock dependencies.",
+      "expected_id": null,
+      "rationale": "Routine dependency update chore: no specialized methodology recipe applies; must abstain.",
+      "llm_candidates_offered": [
+        "discovery-first",
+        "plan-horizon",
+        "todo-card-handoff"
+      ],
+      "llm_raw_response": "{\"selected\": \"none\"}",
+      "predictions": {
+        "live_llm_bounded_choice": []
+      }
+    },
+    {
+      "reference": "agent-loop-chore-ci-cache",
+      "cohort": "project_out_of_catalog",
+      "query": "Configure GitHub Actions matrix runner to cache ~/.composer/cache across workflow runs.",
+      "expected_id": null,
+      "rationale": "Workflow infrastructure setup: out of catalog for operating prompt recipes; must abstain.",
+      "llm_candidates_offered": [
+        "todo-card-handoff"
+      ],
+      "llm_raw_response": "{\"selected\": \"none\"}",
+      "predictions": {
+        "live_llm_bounded_choice": []
+      }
+    },
+    {
+      "reference": "agent-loop-chore-editorconfig",
+      "cohort": "project_out_of_catalog",
+      "query": "Add an EditorConfig file to enforce 4 spaces indentation and trim trailing whitespace in .php files.",
+      "expected_id": null,
+      "rationale": "Editor formatting configuration: no specialized operating prompt recipe applies; must abstain.",
+      "llm_candidates_offered": [
+        "discovery-first",
+        "clarify-missing-inputs"
+      ],
+      "llm_raw_response": "{\"selected\": \"none\"}",
+      "predictions": {
+        "live_llm_bounded_choice": []
+      }
+    },
+    {
+      "reference": "agent-loop-chore-phpdoc-gen",
+      "cohort": "project_out_of_catalog",
+      "query": "Generate phpDocumentor API documentation HTML into build/docs/ and publish to GitHub Pages.",
+      "expected_id": null,
+      "rationale": "Documentation generation build step: no recipe applies; must abstain.",
+      "llm_candidates_offered": [
+        "production-ready-handoff"
+      ],
+      "llm_raw_response": "{\"selected\": \"none\"}",
+      "predictions": {
+        "live_llm_bounded_choice": []
+      }
+    },
+    {
+      "reference": "daily-ops-coffee-filter",
+      "cohort": "hard_domain_negative",
+      "query": "Inspect the office espresso machine water filter and descale the heating element.",
+      "expected_id": null,
+      "rationale": "Appliance maintenance: non-software engineering task; must abstain.",
+      "llm_candidates_offered": [
+        "reject-and-restart",
+        "discovery-first",
+        "missingness-audit"
+      ],
+      "llm_raw_response": "{\"selected\": \"none\"}",
+      "predictions": {
+        "live_llm_bounded_choice": []
+      }
+    },
+    {
+      "reference": "daily-ops-lease-contract",
+      "cohort": "hard_domain_negative",
+      "query": "Review the annual office lease contract clause regarding subletting and security deposit refund.",
+      "expected_id": null,
+      "rationale": "Legal lease contract: non-software engineering task; must abstain.",
+      "llm_candidates_offered": [
+        "adversarial-review",
+        "deletion-first",
+        "breaking-change-review"
+      ],
+      "llm_raw_response": "{\"selected\": \"none\"}",
+      "predictions": {
+        "live_llm_bounded_choice": []
+      }
+    },
+    {
+      "reference": "daily-ops-football-sprint",
+      "cohort": "hard_domain_negative",
+      "query": "Plan the sprint training drills for the local football team before the Saturday tournament.",
+      "expected_id": null,
+      "rationale": "Athletic training schedule: non-software engineering task; must abstain.",
+      "llm_candidates_offered": [
+        "execute-plan-with-blind-spot-check",
+        "plan-horizon"
+      ],
+      "llm_raw_response": "{\"selected\": \"none\"}",
+      "predictions": {
+        "live_llm_bounded_choice": []
+      }
+    },
+    {
+      "reference": "daily-ops-calendar-meeting",
+      "cohort": "hard_domain_negative",
+      "query": "Resolve conflicting calendar invites for the quarterly shareholder meeting in Frankfurt.",
+      "expected_id": null,
+      "rationale": "Calendar scheduling conflict: non-software engineering task; must abstain.",
+      "llm_candidates_offered": [
+        "todo-card-handoff"
+      ],
+      "llm_raw_response": "{\"selected\": \"none\"}",
+      "predictions": {
+        "live_llm_bounded_choice": []
+      }
+    }
+  ]
+}

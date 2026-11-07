@@ -1,0 +1,136 @@
+{
+  "schema_version": "1.0",
+  "purpose": "Independent blind holdout benchmark dataset. Verified to have ZERO exact phrase or subphrase overlap with any registered aliases or intents in operating-prompts.metadata.json.",
+  "queries": [
+    {
+      "cohort": "blind_positive",
+      "query": "A user reported a 500 error when submitting the checkout form with an empty cart. Write a failing integration test demonstrating the bug before touching any handler code.",
+      "expected_id": "reproduce-before-fix"
+    },
+    {
+      "cohort": "blind_positive",
+      "query": "Our code audit revealed dead PHP 7 compatibility shims and unused deprecated helper classes from 2021. Remove the dead code and verify existing tests still pass.",
+      "expected_id": "deletion-first"
+    },
+    {
+      "cohort": "blind_positive",
+      "query": "The latency of our search endpoint increased by 300ms between v2.4 and v2.5. Use git bisect and profiling traces to locate the offending commit.",
+      "expected_id": "regression-hunt"
+    },
+    {
+      "cohort": "blind_positive",
+      "query": "We want to rename the public method getStatus() to fetchCurrentStatus() in the core client SDK. Check all downstream consumers and deprecation policies.",
+      "expected_id": "breaking-change-review"
+    },
+    {
+      "cohort": "blind_positive",
+      "query": "The incoming ticket only says notifications broken. Stop and ask the customer for the webhook payload, tenant ID, and timestamp before starting work.",
+      "expected_id": "clarify-missing-inputs"
+    },
+    {
+      "cohort": "blind_positive",
+      "query": "Feature implementation is done, all PHPUnit gates pass, and changelog is written. Prepare the final release notes and verify the commit sha before handing off to ops.",
+      "expected_id": "production-ready-handoff"
+    },
+    {
+      "cohort": "blind_positive",
+      "query": "Create a new ValueObject for postal codes by first writing the specification tests for valid and invalid formats, then writing the implementation.",
+      "expected_id": "test-driven-development"
+    },
+    {
+      "cohort": "blind_positive",
+      "query": "Play red-team devil's advocate on this newly implemented JWT validation logic and try to find bypass vectors or algorithmic edge cases.",
+      "expected_id": "adversarial-review"
+    },
+    {
+      "cohort": "blind_positive",
+      "query": "Inspect our new user registration workflow to identify what critical edge cases, rate limits, or error handling paths were forgotten entirely.",
+      "expected_id": "missingness-audit"
+    },
+    {
+      "cohort": "blind_positive",
+      "query": "We have 15 independent migrations to run in sequence; proceed autonomously through the queue without pausing for manual confirmation after each migration.",
+      "expected_id": "continue-until-done"
+    },
+    {
+      "cohort": "blind_hard_negative",
+      "query": "How should a city transit authority inspect water pipeline infrastructure for rust and pressure leaks?",
+      "expected_id": null
+    },
+    {
+      "cohort": "blind_hard_negative",
+      "query": "Drafting the legal terms for a corporate merger and stock acquisition between two retail companies.",
+      "expected_id": null
+    },
+    {
+      "cohort": "blind_hard_negative",
+      "query": "What are the best soil aeration and pruning techniques for an organic apple orchard in spring?",
+      "expected_id": null
+    },
+    {
+      "cohort": "blind_hard_negative",
+      "query": "Planning a multi-stage cycling sprint training schedule for an amateur road race team.",
+      "expected_id": null
+    },
+    {
+      "cohort": "blind_hard_negative",
+      "query": "Financial audit checklist for reconciling corporate quarterly expense reports against bank statements.",
+      "expected_id": null
+    },
+    {
+      "cohort": "blind_hard_negative",
+      "query": "How to resolve conflicting family schedules for Thanksgiving dinner and holiday travel bookings.",
+      "expected_id": null
+    },
+    {
+      "cohort": "blind_hard_negative",
+      "query": "Organizing an emergency evacuation drill and perimeter fence inspection for a warehouse facility.",
+      "expected_id": null
+    },
+    {
+      "cohort": "blind_hard_negative",
+      "query": "Baking artisan sourdough bread: calculating hydration percentages and fermentation timing.",
+      "expected_id": null
+    },
+    {
+      "cohort": "blind_out_of_catalog",
+      "query": "Configure an Nginx reverse proxy to terminate SSL with Let's Encrypt certificates and HTTP/2.",
+      "expected_id": null
+    },
+    {
+      "cohort": "blind_out_of_catalog",
+      "query": "Design a responsive CSS grid layout with Tailwind for a multi-column pricing table.",
+      "expected_id": null
+    },
+    {
+      "cohort": "blind_out_of_catalog",
+      "query": "Tune PostgreSQL autovacuum settings and create a composite index on created_at and user_id.",
+      "expected_id": null
+    },
+    {
+      "cohort": "blind_out_of_catalog",
+      "query": "Train a PyTorch convolutional neural network on CIFAR-10 with AdamW optimizer and cosine annealing.",
+      "expected_id": null
+    },
+    {
+      "cohort": "blind_out_of_catalog",
+      "query": "Write an Ansible playbook to provision three Ubuntu 24.04 nodes with Docker and containerd.",
+      "expected_id": null
+    },
+    {
+      "cohort": "blind_out_of_catalog",
+      "query": "Setup a Prometheus exporter and Grafana dashboard for monitoring Redis cluster memory usage.",
+      "expected_id": null
+    },
+    {
+      "cohort": "blind_out_of_catalog",
+      "query": "Implement an AES-256-GCM hardware-accelerated encryption routine using ARM NEON intrinsics in assembly.",
+      "expected_id": null
+    },
+    {
+      "cohort": "blind_out_of_catalog",
+      "query": "Create a Blender Python script to procedurally generate low-poly tree meshes for a video game.",
+      "expected_id": null
+    }
+  ]
+}

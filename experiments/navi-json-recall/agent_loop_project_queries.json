@@ -1,0 +1,132 @@
+{
+  "schema_version": "1.0",
+  "purpose": "Verifiable benchmark from real voku/agent-loop issues, pull requests, project chores, and the current recall research idea itself.",
+  "queries": [
+    {
+      "cohort": "project_positive",
+      "reference": "current-recall-idea",
+      "query": "Evaluate the experimental Navi-Brain C17 memory daemon against SQLite FTS5 for operating prompt recall. Do not claim success beyond observable evidence; record exact byte budgets, latency, and provenance checks, and reject unverified claims.",
+      "expected_id": "evidence-report",
+      "rationale": "Evidence-first evaluation rule: record observable metrics and provenance without unverified claims."
+    },
+    {
+      "cohort": "project_positive",
+      "reference": "current-idea-falsification",
+      "query": "Challenge the claimed 100% precision of the lexical confidence gate by subjecting it to hard domain-confusion negative queries and adversarial counterexamples to disprove imagined accuracy before promotion.",
+      "expected_id": "adversarial-review",
+      "rationale": "Adversarial testing: treat the current implementation as suspect and test boundary failure modes."
+    },
+    {
+      "cohort": "project_positive",
+      "reference": "voku/agent-loop#890",
+      "query": "Prove whether the new Recall test-oracle guidance actually changes real coding-agent test behavior. Apply the red-green-refactor discipline, record agent-authored test suites, and independently grade discrimination against benign vs breaking mutations.",
+      "expected_id": "test-driven-development",
+      "rationale": "Issue #890: TDD oracle dogfooding and red-green-refactor test authoring."
+    },
+    {
+      "cohort": "project_positive",
+      "reference": "voku/agent-loop#898",
+      "query": "Candidate git-tree identities are unpinned and vanish after git gc --prune=now. Write a deterministic failing test reproducing the unreachable object error before modifying any workspace retention code.",
+      "expected_id": "reproduce-before-fix",
+      "rationale": "Issue #898: Bug reproduction: write a failing regression test before modifying production code."
+    },
+    {
+      "cohort": "project_positive",
+      "reference": "voku/agent-loop#863",
+      "query": "Limit execution cycles to 3 and support standing approvals for unattended overnight agent loops, proceeding autonomously through approved tasks without pausing for confirmation after each step.",
+      "expected_id": "continue-until-done",
+      "rationale": "Issue #863: Unattended autonomous loop execution with review round capping."
+    },
+    {
+      "cohort": "project_positive",
+      "reference": "voku/agent-loop#921",
+      "query": "A self-shaping Recall document loses the review-evidence qualification clause under the 12,000 UTF-8 byte excerpt boundary. Audit the task definition and prerequisites for missing inputs before changing any document manifests.",
+      "expected_id": "missingness-audit",
+      "rationale": "Issue #921: Prerequisite audit for missing inputs before changing document manifests."
+    },
+    {
+      "cohort": "project_positive",
+      "reference": "voku/agent-loop#884",
+      "query": "Remove legacy deprecated helper methods and unused private shims in the execution gateway, verifying that all existing composer ci checks pass after deletion.",
+      "expected_id": "deletion-first",
+      "rationale": "Cleanup task: simplify code by removing obsolete shims before adding features."
+    },
+    {
+      "cohort": "project_positive",
+      "reference": "voku/agent-loop#889",
+      "query": "Measure non-login shell execution overhead in githooks. Investigate whether recent commits introduced a performance regression in git status or hook dispatch.",
+      "expected_id": "regression-hunt",
+      "rationale": "Issue #889: Performance regression hunting across commits."
+    },
+    {
+      "cohort": "project_positive",
+      "reference": "voku/agent-loop#859",
+      "query": "Implementation of the typed shell scope notice is complete and verified on fix/859-typed-scope-notice. Prepare the final release notes, verify exact commit SHA, and format the clean handoff.",
+      "expected_id": "production-ready-handoff",
+      "rationale": "Issue #859: Production-ready handoff check on completed branch."
+    },
+    {
+      "cohort": "project_positive",
+      "reference": "voku/agent-loop#879",
+      "query": "The standing approval request for candidate authorization lacks the risk owner identity and allowed workspace bounds. Stop and request the missing governance parameters before executing the run.",
+      "expected_id": "clarify-missing-inputs",
+      "rationale": "Issue #879: Clarification of missing governance inputs before proceeding."
+    },
+    {
+      "cohort": "project_out_of_catalog",
+      "reference": "agent-loop-chore-dep-bump",
+      "query": "Update composer.json to require phpstan/phpstan ^2.3.4 and bump composer.lock dependencies.",
+      "expected_id": null,
+      "rationale": "Routine dependency update chore: no specialized methodology recipe applies; must abstain."
+    },
+    {
+      "cohort": "project_out_of_catalog",
+      "reference": "agent-loop-chore-ci-cache",
+      "query": "Configure GitHub Actions matrix runner to cache ~/.composer/cache across workflow runs.",
+      "expected_id": null,
+      "rationale": "Workflow infrastructure setup: out of catalog for operating prompt recipes; must abstain."
+    },
+    {
+      "cohort": "project_out_of_catalog",
+      "reference": "agent-loop-chore-editorconfig",
+      "query": "Add an EditorConfig file to enforce 4 spaces indentation and trim trailing whitespace in .php files.",
+      "expected_id": null,
+      "rationale": "Editor formatting configuration: no specialized operating prompt recipe applies; must abstain."
+    },
+    {
+      "cohort": "project_out_of_catalog",
+      "reference": "agent-loop-chore-phpdoc-gen",
+      "query": "Generate phpDocumentor API documentation HTML into build/docs/ and publish to GitHub Pages.",
+      "expected_id": null,
+      "rationale": "Documentation generation build step: no recipe applies; must abstain."
+    },
+    {
+      "cohort": "hard_domain_negative",
+      "reference": "daily-ops-coffee-filter",
+      "query": "Inspect the office espresso machine water filter and descale the heating element.",
+      "expected_id": null,
+      "rationale": "Appliance maintenance: non-software engineering task; must abstain."
+    },
+    {
+      "cohort": "hard_domain_negative",
+      "reference": "daily-ops-lease-contract",
+      "query": "Review the annual office lease contract clause regarding subletting and security deposit refund.",
+      "expected_id": null,
+      "rationale": "Legal lease contract: non-software engineering task; must abstain."
+    },
+    {
+      "cohort": "hard_domain_negative",
+      "reference": "daily-ops-football-sprint",
+      "query": "Plan the sprint training drills for the local football team before the Saturday tournament.",
+      "expected_id": null,
+      "rationale": "Athletic training schedule: non-software engineering task; must abstain."
+    },
+    {
+      "cohort": "hard_domain_negative",
+      "reference": "daily-ops-calendar-meeting",
+      "query": "Resolve conflicting calendar invites for the quarterly shareholder meeting in Frankfurt.",
+      "expected_id": null,
+      "rationale": "Calendar scheduling conflict: non-software engineering task; must abstain."
+    }
+  ]
+}

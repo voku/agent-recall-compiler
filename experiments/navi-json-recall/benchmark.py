@@ -20,7 +20,10 @@ from pathlib import Path
 from typing import Any, Callable
 
 BUDGETS = (2048, 8192)
-COHORTS = ("exact_id", "english_paraphrase", "german_paraphrase", "unanswerable")
+COHORTS = (
+    "exact_id", "english_paraphrase", "german_paraphrase", "unanswerable",
+    "agent_loop_issue", "hard_unanswerable",
+)
 EXPECTED_COUNTS = (4, 16, 6, 4)
 
 
@@ -48,6 +51,26 @@ def query_tokens(query: str) -> list[str]:
     return list(dict.fromkeys(w for w in words if len(w) >= 2))
 
 
+STOP_WORDS = {
+    "a", "an", "the", "in", "on", "at", "to", "for", "of", "with", "by", "from",
+    "is", "are", "was", "were", "be", "been", "being", "have", "has", "had",
+    "do", "does", "did", "can", "could", "will", "would", "shall", "should",
+    "may", "might", "must", "where", "what", "who", "when", "why", "how",
+    "which", "there", "this", "that", "these", "those", "i", "you", "he", "she",
+    "it", "we", "they", "me", "him", "her", "us", "them", "my", "your", "his",
+    "their", "our", "and", "or", "but", "not", "no", "nor", "so", "than", "too",
+    "very", "just", "during", "der", "die", "das", "ein", "eine", "einer", "und", "oder",
+    "im", "am", "auf", "aus", "bei", "mit", "nach", "von", "zu", "zum",
+    "zur", "sind", "war", "waren", "wird", "werden", "wer", "wie", "welche", "welcher"
+}
+
+
+def query_content_tokens(query: str) -> list[str]:
+    words = re.findall(r"[\w]+", query.casefold(), flags=re.UNICODE)
+    meaningful = [w for w in words if w not in STOP_WORDS and len(w) >= 2]
+    return list(dict.fromkeys(meaningful))
+
+
 def fts_rank(conn: sqlite3.Connection, query: str) -> list[str]:
     tokens = query_tokens(query)
     if not tokens:
@@ -69,6 +92,194 @@ def build_fts(source: dict[str, str]) -> sqlite3.Connection:
          for identity, template in source.items()],
     )
     return conn
+
+
+def build_metadata_fts(
+    metadata_file: Path,
+    source: dict[str, str],
+    *,
+    include_enrichment: bool = True,
+) -> tuple[sqlite3.Connection, dict[str, Any]]:
+    """Index owner-supplied metadata only if its schema exactly matches the canonical source."""
+    if metadata_file.is_symlink() or not metadata_file.is_file():
+        raise ValueError("Required metadata JSON is missing or is a symlink")
+    raw = metadata_file.read_bytes()
+    if not raw or len(raw) > 1024 * 1024:
+        raise ValueError("Required metadata JSON is empty or oversized")
+    try:
+        document = json.loads(raw)
+    except (ValueError, UnicodeError) as exc:
+        raise ValueError("Required metadata JSON cannot be decoded") from exc
+    if not isinstance(document, dict) or document.get("schema_version") != "1.0":
+        raise ValueError("Unsupported metadata schema")
+    recipes = document.get("recipes")
+    if not isinstance(recipes, list):
+        raise ValueError("Required metadata recipes must be a list")
+
+    meta_by_id: dict[str, Any] = {}
+    for recipe in recipes:
+        if not isinstance(recipe, dict):
+            raise ValueError("Invalid metadata recipe")
+        identity = recipe.get("id")
+        if not isinstance(identity, str) or not identity:
+            raise ValueError("Invalid metadata identity")
+        if identity in meta_by_id:
+            raise ValueError("duplicate metadata identity: " + identity)
+        for field_name in ("title", "description", "purpose"):
+            if not isinstance(recipe.get(field_name), str):
+                raise ValueError("Invalid metadata " + field_name + ": " + identity)
+        arguments = recipe.get("arguments")
+        if not isinstance(arguments, list):
+            raise ValueError("Invalid metadata arguments: " + identity)
+        if any(
+            not isinstance(arg, dict)
+            or not isinstance(arg.get("name"), str)
+            or not isinstance(arg.get("description"), str)
+            for arg in arguments
+        ):
+            raise ValueError("Invalid metadata argument entry: " + identity)
+        meta_by_id[identity] = recipe
+
+    if meta_by_id.keys() != source.keys():
+        unknown = sorted(set(meta_by_id) - set(source))
+        missing = sorted(set(source) - set(meta_by_id))
+        raise ValueError(
+            f"Metadata identity mismatch: unknown={unknown}, missing={missing}"
+        )
+
+    conn = sqlite3.connect(":memory:")
+    try:
+        conn.execute(
+            "CREATE VIRTUAL TABLE meta_prompts USING fts5("
+            "identity UNINDEXED, title, aliases, intents, description, purpose, arguments, template, "
+            "tokenize='unicode61')"
+        )
+        for identity, template in source.items():
+            recipe = meta_by_id[identity]
+            argument_text = " ".join(
+                arg["name"] + " " + arg["description"]
+                for arg in recipe.get("arguments", [])
+            )
+            aliases_text = " ".join(recipe.get("aliases", [])) if include_enrichment else ""
+            intents_text = " ".join(recipe.get("intents", [])) if include_enrichment else ""
+            conn.execute(
+                "INSERT INTO meta_prompts VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    identity, recipe["title"], aliases_text, intents_text,
+                    recipe["description"], recipe["purpose"], argument_text, template,
+                ),
+            )
+    except sqlite3.Error:
+        conn.close()
+        raise
+    if not include_enrichment:
+        meta_by_id = {
+            identity: {**recipe, "aliases": [], "intents": []}
+            for identity, recipe in meta_by_id.items()
+        }
+    return conn, meta_by_id
+
+
+def metadata_bounded_rank(
+    conn: sqlite3.Connection,
+    meta_by_id: dict[str, Any],
+    indexed: dict[str, str],
+    query: str,
+    min_query_coverage: float = 0.0,
+) -> list[str]:
+    """Weighted FTS5 candidate ranking; exact word evidence, not substring guesses."""
+    if not 0.0 <= min_query_coverage <= 1.0:
+        raise ValueError("Query coverage gate must be between 0 and 1")
+    if query in indexed:
+        return [query]
+    tokens = query_content_tokens(query)
+    if not tokens:
+        return []
+    expr = " OR ".join('"' + token.replace('"', '""') + '"' for token in tokens)
+    try:
+        rows = conn.execute(
+            "SELECT identity, bm25(meta_prompts, 0.0, 5.0, 4.0, 4.0, 3.0, 2.0, 1.0, 1.0) AS score "
+            "FROM meta_prompts WHERE meta_prompts MATCH ? ORDER BY score ASC, identity LIMIT 5",
+            (expr,),
+        ).fetchall()
+    except sqlite3.Error as exc:
+        raise RuntimeError("Metadata FTS5 query failed") from exc
+
+    accepted: list[str] = []
+    for identity_raw, _ in rows:
+        identity = str(identity_raw)
+        recipe = meta_by_id.get(identity)
+        template = indexed.get(identity)
+        if not isinstance(recipe, dict) or not isinstance(template, str):
+            raise ValueError("Metadata FTS5 returned unknown canonical identity")
+        terms = " ".join(
+            [
+                identity.replace("-", " "),
+                recipe["title"],
+                " ".join(recipe.get("aliases", [])),
+                " ".join(recipe.get("intents", [])),
+                recipe["description"],
+                recipe["purpose"],
+                template,
+                *(
+                    arg["name"] + " " + arg["description"]
+                    for arg in recipe.get("arguments", [])
+                ),
+            ]
+        ).casefold()
+        if any("_" in token for token in tokens):
+            # Unicode61 splits underscores inside a *quoted* token into one
+            # phrase. Require the entire phrase, never just one component.
+            source_words = re.findall(r"[^\W_]+", terms, flags=re.UNICODE)
+            source_phrase = " " + " ".join(source_words) + " "
+            matched_tokens = sum(
+                1
+                for token in tokens
+                if (" " + " ".join(re.findall(r"[^\W_]+", token, flags=re.UNICODE)) + " ")
+                in source_phrase
+            )
+        else:
+            # Preserve historical ranking on already recorded non-compound
+            # fixtures, while closing the underscore/SQLite mismatch.
+            source_terms = set(re.findall(r"[\w]+", terms, flags=re.UNICODE))
+            matched_tokens = sum(1 for token in tokens if token in source_terms)
+        # Multi-token intent needs at least two whole-term matches.
+        if len(tokens) >= 3 and matched_tokens < 2:
+            continue
+        if matched_tokens / len(tokens) < min_query_coverage:
+            continue
+        accepted.append(identity)
+    return accepted
+
+
+def bounded_choice_rerank(
+    query: str,
+    candidates: list[str],
+    meta_by_id: dict[str, Any],
+    evaluator: Any = None,
+) -> list[str]:
+    """Validate a supplied evaluator's selection; never simulate an LLM.
+
+    There is no model in these CI jobs. Without a genuine evaluator the
+    bounded-choice experiment must abstain and must not report accuracy.
+    """
+    if not candidates or evaluator is None:
+        return []
+    if not callable(evaluator):
+        raise TypeError("Bounded-choice evaluator must be callable")
+    candidate_details = [
+        {
+            "id": identity,
+            "title": meta_by_id[identity].get("title", ""),
+            "description": meta_by_id[identity].get("description", ""),
+            "purpose": meta_by_id[identity].get("purpose", ""),
+        }
+        for identity in candidates
+    ]
+    decision = evaluator(query, candidate_details)
+    if decision is None or decision == "none":
+        return []
+    return [decision] if isinstance(decision, str) and decision in candidates else []
 
 
 def evaluate(
@@ -94,6 +305,7 @@ def main() -> int:
     parser.add_argument("--binary", required=True, type=Path)
     parser.add_argument("--source", required=True, type=Path)
     parser.add_argument("--queries", required=True, type=Path)
+    parser.add_argument("--challenge", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     options = parser.parse_args()
     options.output.parent.mkdir(parents=True, exist_ok=True)
@@ -106,20 +318,56 @@ def main() -> int:
     assert fixture["schema_version"] == "1.0"
     cases = fixture["queries"]
     assert isinstance(cases, list)
-    assert [sum(int(x["cohort"] == category) for x in cases) for category in COHORTS] == list(EXPECTED_COUNTS)
+    assert [
+        sum(int(x["cohort"] == category) for x in cases)
+        for category in COHORTS[:4]
+    ] == list(EXPECTED_COUNTS), "Original thirty-query cohort changed"
+    challenge_bytes = options.challenge.resolve(strict=True).read_bytes()
+    challenge = json.loads(challenge_bytes)
+    assert challenge.get("schema_version") == "1.0"
+    challenge_cases = challenge.get("cases")
+    assert isinstance(challenge_cases, list)
+    assert [
+        sum(int(x["cohort"] == category) for x in challenge_cases)
+        for category in COHORTS[4:]
+    ] == [8, 8], "Unregistered challenge cohort size"
+    assert all(
+        x["cohort"] in COHORTS[4:] for x in challenge_cases
+    ), "Challenge cohort label is invalid"
+    assert all(
+        x.get("expected_id") is None for x in challenge_cases
+        if x["cohort"] == "hard_unanswerable"
+    ), "Negative challenge must remain unanswerable"
+    assert all(
+        isinstance(x.get("issue"), str) and x["issue"].startswith("voku/agent-loop#")
+        for x in challenge_cases if x["cohort"] == "agent_loop_issue"
+    ), "Issue challenge must identify real owner issues"
+    cases = [*cases, *challenge_cases]
     assert len(set((x["cohort"], x["query"]) for x in cases)) == len(cases)
     assert all(x["expected_id"] is None or x["expected_id"] in indexed for x in cases)
 
     content = {identity: native["envelope"](identity, source_sha, template)
                for identity, template in indexed.items()}
     fts = build_fts(indexed)
+    metadata_file = source_file.with_name("operating-prompts.metadata.json")
+    meta_fts, meta_by_id = build_metadata_fts(metadata_file, indexed)
     report: dict[str, Any] = {
         "status": "fail",
         "source_sha256": source_sha,
+        "metadata_sha256": hashlib.sha256(metadata_file.read_bytes()).hexdigest(),
         "queries_sha256": hashlib.sha256(fixture_bytes).hexdigest(),
+        "issue_challenge_sha256": hashlib.sha256(challenge_bytes).hexdigest(),
+        "issue_challenge_count": len(challenge_cases),
         "native_upstream_sha": native["UPSTREAM_SHA"],
         "index_entries": len(indexed),
-        "conditions": ["native_activate", "sqlite_fts5", "json_exact_id", "json_first_fts5"],
+        "conditions": [
+            "native_activate",
+            "sqlite_fts5",
+            "json_exact_id",
+            "json_first_fts5",
+            "metadata_bounded_choice",
+            "metadata_coverage_gate_0_6",
+        ],
         "byte_budgets": BUDGETS,
         "no_llm": True,
         "cases": [],
@@ -165,14 +413,29 @@ def main() -> int:
                         start = time.perf_counter_ns()
                         direct_ids = [query] if query in indexed else []
                         direct_ns = time.perf_counter_ns() - start
+
                         start = time.perf_counter_ns()
                         hybrid_ids = [query] if query in indexed else fts_rank(fts, query)
                         hybrid_ns = time.perf_counter_ns() - start
+
+                        start = time.perf_counter_ns()
+                        meta_ids = metadata_bounded_rank(meta_fts, meta_by_id, indexed, query)
+                        meta_ns = time.perf_counter_ns() - start
+
+                        start = time.perf_counter_ns()
+                        covered_ids = metadata_bounded_rank(
+                            meta_fts, meta_by_id, indexed, query,
+                            min_query_coverage=0.6,
+                        )
+                        covered_ns = time.perf_counter_ns() - start
+
                         all_results = {
                             "native_activate": (native_ids, native_ns),
                             "sqlite_fts5": (fts_ids, fts_ns),
                             "json_exact_id": (direct_ids, direct_ns),
                             "json_first_fts5": (hybrid_ids, hybrid_ns),
+                            "metadata_bounded_choice": (meta_ids, meta_ns),
+                            "metadata_coverage_gate_0_6": (covered_ids, covered_ns),
                         }
                         if query in indexed and hybrid_ids != [query]:
                             raise AssertionError("Direct JSON authority was not preferred")
@@ -199,6 +462,7 @@ def main() -> int:
                         report["cases"].append({
                             "cohort": case["cohort"],
                             "query": query,
+                            "issue": case.get("issue"),
                             "expected_id": expected,
                             "methods": metrics,
                         })
@@ -217,9 +481,16 @@ def main() -> int:
                 ["evidence-report"] if "evidence-report" in indexed
                 else fts_rank(fts, "evidence-report")
             )
-            offline_paraphrase_ids = fts_rank(fts, "mutation tests coverage")
-            if offline_ids != ["evidence-report"] or "coverage-mutation" not in offline_paraphrase_ids[:3]:
-                raise AssertionError("Deterministic JSON-first fallback failed with native daemon stopped")
+            offline_fts_ids = fts_rank(fts, "evidence-report")
+            offline_meta_ids = metadata_bounded_rank(meta_fts, meta_by_id, indexed, "mutation tests coverage")
+            offline_no_model_ids = bounded_choice_rerank("mutation tests coverage", offline_meta_ids, meta_by_id)
+            if (
+                offline_ids != ["evidence-report"]
+                or not offline_fts_ids
+                or "coverage-mutation" not in offline_meta_ids
+                or offline_no_model_ids != []
+            ):
+                raise AssertionError("Deterministic JSON-first / metadata fallback failed with native daemon stopped")
             report["offline_native_unavailable_fallback"] = "pass"
 
         summary: dict[str, Any] = {}
@@ -246,7 +517,7 @@ def main() -> int:
             }
         report["summary"] = summary
         report["status"] = "pass"
-        print("Native vs SQLite-FTS5 vs direct JSON vs JSON-first-FTS5: observational comparison")
+        print("Native / SQLite / JSON / metadata / coverage gates: observational comparison")
         for name, info in summary.items():
             print(name, "mean_ms", info["mean_warm_query_ms"])
             for byte_budget in BUDGETS:
