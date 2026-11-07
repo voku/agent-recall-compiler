@@ -1,0 +1,74 @@
+name: Native JSON Recall candidate (experimental)
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/native-json-recall.yml'
+      - 'experiments/navi-json-recall/**'
+      - 'resources/skills/agent-recall-consumer/operating-prompts.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-json-recall:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Checkout current JSON source and experimental revalidator
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install native build requirements
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends build-essential libsqlite3-dev
+
+      - name: Fetch exact public upstream (no native code vendored)
+        shell: bash
+        env:
+          NAVI_SHA: 39880c39e0d5af2bff5c3ba5f91c0b94aecbbff8
+        run: |
+          set -euo pipefail
+          git clone --no-checkout https://github.com/hparadiz/Navi-Brain.git "$RUNNER_TEMP/navi-brain"
+          git -C "$RUNNER_TEMP/navi-brain" checkout --detach "$NAVI_SHA"
+          test "$(git -C "$RUNNER_TEMP/navi-brain" rev-parse HEAD)" = "$NAVI_SHA"
+
+      - name: Compile native memory implementation from pinned upstream
+        run: make -C "$RUNNER_TEMP/navi-brain/memories"
+
+      - name: Prove that native candidates must revalidate against owner JSON
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          python3 experiments/navi-json-recall/probe.py \
+            --binary "$RUNNER_TEMP/navi-brain/memories/build/tokmem" \
+            --source resources/skills/agent-recall-consumer/operating-prompts.json \
+            --output evidence/native-json-recall.json
+
+      - name: Compare native activation vs SQLite FTS5 vs exact JSON under matched byte budgets
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile experiments/navi-json-recall/probe.py experiments/navi-json-recall/benchmark.py
+          python3 experiments/navi-json-recall/benchmark.py \
+            --binary "$RUNNER_TEMP/navi-brain/memories/build/tokmem" \
+            --source resources/skills/agent-recall-consumer/operating-prompts.json \
+            --queries experiments/navi-json-recall/held-out-queries.json \
+            --output evidence/native-json-benchmark.json
+
+      - name: Upload structured experimental evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-json-recall-evidence
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            evidence/native-json-recall.json
+            evidence/native-json-benchmark.json
