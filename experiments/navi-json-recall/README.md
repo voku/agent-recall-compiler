@@ -235,18 +235,26 @@ a fundamental architectural distinction:
    workflow orchestration. Operating prompt recipes are fixed, versioned JSON
    artifacts; recalled candidates carry zero authority (`use=context_only`).
 3. **Retrieval Mechanics & Latency:**
-   - In-process SQLite FTS5 over structured JSON metadata operates in **~0.07 ms**
-     with zero external processes, zero socket IPC, and standard PHP/SQLite runtime dependencies.
-   - The resident C `tokmem` daemon operates in **~1.04 ms** and requires an external
-     background daemon, C17 compiler, POSIX threads, and Unix socket communication.
+   - This experimental in-process SQLite FTS5 path measured **~0.07 ms**
+     and the pinned native `tokmem` path **~1.04 ms** on one warmed,
+     small-catalog benchmark, including different transport and verification costs.
+     These are **sample-specific timings**, not a controlled proof of intrinsic
+     speed or a production PHP integration: the in-process ranking in this
+     experiment is implemented in Python using SQLite FTS5.
+   - Native `tokmem` requires a separately built C runtime, resident process
+     and interprocess communication. No demonstrated benefit justifies
+     introducing those dependencies for this 22-recipe static catalog.
 4. **The Semantic Abstention Boundary:**
    Neither `tokmem` spreading activation nor lexical FTS5 can determine semantic
    task applicability or cleanly abstain on hard off-domain or topic-only queries.
    Both algorithms rank the closest candidate without intent comprehension.
-   The demonstrated improvement in abstention and selection accuracy is achieved
-   by **structured JSON metadata** (intents, triggers, exclusions) coupled with
-   **fail-closed Bounded Choice prompting** (`cand_0..cand_N, [none]`), not by
-   a resident C memory daemon.
+   In this repository the 22 checked-in recipes contain only **`aliases`
+   and `intents`** as enrichment fields; **`triggers` and `exclusions` do
+   not exist in the current metadata schema**. The optional bounded-choice
+   prompt can help distinguish a requested workflow from a mere topic mention,
+   but the existing data consists of small, recorded local-model experiments.
+   CI replays them without executing a model. Fail-closed parser behavior is
+   established; generalized semantic reliability is not.
 
 
 ### Independent JSON/SQLite-only CI job
@@ -350,6 +358,43 @@ applicability-prompt hypothesis. CI confirms deterministic replay,
 provenance hashes and parser agreement; **CI does not call a model or
 demonstrate independent replication of the observed inference**. Keep
 the opt-in default and the original authority boundaries unchanged.
+
+### Agent-loop project case replay: 15/18, not 17/18
+
+`agent_loop_project_queries.json` declares **ten positive, four software
+out-of-catalog and four off-domain** cases. The committed
+`evidence/agent-loop-project-benchmark.json` records responses attributed
+to a local model. Direct recomputation from its 18 rows yields:
+
+| Cohort | Correct explicit model decisions | Other outcomes |
+| --- | ---: | --- |
+| Ten agent-loop positives | **7/10** | One empty output; two wrong/nonselected recipes |
+| Four software tasks without a catalog recipe | **4/4** explicit `none` | No recorded false positives |
+| Four off-domain tasks | **4/4** explicit `none` | No recorded false positives |
+| **All 18 cases** | **15/18 (83.3%)** | **3 positive failures** |
+
+Positive failure attribution:
+- `agent-loop#921`: `missingness-audit` was offered, but the local output
+  was **empty** (a safe parser failure, **not a semantic match**).
+- `agent-loop#884`: `deletion-first` was **not offered**. The local output
+  selected `multi-pass-correctness-simplify` instead.
+- `agent-loop#879`: `clarify-missing-inputs` was **not offered**. The
+  local output selected `none`.
+
+The new `replay_agent_loop_project.py` reopens authoritative source and
+metadata, reconstructs the original **metadata FTS5 → plain FTS5 fallback**
+candidate path, verifies each recorded candidate and JSON response, and
+recounts cohorts independently of PR prose. Python mutation tests reject
+tampered gold labels, candidate lists and predictions. The existing PHP
+`verify_php_blind_replay.php` independently revalidates the 18 responses
+under PHP 8.3, 8.4 and 8.5. Exact-head Actions publish the separate
+`agent-loop-project-replay.json` alongside other offline artifacts.
+
+**Evidence boundaries:** The sample is already inspected development data,
+the stored model transcript has no verifiable model identity/configuration or
+CI live-inference provenance, and there is no independent adjudicated gold
+label audit. `17/18` was an incorrect claim and must **not** be treated
+as a measured result. This is a correction, not a new model improvement.
 
 ### Final verification boundary
 
