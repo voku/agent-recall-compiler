@@ -117,6 +117,16 @@ vendor/bin/agent-recall-compiler prompt future-work --scope task
 
 It does not mutate workflow state or imply that follow-up work must be created.
 
+## Open-Ended Exploration
+
+When the user asks what else is worth exploring in a conversation, investigation, or technical discussion, use the context-light inquiry prompt rather than a task continuation or backlog generator:
+
+```bash
+vendor/bin/agent-recall-compiler prompt explore
+```
+
+This asks for one grounded question, its evidence, and a cheap **non-mutating** probe, or `NOTHING_TO_EXPLORE`. It needs neither a completed task nor repository context. Exploration must not silently become implementation, planning, authorization, or follow-up task creation. Use `next-step` for task outcome/continuation and `future-work` for optional investment after verified completion. The caller explicitly chooses whether to invoke the prompt; no automatic routing is implied.
+
 ## Next-Step Reflection
 
 When a task reaches observed completion, stalls, or produces no substantiated solution, optionally ask the agent for its own highest-value next step:
