@@ -58,6 +58,7 @@ def replay(source: Path, metadata: Path, queries: Path, recorded: Path) -> dict[
             "explicit_none": 0,
             "empty_response": 0,
             "invalid_response": 0,
+            "model_error": 0,
         }
         for name in ("legacy", "contract")
     }
@@ -118,14 +119,22 @@ def replay(source: Path, metadata: Path, queries: Path, recorded: Path) -> dict[
                     selected = validate_choice(raw, candidates)
                     if record.get("selected") != selected:
                         raise ValueError(f"Selection drift at case {pos} ({name})")
-                    correct = selected == expected_contract
+                    model_error = record.get("model_error")
+                    if model_error is not None and (
+                        not isinstance(model_error, str) or not model_error
+                        or raw != "" or selected is not None
+                    ):
+                        raise ValueError(f"Invalid model transport error at case {pos} ({name})")
+                    correct = model_error is None and selected == expected_contract
                     if record.get("correct_vs_contract") is not correct:
                         raise ValueError(f"Recorded correctness drift at case {pos} ({name})")
                     metric = stats[name]
                     metric["total"] += 1
                     if correct:
                         metric["correct_with_fail_closed"] += 1
-                    if not raw.strip():
+                    if model_error is not None:
+                        metric["model_error"] += 1
+                    elif not raw.strip():
                         metric["empty_response"] += 1
                     elif raw.strip() == '{"selected": "none"}' or raw.strip() == '{"selected":"none"}':
                         metric["explicit_none"] += 1
