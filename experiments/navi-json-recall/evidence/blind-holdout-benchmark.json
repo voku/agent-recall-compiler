@@ -64,17 +64,23 @@
       "blind_positive": {
         "total": 10,
         "top1_correct": 7,
-        "abstentions": 3
+        "abstentions": 2,
+        "invalid_outputs": 1,
+        "model_errors": 0
       },
       "blind_hard_negative": {
         "total": 8,
         "top1_correct": 8,
-        "abstentions": 8
+        "abstentions": 8,
+        "invalid_outputs": 0,
+        "model_errors": 0
       },
       "blind_out_of_catalog": {
         "total": 8,
-        "top1_correct": 5,
-        "abstentions": 5
+        "top1_correct": 2,
+        "abstentions": 2,
+        "invalid_outputs": 3,
+        "model_errors": 0
       }
     }
   },
