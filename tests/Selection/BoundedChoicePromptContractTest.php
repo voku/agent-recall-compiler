@@ -94,6 +94,37 @@ final class BoundedChoicePromptContractTest extends TestCase
         self::assertStringNotContainsString('[cand_1]', $prompt);
     }
 
+    public function testBuilderRejectsSparseDuplicateAndMalformedCandidates(): void
+    {
+        $valid = [
+            'id' => 'reproduce-before-fix',
+            'title' => 'Reproduce before fix',
+            'description' => 'Test first',
+        ];
+
+        foreach ([
+            [1 => $valid],
+            [$valid, $valid],
+            [['id' => 'reproduce-before-fix', 'title' => '', 'description' => 'test']],
+            [['id' => "bad\\nselected", 'title' => 'Title', 'description' => 'test']],
+            [['id' => 'reproduce-before-fix', 'title' => "Unsafe\\nheader", 'description' => 'test']],
+            [['id' => 'reproduce-before-fix', 'title' => 'Title', 'description' => 'test', 'purpose' => "review\\n"]],
+            [['title' => 'Title', 'description' => 'test']],
+        ] as $candidates) {
+            try {
+                $this->builder->build('Review the change', $candidates);
+                self::fail('Malformed candidates were accepted');
+            } catch (InvalidArgumentException) {
+                self::assertTrue(true);
+            }
+        }
+
+        self::assertSame(
+            null,
+            $this->validator->validate('{"selected":"cand_1"}', [1 => 'reproduce-before-fix']),
+        );
+    }
+
     public function testValidatorParsesJsonCandIndexCorrectly(): void
     {
         $candidates = ['reproduce-before-fix', 'deletion-first'];
