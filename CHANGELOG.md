@@ -10,7 +10,7 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ### Added
 
-- Expose an optional, read-only bounded-choice candidate selection contract through `Selection\\BoundedChoicePromptBuilder` and `Selection\\BoundedChoiceValidator`. Callers provide a zero-indexed list of **existing source-backed recipe IDs**; the builder emits an LLM selection prompt, and the validator accepts only an unambiguous `{"selected":"cand_N"}` or `{"selected":"none"}` response. The package does not run an LLM or select a recipe automatically.
+- Expose an optional, read-only bounded-choice candidate selection contract through `Selection\BoundedChoicePromptBuilder` and `Selection\BoundedChoiceValidator`. Callers provide a zero-indexed list of **existing source-backed recipe IDs**; the builder emits an LLM selection prompt, and the validator accepts only an unambiguous `{"selected":"cand_N"}` or `{"selected":"none"}` response. The package does not run an LLM or select a recipe automatically.
 - Add opt-in `enforceWorkflowApplicability: true` prompt guidance to distinguish an explicitly requested working method from mere topical overlap. The legacy default remains unchanged.
 - Expand the bundled, owner-controlled recipe metadata with `aliases` and `intents` and expose the values on `OperatingPromptRecipe`. The canonical JSON templates and explicit request/approval workflow remain authoritative.
 
@@ -25,7 +25,6 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 ### Validation
 
 - Source PR #255 passed PHPUnit and PHPStan under PHP 8.3, 8.4 and 8.5, including malformed JSON and PHP-caller regressions. An installed `agent-loop` context-governance consumer also passed. Post-merge `main` CI passed the PHP matrix at commit `f996fd44b7711a517168e7c016a41c246d920891`.
-
 
 ## [0.25.10] - 2026-10-31
 
