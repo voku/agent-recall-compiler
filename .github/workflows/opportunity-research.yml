@@ -8,6 +8,7 @@ on:
       - 'research/opportunity-scan-fixtures.json'
       - 'tools/research/record_prompt_comparison.py'
       - 'tools/research/audit_prompt_comparison.py'
+      - 'tests/research/test_audit_prompt_comparison.py'
       - 'docs/research/opportunity-reflection-evaluation.md'
 
 permissions:
@@ -52,6 +53,9 @@ jobs:
 
       - name: Lint research runner
         run: python3 -m py_compile tools/research/record_prompt_comparison.py tools/research/audit_prompt_comparison.py
+
+      - name: Run audit parser regression tests
+        run: python3 -m unittest discover -s tests/research -p 'test_*.py'
 
       - name: Run pinned CPU model against three released prompts
         shell: bash
