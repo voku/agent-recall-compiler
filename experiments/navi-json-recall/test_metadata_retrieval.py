@@ -71,6 +71,26 @@ class MetadataRetrievalContractTest(unittest.TestCase):
             ),
         )
 
+    def test_compound_underscore_tokens_require_full_sqlite_phrases(self) -> None:
+        conn, metadata = benchmark.build_metadata_fts(self.path, self.source)
+        self.addCleanup(conn.close)
+        # SQLite unicode61 splits underscored query tokens into phrases.
+        # Whole-phrase matches count, while partial pieces must not.
+        self.assertEqual(
+            ["rule-scope"],
+            benchmark.metadata_bounded_rank(
+                conn, metadata, self.source,
+                "patch_code source_validation missing_term",
+            ),
+        )
+        self.assertEqual(
+            [],
+            benchmark.metadata_bounded_rank(
+                conn, metadata, self.source,
+                "patch_missing validation_other nonexistent_term",
+            ),
+        )
+
     def test_optional_coverage_filter_rejects_sparse_generic_overlap(self) -> None:
         conn, meta = benchmark.build_metadata_fts(self.path, self.source)
         self.addCleanup(conn.close)
