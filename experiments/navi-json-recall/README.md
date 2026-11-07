@@ -218,6 +218,36 @@ model is available.
 A policy that improves `none` at the cost of discarding real owner tasks is
 not a win. Keep source-of-truth and workflow authority deterministic.
 
+### Grounding against Upstream Navi-Brain (tokmem)
+
+The experimental native backend evaluates the resident C memory engine from
+[hparadiz/Navi-Brain](https://github.com/hparadiz/Navi-Brain) (pinned at commit
+`39880c39e0d5af2bff5c3ba5f91c0b94aecbbff8`). Grounding against upstream reveals
+a fundamental architectural distinction:
+
+1. **Upstream Purpose:** `tokmem` is built for open-ended episodic and associative
+   memory in an autonomous personal companion agent. Its online byte-pair
+   tokenizer and resident graph in RAM dynamically accumulate experiential
+   associations, incrementing directional counters (`write_count`, `read_count`,
+   `usage_count`, and `link_reinforcement`) over weeks of conversational interaction.
+2. **Compiler & Loop Scope:** `agent-loop` and `agent-recall-compiler` require
+   strictly deterministic, immutable, content-addressed software engineering
+   workflow orchestration. Operating prompt recipes are fixed, versioned JSON
+   artifacts; recalled candidates carry zero authority (`use=context_only`).
+3. **Retrieval Mechanics & Latency:**
+   - In-process SQLite FTS5 over structured JSON metadata operates in **~0.07 ms**
+     with zero external processes, zero socket IPC, and standard PHP/SQLite runtime dependencies.
+   - The resident C `tokmem` daemon operates in **~1.04 ms** and requires an external
+     background daemon, C17 compiler, POSIX threads, and Unix socket communication.
+4. **The Semantic Abstention Boundary:**
+   Neither `tokmem` spreading activation nor lexical FTS5 can determine semantic
+   task applicability or cleanly abstain on hard off-domain or topic-only queries.
+   Both algorithms rank the closest candidate without intent comprehension.
+   The demonstrated improvement in abstention and selection accuracy is achieved
+   by **structured JSON metadata** (intents, triggers, exclusions) coupled with
+   **fail-closed Bounded Choice prompting** (`cand_0..cand_N, [none]`), not by
+   a resident C memory daemon.
+
 
 ### Independent JSON/SQLite-only CI job
 
