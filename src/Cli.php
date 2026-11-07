@@ -10,6 +10,7 @@ use Throwable;
 use voku\AgentRecallCompiler\Command\CompileCommand;
 use voku\AgentRecallCompiler\Command\LogOutcomeCommand;
 use voku\AgentRecallCompiler\Reflection\ApprovalQueuePromptBuilder;
+use voku\AgentRecallCompiler\Reflection\ExplorePromptBuilder;
 use voku\AgentRecallCompiler\Reflection\FutureWorkPromptBuilder;
 use voku\AgentRecallCompiler\Reflection\FutureWorkScope;
 use voku\AgentRecallCompiler\Reflection\GuidanceGapPromptBuilder;
@@ -55,7 +56,7 @@ final class Cli
         fwrite(STDOUT, "  prompt              Render context-light prompt helpers such as future-work reflection.\n");
         fwrite(STDOUT, "  review              Generate deterministic blind-spot reports and L2 review prompts.\n\n");
         fwrite(STDOUT, "Prompt usage:\n");
-        fwrite(STDOUT, "  prompt future-work [--scope project|task]\n  prompt next-step\n  prompt guidance-gaps\n  prompt approval-queue --root <learning-root> [--memory PATH]\n\n");
+        fwrite(STDOUT, "  prompt future-work [--scope project|task]\n  prompt explore\n  prompt next-step\n  prompt guidance-gaps\n  prompt approval-queue --root <learning-root> [--memory PATH]\n\n");
         fwrite(STDOUT, "Options:\n");
         fwrite(STDOUT, "  --root PATH              Learning root (default: <cwd>/.agent-loop/learning).\n");
         fwrite(STDOUT, "  --task-brief PATH        Path to JSON task brief file.\n");
@@ -187,6 +188,16 @@ final class Cli
             }
 
             fwrite(STDOUT, (new GuidanceGapPromptBuilder())->build() . "\n");
+
+            return 0;
+        }
+
+        if ($promptName === 'explore') {
+            if ($tokens !== []) {
+                throw new InvalidArgumentException('prompt explore accepts no arguments or options.');
+            }
+
+            fwrite(STDOUT, (new ExplorePromptBuilder())->build() . "\n");
 
             return 0;
         }
