@@ -286,6 +286,36 @@ class MetadataRetrievalContractTest(unittest.TestCase):
                     "Project query is contained in registered phrase: " + query,
                 )
 
+    def test_applicability_ab_queries_have_zero_contamination_against_real_catalog(self) -> None:
+        root = Path(__file__).resolve().parents[2]
+        ab_file = Path(__file__).parent / "applicability_ab_queries.json"
+        if not ab_file.is_file():
+            self.skipTest("applicability_ab_queries.json not present")
+        metadata_file = (
+            root / "resources/skills/agent-recall-consumer/operating-prompts.metadata.json"
+        )
+        catalog = json.loads(metadata_file.read_text(encoding="utf-8"))
+        ab_data = json.loads(ab_file.read_text(encoding="utf-8"))
+        registered_phrases = {
+            " ".join(phrase.casefold().split())
+            for recipe in catalog["recipes"]
+            for phrase in [*recipe.get("aliases", []), *recipe.get("intents", [])]
+            if phrase.strip()
+        }
+        for pair in ab_data.get("pairs", []):
+            for case in pair.get("cases", []):
+                query = " ".join(case["query"].casefold().split())
+                for phrase in registered_phrases:
+                    self.assertNotEqual(query, phrase)
+                    self.assertNotIn(
+                        phrase, query,
+                        "Alias/intent phrase overlaps AB query: " + phrase,
+                    )
+                    self.assertNotIn(
+                        query, phrase,
+                        "AB query is contained in registered phrase: " + query,
+                    )
+
 
 if __name__ == "__main__":
     unittest.main()

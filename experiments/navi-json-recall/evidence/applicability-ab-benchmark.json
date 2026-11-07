@@ -1,0 +1,222 @@
+{
+  "status": "success",
+  "benchmark": "Applicability Contract v0 A/B evaluation",
+  "case_count": 10,
+  "cases": [
+    {
+      "pair_id": "pair_01_three_pass",
+      "variant_role": "topic_only",
+      "query": "Refactor the legacy user authentication controller to use dependency injection.",
+      "candidates_offered": [
+        "multi-pass-correctness-simplify",
+        "test-driven-development",
+        "breaking-change-review"
+      ],
+      "expected_legacy": "multi-pass-correctness-simplify",
+      "expected_contract": null,
+      "variant_a_legacy": {
+        "raw": "",
+        "selected": null,
+        "correct_vs_contract": true
+      },
+      "variant_b_contract": {
+        "raw": "{\"selected\": \"none\"}",
+        "selected": null,
+        "correct_vs_contract": true
+      }
+    },
+    {
+      "pair_id": "pair_01_three_pass",
+      "variant_role": "workflow_demanded",
+      "query": "Generate a three-pass execution prompt to refactor the user auth controller: first change dependencies, then verify contracts, then simplify.",
+      "candidates_offered": [
+        "multi-pass-correctness-simplify",
+        "test-driven-development",
+        "clarify-missing-inputs"
+      ],
+      "expected_legacy": "multi-pass-correctness-simplify",
+      "expected_contract": "multi-pass-correctness-simplify",
+      "variant_a_legacy": {
+        "raw": "{\"selected\": \"cand_0\"}",
+        "selected": "multi-pass-correctness-simplify",
+        "correct_vs_contract": true
+      },
+      "variant_b_contract": {
+        "raw": "{\"selected\": \"cand_0\"}",
+        "selected": "multi-pass-correctness-simplify",
+        "correct_vs_contract": true
+      }
+    },
+    {
+      "pair_id": "pair_02_adversarial_review",
+      "variant_role": "topic_only",
+      "query": "Implement a cryptographic signature verification endpoint for incoming webhooks.",
+      "candidates_offered": [
+        "adversarial-review",
+        "discovery-first"
+      ],
+      "expected_legacy": null,
+      "expected_contract": null,
+      "variant_a_legacy": {
+        "raw": "{\"selected\": \"none\"}",
+        "selected": null,
+        "correct_vs_contract": true
+      },
+      "variant_b_contract": {
+        "raw": "{\"selected\": \"none\"}",
+        "selected": null,
+        "correct_vs_contract": true
+      }
+    },
+    {
+      "pair_id": "pair_02_adversarial_review",
+      "variant_role": "workflow_demanded",
+      "query": "Challenge our webhook signature verification with adversarial bypass scenarios and falsify assumed security properties.",
+      "candidates_offered": [
+        "adversarial-review",
+        "plan-as-draft",
+        "execute-plan-with-blind-spot-check"
+      ],
+      "expected_legacy": "adversarial-review",
+      "expected_contract": "adversarial-review",
+      "variant_a_legacy": {
+        "raw": "{\"selected\": \"cand_0\"}",
+        "selected": "adversarial-review",
+        "correct_vs_contract": true
+      },
+      "variant_b_contract": {
+        "raw": "{\"selected\": \"cand_0\"}",
+        "selected": "adversarial-review",
+        "correct_vs_contract": true
+      }
+    },
+    {
+      "pair_id": "pair_03_tdd",
+      "variant_role": "topic_only",
+      "query": "Add validation for international phone numbers conforming to E.164 standard.",
+      "candidates_offered": [
+        "test-driven-development"
+      ],
+      "expected_legacy": null,
+      "expected_contract": null,
+      "variant_a_legacy": {
+        "raw": "{\"selected\": \"cand_0\"}",
+        "selected": "test-driven-development",
+        "correct_vs_contract": false
+      },
+      "variant_b_contract": {
+        "raw": "{\"selected\": \"none\"}",
+        "selected": null,
+        "correct_vs_contract": true
+      }
+    },
+    {
+      "pair_id": "pair_03_tdd",
+      "variant_role": "workflow_demanded",
+      "query": "Apply test-driven development to build the E.164 phone validator, writing failing specification tests before implementation code.",
+      "candidates_offered": [
+        "test-driven-development",
+        "reproduce-before-fix",
+        "retry-stop"
+      ],
+      "expected_legacy": "test-driven-development",
+      "expected_contract": "test-driven-development",
+      "variant_a_legacy": {
+        "raw": "{\"selected\": \"cand_0\"}",
+        "selected": "test-driven-development",
+        "correct_vs_contract": true
+      },
+      "variant_b_contract": {
+        "raw": "{\"selected\": \"cand_0\"}",
+        "selected": "test-driven-development",
+        "correct_vs_contract": true
+      }
+    },
+    {
+      "pair_id": "pair_04_clarify_inputs",
+      "variant_role": "topic_only",
+      "query": "The order export worker stopped processing jobs at midnight.",
+      "candidates_offered": [
+        "clarify-missing-inputs"
+      ],
+      "expected_legacy": null,
+      "expected_contract": null,
+      "variant_a_legacy": {
+        "raw": "",
+        "selected": null,
+        "correct_vs_contract": true
+      },
+      "variant_b_contract": {
+        "raw": "{\"selected\": \"none\"}",
+        "selected": null,
+        "correct_vs_contract": true
+      }
+    },
+    {
+      "pair_id": "pair_04_clarify_inputs",
+      "variant_role": "workflow_demanded",
+      "query": "The order export worker ticket has no reproduction steps or logs. Halt and formulate a clarification prompt asking for the missing payload and queue state.",
+      "candidates_offered": [
+        "clarify-missing-inputs",
+        "reproduce-before-fix",
+        "continue-until-done"
+      ],
+      "expected_legacy": "clarify-missing-inputs",
+      "expected_contract": "clarify-missing-inputs",
+      "variant_a_legacy": {
+        "raw": "{\"selected\": \"cand_0\"}",
+        "selected": "clarify-missing-inputs",
+        "correct_vs_contract": true
+      },
+      "variant_b_contract": {
+        "raw": "{\"selected\": \"cand_0\"}",
+        "selected": "clarify-missing-inputs",
+        "correct_vs_contract": true
+      }
+    },
+    {
+      "pair_id": "pair_05_deletion_first",
+      "variant_role": "topic_only",
+      "query": "Clean up the repository root by removing obsolete build scripts.",
+      "candidates_offered": [
+        "deletion-first",
+        "production-ready-handoff",
+        "plan-horizon"
+      ],
+      "expected_legacy": null,
+      "expected_contract": null,
+      "variant_a_legacy": {
+        "raw": "{\"selected\": \"cand_0\"}",
+        "selected": "deletion-first",
+        "correct_vs_contract": false
+      },
+      "variant_b_contract": {
+        "raw": "{\"selected\": \"none\"}",
+        "selected": null,
+        "correct_vs_contract": true
+      }
+    },
+    {
+      "pair_id": "pair_05_deletion_first",
+      "variant_role": "workflow_demanded",
+      "query": "Evaluate deletion-first simplification on the build scripts: identify dead scripts to delete before touching active configurations.",
+      "candidates_offered": [
+        "deletion-first",
+        "multi-pass-correctness-simplify",
+        "clarify-missing-inputs"
+      ],
+      "expected_legacy": "deletion-first",
+      "expected_contract": "deletion-first",
+      "variant_a_legacy": {
+        "raw": "{\"selected\": \"cand_0\"}",
+        "selected": "deletion-first",
+        "correct_vs_contract": true
+      },
+      "variant_b_contract": {
+        "raw": "{\"selected\": \"cand_0\"}",
+        "selected": "deletion-first",
+        "correct_vs_contract": true
+      }
+    }
+  ]
+}
