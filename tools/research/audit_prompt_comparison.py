@@ -50,7 +50,7 @@ def declared_disposition(arm: str, content: str) -> str:
     for label_name in ("Classification", "Disposition", "Smallest Bounded Next Step"):
         match = re.search(
             rf"(?im)^\s*(?:[#*>-]+\s*)?(?:\*\*)?"
-            rf"{re.escape(label_name)}(?:\*\*)?\s*:\s*"
+            rf"{re.escape(label_name)}(?:\*\*:|:\*\*|:)\s*"
             rf"(?:\s*\n\s*)?(?:`|\*\*)?({options})(?:`|\*\*)?(?=\s|$)",
             content,
         )
