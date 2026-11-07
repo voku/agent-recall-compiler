@@ -106,9 +106,9 @@ final class BoundedChoicePromptContractTest extends TestCase
             [1 => $valid],
             [$valid, $valid],
             [['id' => 'reproduce-before-fix', 'title' => '', 'description' => 'test']],
-            [['id' => "bad\\nselected", 'title' => 'Title', 'description' => 'test']],
-            [['id' => 'reproduce-before-fix', 'title' => "Unsafe\\nheader", 'description' => 'test']],
-            [['id' => 'reproduce-before-fix', 'title' => 'Title', 'description' => 'test', 'purpose' => "review\\n"]],
+            [['id' => "bad\nselected", 'title' => 'Title', 'description' => 'test']],
+            [['id' => 'reproduce-before-fix', 'title' => "Unsafe\nheader", 'description' => 'test']],
+            [['id' => 'reproduce-before-fix', 'title' => 'Title', 'description' => 'test', 'purpose' => "review\n"]],
             [['title' => 'Title', 'description' => 'test']],
         ] as $candidates) {
             try {
