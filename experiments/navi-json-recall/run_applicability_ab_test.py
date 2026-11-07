@@ -74,6 +74,25 @@ def build_prompt(
     return "\n".join(lines)
 
 
+def invoke_local_model(agy_bin: str, prompt: str) -> tuple[str, str | None]:
+    """Run one model request; keep CLI failures distinct from empty model output."""
+    try:
+        proc = subprocess.run(
+            [agy_bin, "--print", prompt],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=True,
+        )
+    except subprocess.TimeoutExpired:
+        return "", "timeout"
+    except subprocess.CalledProcessError as exc:
+        return "", f"exit_{exc.returncode}"
+    except OSError as exc:
+        return "", f"os_error_{type(exc).__name__}"
+    return proc.stdout.strip(), None
+
+
 def main() -> int:
     root = Path(__file__).resolve().parents[2]
     source_path = root / "resources/skills/agent-recall-consumer/operating-prompts.json"
@@ -121,15 +140,13 @@ def main() -> int:
 
             # Variant A (Default / Legacy prompt)
             prompt_a = build_prompt(query, cands, meta_by_id, enforce_workflow_applicability=False)
-            proc_a = subprocess.run([agy_bin, "--print", prompt_a], capture_output=True, text=True, timeout=30)
-            raw_a = proc_a.stdout.strip()
-            sel_a = validate_choice(raw_a, cands)
+            raw_a, error_a = invoke_local_model(agy_bin, prompt_a)
+            sel_a = validate_choice(raw_a, cands) if error_a is None else None
 
             # Variant B (Applicability Contract prompt)
             prompt_b = build_prompt(query, cands, meta_by_id, enforce_workflow_applicability=True)
-            proc_b = subprocess.run([agy_bin, "--print", prompt_b], capture_output=True, text=True, timeout=30)
-            raw_b = proc_b.stdout.strip()
-            sel_b = validate_choice(raw_b, cands)
+            raw_b, error_b = invoke_local_model(agy_bin, prompt_b)
+            sel_b = validate_choice(raw_b, cands) if error_b is None else None
 
             eval_entry = {
                 "pair_id": pair_id,
@@ -140,13 +157,15 @@ def main() -> int:
                 "expected_contract": exp_contract,
                 "variant_a_legacy": {
                     "raw": raw_a,
+                    "model_error": error_a,
                     "selected": sel_a,
-                    "correct_vs_contract": (sel_a == exp_contract),
+                    "correct_vs_contract": (error_a is None and sel_a == exp_contract),
                 },
                 "variant_b_contract": {
                     "raw": raw_b,
+                    "model_error": error_b,
                     "selected": sel_b,
-                    "correct_vs_contract": (sel_b == exp_contract),
+                    "correct_vs_contract": (error_b is None and sel_b == exp_contract),
                 },
             }
             evaluated_cases.append(eval_entry)
