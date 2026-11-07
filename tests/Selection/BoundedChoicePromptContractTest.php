@@ -112,16 +112,16 @@ final class BoundedChoicePromptContractTest extends TestCase
             [['title' => 'Title', 'description' => 'test']],
         ] as $candidates) {
             try {
-                $this->builder->build('Review the change', $candidates);
+                $this->builder->build('Review the change', $candidates); // @phpstan-ignore argument.type (deliberate malformed runtime input)
                 self::fail('Malformed candidates were accepted');
             } catch (InvalidArgumentException) {
-                self::assertTrue(true);
+                // Expected: all supplied shapes are intentionally malformed.
             }
         }
 
         self::assertSame(
             null,
-            $this->validator->validate('{"selected":"cand_1"}', [1 => 'reproduce-before-fix']),
+            $this->validator->validate('{"selected":"cand_1"}', [1 => 'reproduce-before-fix']), // @phpstan-ignore argument.type (deliberate sparse input)
         );
     }
 
