@@ -171,6 +171,30 @@ final class BoundedChoicePromptContractTest extends TestCase
         }
     }
 
+    public function testValidatorRejectsDuplicateOrEscapedJsonPropertyKeys(): void
+    {
+        $candidates = ['reproduce-before-fix', 'deletion-first'];
+
+        foreach ([
+            '{"selected":"none","selected":"cand_0"}',
+            '{"selected":"cand_0","selected":"cand_1"}',
+            '{"selected":"none","selec\\u0074ed":"cand_0"}',
+            '{"selec\\u0074ed":"cand_0","selected":"cand_1"}',
+            '{"sele\\u0063ted":"cand_0"}',
+            '{"selected":"ca\\u006ed_0"}',
+            '{"selected":"cand_0","override":"none"}',
+        ] as $response) {
+            self::assertNull($this->validator->validate($response, $candidates), $response);
+        }
+
+        // JSON whitespace is allowed, but the selection must have a single
+        // literal property, and its value must be a canonical candidate index.
+        self::assertSame(
+            'reproduce-before-fix',
+            $this->validator->validate(" \\n{ \\t\"selected\" : \"cand_0\" } \\r\\n", $candidates),
+        );
+    }
+
     public function testValidatorRejectsNonCanonicalIndexAndUnlistedCandidates(): void
     {
         $candidateIds = ['reproduce-before-fix', 'deletion-first'];
