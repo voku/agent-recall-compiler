@@ -22,7 +22,7 @@ final readonly class BoundedChoiceValidator
      */
     public function validate(string $rawResponse, array $validCandidateIds): ?string
     {
-        if (!array_is_list($validCandidateIds)) {
+        if (!self::isZeroIndexedList($validCandidateIds)) {
             return null;
         }
 
@@ -78,4 +78,10 @@ final readonly class BoundedChoiceValidator
 
         return $validCandidateIds[$index] ?? null;
     }
+    /** @param mixed $candidateIds */
+    private static function isZeroIndexedList(mixed $candidateIds): bool
+    {
+        return is_array($candidateIds) && array_is_list($candidateIds);
+    }
+
 }
