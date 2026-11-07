@@ -6,13 +6,21 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.27.0] - 2026-11-07
+
 ### Added
 
-- Add explicit context-light `prompt explore` for inquiry during conversations, research, and unfinished work without assuming a completed task or creating an implementation plan. The read-only lens requests one evidence-backed question with a cheap non-mutating probe or `NOTHING_TO_EXPLORE`; it provides no execution authority or automatic model routing.
+- Add explicit `prompt explore` for context-light inquiry during conversations, research, architecture discussions, or unfinished work. It proposes one evidence-backed non-mutating investigative question or `NOTHING_TO_EXPLORE`, without creating tasks or execution authority.
+
+### Compatibility and scope
+
+- Existing `next-step`, `future-work`, and task execution contracts remain unchanged. Exploration does not invoke a model, auto-route a recipe, require a repository, or authorize cross-project edits.
+- Do not ship the duplicate `opportunity-scan` command from closed unmerged PR #257. Native-memory and inference experiments #252/#254 and empirical reflection evaluation #259 are not part of this release.
 
 ### Validation
 
-- `ExplorePromptTest` checks the exploration/work boundary, abstention, non-repository applicability, CLI dispatch, and rejection of unexpected arguments. Semantic quality still requires separate model evaluation.
+- PR #260 exact-head PHP 8.3/8.4/8.5 PHPUnit and PHPStan, plus installed `agent-loop` dogfood passed in Actions #42386042655; post-merge `main` PHP matrix passed in Actions #42386994481.
+- `ExplorePromptTest` verifies command output bytes, argument rejection, evidence/abstention language, and separation from authorized work. Live-model semantic performance remains unverified.
 
 ## [0.26.0] - 2026-11-07
 
