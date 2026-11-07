@@ -16,6 +16,21 @@ _WIRE = re.compile(
 )
 
 
+def is_explicit_none_response(raw: str) -> bool:
+    """True only for the valid literal 'none' protocol value, never failures.
+
+    Keep this grammar and the UTF-8 byte limit in sync with the selector
+    validator; the validator's None result also covers invalid responses.
+    """
+    try:
+        if len(raw.encode("utf-8")) > 1024:
+            return False
+    except UnicodeError:
+        return False
+    match = _WIRE.fullmatch(raw)
+    return match is not None and match.group(1) == "none"
+
+
 def validate_bounded_choice_response(raw: str, candidates: list[str]) -> str | None:
     """Return the verified source ID, or None on none/invalid/unavailable.
 
