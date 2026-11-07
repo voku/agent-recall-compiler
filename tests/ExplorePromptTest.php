@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace voku\AgentRecallCompiler\Tests;
 
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 use voku\AgentRecallCompiler\Cli;
 use voku\AgentRecallCompiler\Reflection\ExplorePromptBuilder;
 use voku\AgentRecallCompiler\Reflection\FutureWorkPromptBuilder;
@@ -39,6 +40,35 @@ final class ExplorePromptTest extends TestCase
 
         self::assertNotSame($prompt, (new NextStepPromptBuilder())->build());
         self::assertNotSame($prompt, (new FutureWorkPromptBuilder())->build(FutureWorkScope::PROJECT));
+    }
+
+    public function testCliPrintsExactlyTheExplorationPrompt(): void
+    {
+        $pipes = [];
+        $process = proc_open(
+            [PHP_BINARY, dirname(__DIR__) . '/bin/agent-recall-compiler', 'prompt', 'explore'],
+            [
+                0 => ['pipe', 'r'],
+                1 => ['pipe', 'w'],
+                2 => ['pipe', 'w'],
+            ],
+            $pipes,
+        );
+
+        if (!is_resource($process)) {
+            throw new RuntimeException('Unable to start exploration CLI regression process.');
+        }
+
+        fclose($pipes[0]);
+        $stdout = stream_get_contents($pipes[1]);
+        $stderr = stream_get_contents($pipes[2]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        $exitCode = proc_close($process);
+
+        self::assertSame(0, $exitCode);
+        self::assertSame((new ExplorePromptBuilder())->build() . "\n", $stdout);
+        self::assertSame('', $stderr);
     }
 
     public function testCliExposesExplicitExplorePromptWithoutAcceptingExtraScope(): void
