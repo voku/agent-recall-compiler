@@ -191,7 +191,7 @@ final class BoundedChoicePromptContractTest extends TestCase
         // literal property, and its value must be a canonical candidate index.
         self::assertSame(
             'reproduce-before-fix',
-            $this->validator->validate(" \\n{ \\t\"selected\" : \"cand_0\" } \\r\\n", $candidates),
+            $this->validator->validate(" \n{ \t\"selected\" : \"cand_0\" } \r\n", $candidates),
         );
     }
 
