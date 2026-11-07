@@ -6,6 +6,14 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+### Added
+
+- Add explicit context-light `prompt explore` for inquiry during conversations, research, and unfinished work without assuming a completed task or creating an implementation plan. The read-only lens requests one evidence-backed question with a cheap non-mutating probe or `NOTHING_TO_EXPLORE`; it provides no execution authority or automatic model routing.
+
+### Validation
+
+- `ExplorePromptTest` checks the exploration/work boundary, abstention, non-repository applicability, CLI dispatch, and rejection of unexpected arguments. Semantic quality still requires separate model evaluation.
+
 ## [0.26.0] - 2026-11-07
 
 ### Added
