@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import shutil
 import subprocess
 import sys
@@ -18,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 import benchmark
+from bounded_choice_wire import validate_bounded_choice_response
 
 
 def check_zero_contamination(
@@ -60,38 +60,6 @@ def call_live_llm(prompt: str, timeout_seconds: int = 30) -> str:
         check=True,
     )
     return proc.stdout.strip()
-
-
-def validate_bounded_choice_response(
-    raw_response: str,
-    candidates: list[str],
-) -> str | None:
-    """Mirror PHP BoundedChoiceValidator: strict single-field JSON only."""
-    text = raw_response.strip()
-    if not text or len(text) > 1024:
-        return None
-
-    try:
-        data = json.loads(text)
-    except Exception:
-        return None
-
-    if not isinstance(data, dict) or list(data.keys()) != ["selected"]:
-        return None
-
-    selected = data["selected"]
-    if not isinstance(selected, str) or selected == "none":
-        return None
-
-    match = re.fullmatch(r"cand_(0|[1-9][0-9]*)", selected)
-    if not match:
-        return None
-
-    index = int(match.group(1))
-    if index < 0 or index >= len(candidates):
-        return None
-
-    return candidates[index]
 
 
 def build_bounded_prompt(query: str, candidates: list[str], meta_by_id: dict[str, Any]) -> str:
