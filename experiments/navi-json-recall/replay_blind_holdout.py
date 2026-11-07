@@ -103,8 +103,12 @@ def replay(
             stats["gold_in_candidates"] += 1
         if expected is not None and decision == expected and output_status == "selected":
             stats["correct_positive"] += 1
-        if expected is None and output_status == "explicit_none":
-            stats["recorded_abstention"] += 1
+            stats["correct_explicit"] += 1
+        if output_status == "explicit_none":
+            stats["explicit_none"] += 1
+            if expected is None:
+                stats["recorded_abstention"] += 1
+                stats["correct_explicit"] += 1
         if expected is None and decision is not None:
             stats["false_positive"] += 1
         if not raw:
