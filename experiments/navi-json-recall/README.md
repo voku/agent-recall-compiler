@@ -274,6 +274,53 @@ fixed, narrower proposal only against a *new* frozen corpus and real model
 invocations with version/configuration evidence, retaining negative controls
 and candidate-recall measurements.
 
+### Paired Applicability A/B experiment (recorded local inference)
+
+`applicability_ab_queries.json` contains **five contrast pairs / ten queries**:
+`topic_only` versus `workflow_demanded`. The recorded outcomes in
+`evidence/applicability-ab-benchmark.json` were produced by a local `agy
+--print` script and are not re-executed by GitHub Actions.
+
+For each individual query, A and B receive the **same candidates**. However,
+the A/B harness forces `target_recipe` into the offered list if FTS5 did
+not discover it. The independent CI replay records **four out of ten forced
+target insertions**; this experiment isolates prompt **selection**, not
+end-to-end candidate discovery. Also, A is always called before B (no
+randomized ordering); model identity/configuration and individual request
+provenance are not externally captured. Fixture and output were committed
+together, so a `frozen before evaluation` statement is not independently
+attested by Git history.
+
+| Metric (10 recorded cases) | Legacy A | Applicability B |
+| --- | ---: | ---: |
+| Workflow explicitly demanded: correct recipe | 5/5 | 5/5 |
+| Topic-only: wrong recipe selected | 2/5 | 0/5 |
+| Topic-only: explicit valid `{"selected":"none"}` | 1/5 | 5/5 |
+| Empty raw responses | 2/10 | 0/10 |
+| Correct including fail-closed empty responses | **8/10** | **10/10** |
+| Explicitly correct, excluding empty replies | **6/10** | **10/10** |
+
+The preexisting summary `7/10` for A does **not** match either
+fully specified counting policy. `8/10` includes safe empty responses,
+and `6/10` requires an explicit semantic answer. The new runner
+`replay_applicability_ab.py` recomputes candidate lists from current
+canonical source, checks all ten stored responses/labels and reports both
+definitions separately. `verify_php_applicability_ab.php` replays both
+variants through the **actual PHP validator** on 8.3, 8.4 and 8.5.
+Mutation regression tests reject changed gold labels, candidate lists,
+or decoded model decisions.
+
+The three **previously seen** CSS Grid / Ansible / ARM NEON cases are
+**not among these ten queries** and must not be claimed as three repaired
+cases on this evidence. A future untouched task set is required to
+establish transfer beyond the five contrast pairs.
+
+**Interpretation:** This is promising *local recorded* evidence for the
+applicability-prompt hypothesis. CI confirms deterministic replay,
+provenance hashes and parser agreement; **CI does not call a model or
+demonstrate independent replication of the observed inference**. Keep
+the opt-in default and the original authority boundaries unchanged.
+
 ### Final verification boundary
 
 The independent recorded-response replay was added at [GitHub Actions #42307637309](https://github.com/voku/agent-recall-compiler/actions/runs/42307637309), including the genuine PHP validator on PHP 8.3–8.5. In this sample, **8/10 target recipes were present among the offered candidates**, and **7/8 offered positives** were correctly selected; two failures were candidate-generation misses, and one was an empty recorded response. Recorded correct rejection is **13/16**, but only **10/16** outputs are explicit JSON `none` (8 hard negatives, 2 out-of-catalog). The other 3 are empty replies; the remaining three are incorrect selections.
