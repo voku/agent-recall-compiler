@@ -1,0 +1,109 @@
+name: Research - local prompt comparison (unscored)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/opportunity-research.yml'
+      - 'research/opportunity-scan-fixtures.json'
+      - 'tools/research/record_prompt_comparison.py'
+      - 'docs/research/opportunity-reflection-evaluation.md'
+
+permissions:
+  contents: read
+
+jobs:
+  local-inference:
+    if: github.event.pull_request.number == 259
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      RECALL_COMMIT: f51306bdcdae8cf23557bd21f69449aec5d85bfe
+      LLAMA_COMMIT: f7591a6a01f9273de03331732bdc0b39721168be
+      MODEL_REVISION: 1eaf4d9657fe65ad10a51eab76a8db5b363bddaa
+      MODEL_SHA256: 9465e63a22add5354d9bb4b99e90117043c7124007664907259bd16d043bb031
+      RECALL_BASELINE: ${{ github.workspace }}/baseline
+      EVAL_OUTPUT: ${{ github.workspace }}/build/research-evidence
+
+    steps:
+      - name: Checkout research fixtures (no credentials)
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Checkout exact released prompt source (no credentials)
+        uses: actions/checkout@v7
+        with:
+          repository: voku/agent-recall-compiler
+          ref: f51306bdcdae8cf23557bd21f69449aec5d85bfe
+          path: baseline
+          persist-credentials: false
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          tools: composer:v2
+
+      - name: Install released CLI dependencies
+        run: composer install --working-dir=baseline --no-interaction --prefer-dist --no-progress
+
+      - name: Lint research runner
+        run: python3 -m py_compile tools/research/record_prompt_comparison.py
+
+      - name: Run pinned CPU model against three released prompts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$EVAL_OUTPUT" "$RUNNER_TEMP/llama"
+          git clone --quiet --no-checkout https://github.com/ggml-org/llama.cpp.git "$RUNNER_TEMP/llama/repo"
+          git -C "$RUNNER_TEMP/llama/repo" checkout --quiet "$LLAMA_COMMIT"
+          test "$(git -C "$RUNNER_TEMP/llama/repo" rev-parse HEAD)" = "$LLAMA_COMMIT"
+          cmake -S "$RUNNER_TEMP/llama/repo" -B "$RUNNER_TEMP/llama/build" -DCMAKE_BUILD_TYPE=Release -DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON
+          cmake --build "$RUNNER_TEMP/llama/build" --parallel 4 --target llama-server
+
+          model_path="$RUNNER_TEMP/llama/Qwen3-0.6B-Q8_0.gguf"
+          curl --fail --location --silent --show-error --retry 3 --retry-delay 5 \
+            "https://huggingface.co/Qwen/Qwen3-0.6B-GGUF/resolve/${MODEL_REVISION}/Qwen3-0.6B-Q8_0.gguf" \
+            --output "$model_path"
+          printf '%s  %s\n' "$MODEL_SHA256" "$model_path" | sha256sum --check
+
+          "$RUNNER_TEMP/llama/build/bin/llama-server" \
+            --model "$model_path" \
+            --host 127.0.0.1 \
+            --port 8080 \
+            --ctx-size 4096 \
+            --threads 4 \
+            --jinja \
+            > "$EVAL_OUTPUT/server.log" 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          ready=0
+          for attempt in $(seq 1 120); do
+            if curl --fail --silent http://127.0.0.1:8080/health >/dev/null; then
+              ready=1
+              break
+            fi
+            if ! kill -0 "$server_pid" 2>/dev/null; then
+              echo "Model server exited before becoming ready." >&2
+              tail -100 "$EVAL_OUTPUT/server.log" >&2
+              exit 1
+            fi
+            sleep 2
+          done
+          if [[ "$ready" -ne 1 ]]; then
+            echo "Model server health timed out." >&2
+            tail -100 "$EVAL_OUTPUT/server.log" >&2
+            exit 1
+          fi
+          python3 tools/research/record_prompt_comparison.py
+
+      - name: Upload raw inference records even if a step fails
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: opportunity-research-${{ github.sha }}
+          if-no-files-found: warn
+          retention-days: 30
+          path: build/research-evidence/
