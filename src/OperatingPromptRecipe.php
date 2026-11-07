@@ -26,6 +26,8 @@ final readonly class OperatingPromptRecipe
 
     /**
      * @param list<OperatingPromptArgument> $arguments
+     * @param list<string> $aliases
+     * @param list<string> $intents
      */
     public function __construct(
         public string $id,
@@ -36,6 +38,8 @@ final readonly class OperatingPromptRecipe
         public array $arguments,
         public string $sourceRef,
         public string $templateSha256,
+        public array $aliases = [],
+        public array $intents = [],
     ) {
         if (preg_match('/\A[a-z][a-z0-9._-]*\z/', $id) !== 1) {
             throw new InvalidArgumentException('operating prompt id must match [a-z][a-z0-9._-]*: ' . $id);
@@ -62,6 +66,9 @@ final readonly class OperatingPromptRecipe
         if (preg_match('/\A[a-f0-9]{64}\z/', $templateSha256) !== 1) {
             throw new InvalidArgumentException('operating prompt template digest must be sha256: ' . $id);
         }
+
+        self::assertTermList('aliases', $aliases, $id);
+        self::assertTermList('intents', $intents, $id);
 
         $this->level = $level;
         $this->purpose = $purpose;
@@ -91,4 +98,17 @@ final readonly class OperatingPromptRecipe
     {
         return false;
     }
+    /** @param mixed $values */
+    private static function assertTermList(string $field, mixed $values, string $id): void
+    {
+        if (!is_array($values) || !array_is_list($values)) {
+            throw new InvalidArgumentException('operating prompt ' . $field . ' must be a list: ' . $id);
+        }
+        foreach ($values as $value) {
+            if (!is_string($value) || trim($value) === '') {
+                throw new InvalidArgumentException('operating prompt ' . $field . ' must contain non-empty strings: ' . $id);
+            }
+        }
+    }
+
 }

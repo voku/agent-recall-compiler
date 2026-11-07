@@ -38,6 +38,34 @@ final class OperatingPromptCatalogApiTest extends TestCase
         self::assertSame(1, $recipe->arguments[0]->minimum);
     }
 
+    public function testRecipeRejectsInvalidRuntimeAliasAndIntentLists(): void
+    {
+        foreach ([
+            ['aliases' => [''], 'intents' => []],
+            ['aliases' => [], 'intents' => ['  ']],
+            ['aliases' => [1 => 'alias'], 'intents' => []],
+            ['aliases' => [], 'intents' => [2 => 'intent']],
+        ] as $values) {
+            try {
+                new OperatingPromptRecipe(
+                    id: 'review-example',
+                    title: 'Review example',
+                    description: 'Checks runtime metadata',
+                    level: 1,
+                    purpose: OperatingPromptRecipe::PURPOSE_REVIEW,
+                    arguments: [],
+                    sourceRef: 'owner.json#review-example',
+                    templateSha256: hash('sha256', 'template'),
+                    aliases: $values['aliases'], // @phpstan-ignore argument.type (intentional malformed host input)
+                    intents: $values['intents'], // @phpstan-ignore argument.type (intentional malformed host input)
+                );
+                self::fail('Invalid metadata was accepted');
+            } catch (\InvalidArgumentException) {
+                // Expected: constructor must reject malformed PHP caller values.
+            }
+        }
+    }
+
     public function testPreviewIsDeterministicAndDoesNotPersistAnything(): void
     {
         $catalog = OperatingPromptCatalog::bundled();
