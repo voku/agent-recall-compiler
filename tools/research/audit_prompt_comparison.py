@@ -37,6 +37,41 @@ def read_object(path: pathlib.Path) -> dict[str, Any]:
     return result
 
 
+def declared_disposition(arm: str, content: str) -> str:
+    """Extract an explicit disposition, including Markdown field/value formats."""
+    allowed = LABELS[arm]
+    options = "|".join(re.escape(label) for label in allowed)
+    leading = re.match(
+        rf"\s*(?:[#*>-]+\s*)*(?:`|\*\*)?({options})(?:`|\*\*)?(?=\s|:|$)",
+        content,
+    )
+    if leading:
+        return leading.group(1)
+    for label_name in ("Classification", "Disposition", "Smallest Bounded Next Step"):
+        match = re.search(
+            rf"(?im)^\s*(?:[#*>-]+\s*)?(?:\*\*)?"
+            rf"{re.escape(label_name)}(?:\*\*)?\s*:\s*"
+            rf"(?:\s*\n\s*)?(?:`|\*\*)?({options})(?:`|\*\*)?(?=\s|$)",
+            content,
+        )
+        if match:
+            return match.group(1)
+    return "UNRECOGNIZED"
+
+
+def labels_mentioned(arm: str, content: str) -> list[str]:
+    """Return all mentioned labels without claiming the mentions contradict."""
+    return [
+        label for label in LABELS[arm]
+        if re.search(r"(?<![A-Z_])" + re.escape(label) + r"(?![A-Z_])", content)
+    ]
+
+
+def is_truncated(row: dict[str, Any]) -> bool:
+    """A successful HTTP response can still be unfinished due to token budget."""
+    return row.get("finish_reason") == "length"
+
+
 def main(directory: pathlib.Path) -> int:
     manifest = read_object(directory / "manifest.json")
     raw_fixtures = (directory / "fixtures.json").read_bytes()
@@ -72,6 +107,7 @@ def main(directory: pathlib.Path) -> int:
         arm: collections.Counter() for arm in ARMS
     }
     rows_with_multiple_labels = []
+    truncated = []
     invalid = []
     for row in rows:
         key = (row["scenario"], row["arm"], row["repeat"])
@@ -82,23 +118,21 @@ def main(directory: pathlib.Path) -> int:
             invalid.append({"key": key, "status": row.get("status")})
             continue
         content = row["content"]
-        # Whole-word labels, ignoring Markdown emphasis. No semantic inference here.
-        found = [
-            label for label in LABELS[row["arm"]]
-            if re.search(r"(?<![A-Z_])" + re.escape(label) + r"(?![A-Z_])", content)
-        ]
-        leading = re.match(
-            r"\s*(?:[#*>_-]+\s*)*(?:\*\*)?([A-Z_]{3,})(?:\*\*)?(?=\s|:|$)",
-            content,
-        )
-        first = leading.group(1) if leading and leading.group(1) in LABELS[row["arm"]] else "UNRECOGNIZED"
+        if not content.strip():
+            invalid.append({"key": key, "status": "empty_content"})
+            continue
+        if is_truncated(row):
+            truncated.append({"scenario": key[0], "arm": key[1], "repeat": key[2]})
+        found = labels_mentioned(row["arm"], content)
+        first = declared_disposition(row["arm"], content)
         counts[row["arm"]][first] += 1
         if row["scenario"] in ("N1", "N2"):
             negatives[row["arm"]][first] += 1
         if len(found) > 1:
             rows_with_multiple_labels.append({
                 "scenario": key[0], "arm": key[1], "repeat": key[2],
-                "labels": found,
+                "labels_mentioned": found,
+                "note": "multiple label references do not automatically imply contradictory directives",
             })
     if observed != expected:
         raise ValueError(f"Missing inference records: {sorted(expected - observed)}")
@@ -107,7 +141,13 @@ def main(directory: pathlib.Path) -> int:
         "basis": "mechanical label inspection only, NOT blinded semantic evaluation",
         "complete": len(rows) == len(expected) and not invalid,
         "total_records": len(rows),
-        "transport_errors": invalid,
+        "transport_or_content_errors": invalid,
+        "truncated_responses": truncated,
+        "truncated_by_arm": {
+            arm: sum(1 for row in truncated if row["arm"] == arm)
+            for arm in ARMS
+        },
+        "complete_response_gate": len(truncated) == 0 and not invalid,
         "counts_by_arm": {
             arm: dict(sorted(counts[arm].items())) for arm in ARMS
         },
@@ -122,7 +162,7 @@ def main(directory: pathlib.Path) -> int:
         json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
     print(json.dumps(report, indent=2, sort_keys=True))
-    return 1 if invalid else 0
+    return 1 if invalid or truncated else 0
 
 
 if __name__ == "__main__":
