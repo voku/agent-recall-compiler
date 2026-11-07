@@ -93,6 +93,31 @@ jobs:
       - name: Install pinned agent-loop with this Recall candidate
         run: composer update --working-dir=build/agent-loop --no-interaction --prefer-dist --no-progress
 
+      - name: Verify installed consumer exploration CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          bin="build/agent-loop/vendor/bin/agent-recall-compiler"
+          php "$bin" prompt explore > build/agent-loop-explore-prompt.txt
+          php -r '
+          require "build/agent-loop/vendor/autoload.php";
+          $expected = (new voku\AgentRecallCompiler\Reflection\ExplorePromptBuilder())->build() . PHP_EOL;
+          $actual = file_get_contents("build/agent-loop-explore-prompt.txt");
+          if ($actual === false || $actual !== $expected) {
+              throw new RuntimeException("Installed consumer explore CLI differs from installed builder.");
+          }
+          if (!str_contains($actual, "NOTHING_TO_EXPLORE")
+              || !str_contains($actual, "non-mutating")
+              || !str_contains($actual, "Do not plan or authorize implementation")) {
+              throw new RuntimeException("Installed consumer explore prompt lost inquiry/authority boundaries.");
+          }
+          echo "Installed explore prompt SHA-256: ", hash("sha256", $actual), PHP_EOL;
+          '
+          if php "$bin" prompt explore --scope project >/dev/null 2>&1; then
+            echo 'Invalid explore arguments were accepted by installed consumer.' >&2
+            exit 1
+          fi
+
       - name: Lint dogfood runner
         run: php -l tools/context-explain-dogfood.php
 
@@ -130,6 +155,7 @@ jobs:
           if-no-files-found: warn
           path: |
             build/agent-loop/composer.lock
+            build/agent-loop-explore-prompt.txt
             build/context-explain-dogfood
             build/context-explain-targeted
             .agent-loop/recall/ARC-17
