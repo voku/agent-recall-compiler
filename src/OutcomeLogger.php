@@ -375,7 +375,7 @@ final class OutcomeLogger
                 $selected,
                 $selectionReason,
                 $exclusionReason,
-                $this->requiredStringList($item, 'task_files', $file),
+                $this->optionalStringList($item, 'task_files', $file),
                 is_string($item['source_proposal'] ?? null) ? $item['source_proposal'] : null,
             );
         }
@@ -592,6 +592,28 @@ final class OutcomeLogger
         }
 
         return $value;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @return list<string>
+     */
+    private function optionalStringList(array $data, string $key, string $file): array
+    {
+        $value = $data[$key] ?? [];
+        if (!is_array($value)) {
+            throw new RuntimeException(sprintf('%s requires string list: %s', $file, $key));
+        }
+
+        $strings = [];
+        foreach ($value as $item) {
+            if (!is_string($item)) {
+                throw new RuntimeException(sprintf('%s list %s must contain only strings', $file, $key));
+            }
+            $strings[] = $item;
+        }
+
+        return $strings;
     }
 
     /**

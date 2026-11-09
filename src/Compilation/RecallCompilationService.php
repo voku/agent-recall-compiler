@@ -150,7 +150,14 @@ final class RecallCompilationService
             'outcome_stats' => $selection->outcomeStats,
             'warnings' => $selection->warnings,
             'fact_decisions' => $factResolution->decisions,
-            'facts' => $factResolution->facts,
+            'resolved_facts_digest' => CanonicalJson::digest($factResolution->facts),
+            'facts' => array_map(static fn (array $fact): array => [
+                'id' => $fact['id'] ?? '',
+                'type' => $fact['type'] ?? '',
+                'authority' => $fact['authority'] ?? '',
+                'source_ref' => $fact['source_ref'] ?? '',
+                'scope' => $fact['scope'] ?? [],
+            ], $factResolution->facts),
         ];
 
         /** @var array<string, mixed> $canonicalBundle */
