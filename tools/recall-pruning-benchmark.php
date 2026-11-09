@@ -134,7 +134,7 @@ final class RecallPruningBenchmark
 
         // Verify determinism: compile a second time and compare hashes
         $outputDir2 = $this->tempDir . '/out2-' . $spec['id'];
-        $cli->run([
+        $exitCode2 = $cli->run([
             'agent-recall-compiler',
             'compile',
             '--root', $this->learningRoot,
@@ -143,6 +143,9 @@ final class RecallPruningBenchmark
             '--output-dir', $outputDir2,
             '--compilation-id', 'compilation.' . $spec['id'] . '.bm',
         ]);
+        if ($exitCode2 !== 0) {
+            throw new \RuntimeException("Determinism check compile failed for {$spec['id']} with code {$exitCode2}");
+        }
         $deterministic = (hash_file('sha256', $bundlePath) === hash_file('sha256', $outputDir2 . '/recall.bundle.json'))
             && (hash_file('sha256', $factsPath) === hash_file('sha256', $outputDir2 . '/facts.json'));
 

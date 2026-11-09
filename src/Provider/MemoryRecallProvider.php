@@ -34,11 +34,17 @@ final class MemoryRecallProvider implements RecallProvider
         }
 
         $scopedMemory = $this->pruneMemoryForTask($memory, $task);
+        $isPruned = ($scopedMemory !== $memory);
 
-        $payload = ['content' => $scopedMemory];
-        if ($loaded['sourceSha256'] !== null) {
+        $payload = [
+            'content' => $scopedMemory,
+            'is_pruned' => $isPruned,
+        ];
+        if (!$isPruned && $loaded['sourceSha256'] !== null) {
             $payload['canonical_source_ref'] = 'MEMORY.md';
             $payload['source_sha256'] = $loaded['sourceSha256'];
+        } elseif ($loaded['sourceSha256'] !== null) {
+            $payload['full_source_sha256'] = $loaded['sourceSha256'];
         }
 
         return new RecallProviderResult(
@@ -91,6 +97,7 @@ final class MemoryRecallProvider implements RecallProvider
         }
 
         $retained = [];
+        $retainedSections = 0;
         $preamble = array_shift($sections);
         if (trim($preamble) !== '') {
             $retained[] = trim($preamble);
@@ -114,6 +121,7 @@ final class MemoryRecallProvider implements RecallProvider
             }
             if ($isRequired) {
                 $retained[] = $trimmed;
+                $retainedSections++;
                 continue;
             }
 
@@ -126,10 +134,11 @@ final class MemoryRecallProvider implements RecallProvider
             }
             if ($isRelevant) {
                 $retained[] = $trimmed;
+                $retainedSections++;
             }
         }
 
-        if (count($retained) <= 1 && count($sections) > 1) {
+        if ($retainedSections === 0) {
             return $memory;
         }
 

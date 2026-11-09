@@ -6,12 +6,15 @@ namespace voku\AgentRecallCompiler\Tests;
 
 use PHPUnit\Framework\TestCase;
 use voku\AgentRecallCompiler\Cli;
+use voku\AgentRecallCompiler\Compilation\RecallCompilationService;
 use voku\AgentRecallCompiler\EvaluatedGuidance;
 use voku\AgentRecallCompiler\ExclusionReason;
 use voku\AgentRecallCompiler\GuidanceType;
 use voku\AgentRecallCompiler\OutcomeLogger;
 use voku\AgentRecallCompiler\Output\RecallFactsDocumentReader;
+use voku\AgentRecallCompiler\Provider\LearningRecallProvider;
 use voku\AgentRecallCompiler\Provider\MemoryRecallProvider;
+use voku\AgentRecallCompiler\RecallRepository;
 use voku\AgentRecallCompiler\RecallRootConfig;
 use voku\AgentRecallCompiler\SelectionReason;
 use voku\AgentRecallCompiler\TaskBrief;
@@ -253,6 +256,111 @@ final class TaskScopedRecallPruningTest extends TestCase
         $result = $logger->log($learningRoot, $draftPath, 'actor', 'commit_hash');
 
         self::assertSame('compilation.TEST.001', $result);
+    }
+
+    public function testPrunedMemoryOmitsCanonicalSourceRefAndPreservesAppliedGuidance(): void
+    {
+        $learningRoot = $this->root . '/learning';
+        mkdir($learningRoot . '/proposals/applied', 0777, true);
+        mkdir($learningRoot . '/history', 0777, true);
+
+        $memoryPath = $this->root . '/MEMORY.md';
+        $memory = "# Global Project Memory\n\n";
+        $memory .= "## Core Invariants & Never Rules\n";
+        $memory .= "1. Never bypass security boundaries.\n\n";
+        $memory .= "## Domain Section: Authentication\n";
+        $memory .= "Auth guidelines and token policies.\n" . str_repeat("Auth section padding line.\n", 200);
+        $memory .= "\n## Domain Section: Billing and Payments\n";
+        $memory .= "Billing calculations must use bcmath.\n" . str_repeat("Billing payment gateway integration rules.\n", 300);
+
+        file_put_contents($memoryPath, $memory);
+        self::assertGreaterThan(12000, strlen($memory));
+
+        // Proposal applied to MEMORY.md for Auth
+        file_put_contents(
+            $learningRoot . '/proposals/applied/proposal.2026-08-08.001.json',
+            json_encode([
+                'schema_version' => '1.0',
+                'id' => 'proposal.2026-08-08.001',
+                'action' => 'ADD',
+                'target_type' => 'memory',
+                'target' => 'memory.project',
+                'scope' => ['src/Auth/'],
+                'new' => 'Auth guidelines and token policies.',
+                'reason' => 'Auth policy rule.',
+                'status' => 'applied',
+                'applied_validation' => [
+                    'target_source_ref' => 'MEMORY.md',
+                    'target_content_hash' => (string) hash_file('sha256', $memoryPath),
+                ],
+            ], JSON_THROW_ON_ERROR),
+        );
+
+        $task = new TaskBrief(
+            'AUTH-01',
+            'Fix password validator bounds',
+            ['src/Auth/PasswordValidator.php'],
+            tags: ['auth'],
+        );
+
+        $rootConfig = new RecallRootConfig($learningRoot, 'constraints', projectRoot: $this->root);
+        $compiler = new RecallCompilationService([
+            new MemoryRecallProvider(new RecallRepository()),
+            new LearningRecallProvider(new RecallRepository()),
+        ]);
+        $compilation = $compiler->compile(
+            $task,
+            $rootConfig,
+        );
+
+        // Memory was pruned because Billing was excluded
+        $memoryFact = null;
+        foreach ($compilation->facts as $fact) {
+            if (($fact['id'] ?? null) === 'memory.global') {
+                $memoryFact = $fact;
+                break;
+            }
+        }
+        self::assertNotNull($memoryFact);
+        self::assertTrue($memoryFact['payload']['is_pruned'] ?? false);
+        // Pruned memory MUST NOT declare canonical_source_ref
+        self::assertArrayNotHasKey('canonical_source_ref', $memoryFact['payload']);
+        self::assertSame(hash_file('sha256', $memoryPath), $memoryFact['payload']['full_source_sha256'] ?? null);
+
+        // Crucial: applied proposal targeting MEMORY.md was NOT suppressed as CANONICAL_HOME_LOADED
+        $selectedIds = array_map(static fn ($g): string => $g->id, $compilation->result->selectedGuidance);
+        self::assertContains('proposal.2026-08-08.001', $selectedIds);
+
+        // Verify resolved_facts_digest is present in bundle
+        self::assertArrayHasKey('resolved_facts_digest', $compilation->bundle);
+        self::assertNotEmpty($compilation->bundle['resolved_facts_digest']);
+    }
+
+    public function testPruningFallbackPreservesMemoryWhenOnlyPreambleRemains(): void
+    {
+        $memoryPath = $this->root . '/MEMORY.md';
+        $memory = "# Arbitrary Project Notes\n\n";
+        $memory .= "## Topic Zebra\n" . str_repeat("Arbitrary topic zebra text.\n", 300);
+        $memory .= "\n## Topic Kangaroo\n" . str_repeat("Arbitrary topic kangaroo text.\n", 300);
+
+        file_put_contents($memoryPath, $memory);
+        self::assertGreaterThan(12000, strlen($memory));
+
+        // Task has tokens that match neither Zebra nor Kangaroo, and headings have no required keywords
+        $task = new TaskBrief(
+            'TASK-01',
+            'Work on unrelated items',
+            ['src/Unrelated/Item.php'],
+        );
+
+        $provider = new MemoryRecallProvider();
+        $config = new RecallRootConfig($this->root, 'constraints');
+        $result = $provider->collect($task, $config);
+
+        self::assertCount(1, $result->facts);
+        // Fallback guard returned full unpruned memory
+        self::assertSame(trim($memory), $result->facts[0]->payload['content']);
+        self::assertFalse($result->facts[0]->payload['is_pruned'] ?? true);
     }
 
     private function removeDirectory(string $dir): void
