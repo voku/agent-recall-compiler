@@ -36,9 +36,9 @@ final readonly class EvaluatedGuidance
      *     guidance_type: string,
      *     eligible: bool,
      *     selected: bool,
-     *     selection_reason: string|null,
-     *     exclusion_reason: string|null,
-     *     task_files: list<string>,
+     *     selection_reason?: string|null,
+     *     exclusion_reason?: string|null,
+     *     task_files?: list<string>,
      *     source_proposal?: string
      * }
      */
@@ -49,10 +49,16 @@ final readonly class EvaluatedGuidance
             'guidance_type' => $this->guidanceType->value,
             'eligible' => $this->eligible,
             'selected' => $this->selected,
-            'selection_reason' => $this->selectionReason?->value,
-            'exclusion_reason' => $this->exclusionReason?->value,
-            'task_files' => $this->taskFiles,
         ];
+        if ($this->selectionReason !== null) {
+            $data['selection_reason'] = $this->selectionReason->value;
+        }
+        if ($this->exclusionReason !== null) {
+            $data['exclusion_reason'] = $this->exclusionReason->value;
+        }
+        if ($this->taskFiles !== []) {
+            $data['task_files'] = $this->taskFiles;
+        }
         if ($this->sourceProposal !== null) {
             $data['source_proposal'] = $this->sourceProposal;
         }
