@@ -6,6 +6,27 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.28.0] - 2026-11-09
+
+### Added
+
+- Add task-scoped recall pruning and intermediate bundle optimization (#457, #264). Prunes non-mandatory context from intermediate bundles when tasks specify narrow scope, while preserving 100% of required security, architectural, and workflow constraints.
+- Cryptographically bind `resolved_facts_digest` to the intermediate compilation bundle identity via `CanonicalJson::digest`.
+
+### Fixed
+
+- Prevent suppression of applied guidance when memory is pruned (#264). Pruned memory explicitly marks `is_pruned = true` and omits `canonical_source_ref`, preventing `preferLoadedCanonicalHomes` from falsely suppressing guidance that belongs to pruned sections.
+
+### Compatibility and scope
+
+- Intermediate bundle formats remain backward-compatible; downstream consumers continue to receive standard bundle structures.
+- Compilation outputs remain deterministic for identical inputs.
+
+### Validation
+
+- Tested with comprehensive PHPUnit test suite (422 tests, 2,218 assertions) and PHPStan Level 8 clean.
+- Benchmark verified ~70-94% intermediate bundle size reduction on targeted tasks with zero loss of required constraints.
+
 ## [0.27.0] - 2026-11-07
 
 ### Added
