@@ -46,6 +46,21 @@ verification / review / lifecycle owner
 
 The human or workflow provides intent and authority. Repository evidence provides facts. Recall deterministically selects and explains relevant context and renders selected prompt semantics. When an L2 recipe is selected, the receiving agent or harness constructs the concrete project-specific L1 contract. Mechanical verification and lifecycle decisions remain outside Recall.
 
+## Where to work in this repository
+
+Recall compiles bounded, explainable context from existing evidence. Use the owning implementation rather than treating generated briefing text as policy:
+
+| Concern | Source of truth |
+| --- | --- |
+| Guidance selection and budgets | [`src/Selection/`](src/Selection/) and [`src/RecallDecisionEngine.php`](src/RecallDecisionEngine.php) |
+| Context inputs and provenance | [`src/Context/`](src/Context/) and [context explanation](docs/context-explain.md) |
+| Compilation and replay artifacts | [`src/Compilation/`](src/Compilation/) and [`src/RecallCompiler.php`](src/RecallCompiler.php) |
+| Review presentations and identities | [`src/Review/`](src/Review/) and [review presentation](docs/review-presentation.md) |
+| Operating prompt recipes | [`src/OperatingPromptCatalog.php`](src/OperatingPromptCatalog.php) and [prompt docs](docs/operating-prompts.md) |
+| Tests and owner-level verification | [`tests/`](tests/) and [`composer.json`](composer.json) |
+
+Selected guidance is context, not evidence that it helped; a review artifact hash is not acknowledgement or approval.
+
 ## Why this exists
 
 Coding agents are fast enough that the bottleneck is often no longer implementation. The harder problem is making sure an agent receives the **right task, the right context, the right authority, and a way to prove the result**.
