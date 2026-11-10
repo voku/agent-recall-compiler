@@ -193,6 +193,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("mode", choices=["preflight", "infer"])
     parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--enforce-workflow-applicability", action="store_true")
     args = parser.parse_args()
 
     cases = validate_cohort()
@@ -233,7 +234,14 @@ def main() -> int:
                     }
                     for identity in offered
                 ]
-                prompt = owner("prompt", {"intent": query, "candidates": candidate_projection})["prompt"]
+                prompt = owner("prompt", {
+                    "intent": query,
+                    "candidates": candidate_projection,
+                    "enforce_workflow_applicability": args.enforce_workflow_applicability,
+                })["prompt"]
+                marker_present = "WORKFLOW_APPLICABILITY_EXPERIMENT" in prompt
+                if marker_present != args.enforce_workflow_applicability:
+                    raise RuntimeError("Actual PHP owner prompt intervention differs from requested arm")
                 record: dict[str, Any] = {
                     "case_id": case["id"],
                     "source_ref": case["source_ref"],
@@ -282,6 +290,8 @@ def main() -> int:
                 "retrieval_commit": SOURCE_COMMIT,
                 "retrieval_blob_sha": SOURCE_SCRIPT_BLOB,
                 "model_policy": "Copilot CLI 1.0.107 --model auto (backend identity not guaranteed)",
+                "prompt_arm": "opt_in_workflow_applicability" if args.enforce_workflow_applicability else "unchanged_default_owner",
+                "paired_baseline_exact_head": "f5f00b9c74dc1e0fc17d5d60424e2ad1c3b810a6" if args.enforce_workflow_applicability else None,
                 "labels_independently_adjudicated": False,
                 "model_calls_expected": len(records) if args.mode == "infer" else 0,
                 "cases": records,
