@@ -37,8 +37,13 @@ try {
             throw new InvalidArgumentException('Prompt requires task intent and candidate list');
         }
 
+        $applicability = $input['enforce_workflow_applicability'] ?? false;
+        if (!is_bool($applicability)) {
+            throw new InvalidArgumentException('Applicability flag must be boolean');
+        }
+
         /** @var list<PromptCandidate> $candidates */
-        $prompt = (new BoundedChoicePromptBuilder())->build($intent, $candidates);
+        $prompt = (new BoundedChoicePromptBuilder())->build($intent, $candidates, $applicability);
         $output = ['prompt' => $prompt];
     } else {
         $rawResponse = $input['raw_response'] ?? null;
