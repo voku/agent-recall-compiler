@@ -30,7 +30,7 @@ def read_pinned_evidence() -> tuple[dict[str, Any], str]:
         check=True, capture_output=True,
     )
     raw = result.stdout
-    blob = hashlib.sha1(f"blob {len(raw)}\\0".encode("ascii") + raw).hexdigest()
+    blob = hashlib.sha1(f"blob {len(raw)}\0".encode("ascii") + raw).hexdigest()
     if blob != SOURCE_BLOB:
         raise ValueError(f"Frozen evidence blob changed: {blob}")
     evidence = json.loads(raw)
