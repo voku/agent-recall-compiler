@@ -48,12 +48,16 @@ jobs:
           php -l tools/research/issue_choice_owner.php
           git fetch --no-tags origin b560fb6d09bc49d19cf8ff5154f44f141cbb0953
           python3 tools/research/issue_choice_cohort.py preflight --output build/research/issue-choice-preflight.json
-          jq -e '.evidence_class == "FROZEN_FIXTURE_PREFLIGHT_NO_MODEL" and (.cases | length) == 10 and .model_calls_expected == 0' build/research/issue-choice-preflight.json
+          jq -e '.evidence_class == "FROZEN_FIXTURE_PREFLIGHT_NO_MODEL" and .prompt_arm == "unchanged_default_owner" and (.cases | length) == 10 and .model_calls_expected == 0' build/research/issue-choice-preflight.json
+          python3 tools/research/issue_choice_cohort.py preflight --enforce-workflow-applicability --output build/research/issue-choice-applicability-preflight.json
+          jq -e '.prompt_arm == "opt_in_workflow_applicability" and (.cases | length) == 10 and .model_calls_expected == 0' build/research/issue-choice-applicability-preflight.json
       - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: issue-choice-frozen-preflight-${{ github.event.pull_request.head.sha }}
-          path: build/research/issue-choice-preflight.json
+          path: |
+            build/research/issue-choice-preflight.json
+            build/research/issue-choice-applicability-preflight.json
           if-no-files-found: warn
           retention-days: 30
 
@@ -107,5 +111,58 @@ jobs:
         with:
           name: issue-choice-real-host-${{ github.event.pull_request.head.sha }}
           path: build/research/issue-choice-real-host.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  applicability-model:
+    name: One real Copilot host pass with opt-in workflow applicability
+    needs: fixture
+    if: >-
+      github.event.action == 'labeled' &&
+      github.event.label.name == 'issue-choice-applicability-model' &&
+      github.event.pull_request.user.login == 'voku' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    permissions:
+      contents: read
+      copilot-requests: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          tools: composer:v2
+      - name: Install current checked-in PHP dependency graph
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Install pinned real Copilot CLI
+        run: |
+          set -euo pipefail
+          npm install --global @github/copilot@1.0.107
+          copilot --version
+      - name: Run ten isolated host requests using the existing applicability option
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+          git fetch --no-tags origin b560fb6d09bc49d19cf8ff5154f44f141cbb0953
+          python3 tools/research/issue_choice_cohort.py infer --enforce-workflow-applicability --output build/research/issue-choice-applicability-host.json
+          jq -e ' .model_calls_expected == 10 and .prompt_arm == "opt_in_workflow_applicability" and .evidence_class == "REAL_HOST_EXPLORATORY_NOT_INDEPENDENT_HUMAN_ADJUDICATION" and (.cases | length) == 10' build/research/issue-choice-applicability-host.json
+      - name: Retain bounded redacted inference evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: issue-choice-applicability-host-${{ github.event.pull_request.head.sha }}
+          path: build/research/issue-choice-applicability-host.json
           if-no-files-found: warn
           retention-days: 30
