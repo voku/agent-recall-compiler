@@ -1,0 +1,45 @@
+name: Research - frozen source-consensus veto replay
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/choice-veto-retrospective.yml'
+      - 'tools/research/choice_veto_retrospective.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  retrospective:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout retrospective script (no product changes)
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Retrieve pinned closed experimental evidence commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin b560fb6d09bc49d19cf8ff5154f44f141cbb0953
+          git cat-file -e b560fb6d09bc49d19cf8ff5154f44f141cbb0953^{commit}
+
+      - name: Replay source-backed candidate veto without model inference
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile tools/research/choice_veto_retrospective.py
+          python3 tools/research/choice_veto_retrospective.py \
+            --output build/research/choice-veto-retrospective.json
+
+      - name: Retain bounded, explicitly post-hoc metrics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: choice-veto-retrospective
+          path: build/research/choice-veto-retrospective.json
+          if-no-files-found: warn
+          retention-days: 30
