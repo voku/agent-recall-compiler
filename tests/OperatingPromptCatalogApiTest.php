@@ -40,6 +40,8 @@ final class OperatingPromptCatalogApiTest extends TestCase
 
     public function testRecipeRejectsInvalidRuntimeAliasAndIntentLists(): void
     {
+        $rejectedCases = 0;
+
         foreach ([
             ['aliases' => [''], 'intents' => []],
             ['aliases' => [], 'intents' => ['  ']],
@@ -61,9 +63,11 @@ final class OperatingPromptCatalogApiTest extends TestCase
                 );
                 self::fail('Invalid metadata was accepted');
             } catch (\InvalidArgumentException) {
-                // Expected: constructor must reject malformed PHP caller values.
+                ++$rejectedCases;
             }
         }
+
+        self::assertSame(4, $rejectedCases);
     }
 
     public function testPreviewIsDeterministicAndDoesNotPersistAnything(): void

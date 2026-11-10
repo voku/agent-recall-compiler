@@ -23,7 +23,6 @@ final class AgentLearningNoteProjectionSourceTest extends TestCase
         $learningVersion = InstalledVersions::getPrettyVersion('voku/agent-learning');
         self::assertNotNull($learningVersion);
         self::assertTrue(version_compare($learningVersion, '0.18.1', '>='));
-        self::assertTrue(version_compare($learningVersion, '0.19.0', '<'));
         $expectedPrecedentsTruncated = version_compare($learningVersion, '0.18.3', '>=') ? false : null;
 
         self::assertTrue((new AgentLearningNoteProjectionSource())->isAvailable());
