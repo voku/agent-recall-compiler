@@ -1,0 +1,104 @@
+{
+  "schema_version": "1.0",
+  "status": "FROZEN_BEFORE_MODEL_INFERENCE",
+  "case_origin": "Researcher-authored paraphrases grounded in linked public GitHub issues/PR; not unmodified issue quotes and not independently blinded human labels.",
+  "hypothesis": "Comparing the same real model response on the same offered candidates, an extra source-consensus veto reduces unsupported method selections without suppressing correct explicit workflow requests.",
+  "negative_result": "If a valid explicitly requested recipe is vetoed, or the new cohort shows parity/no false-selection reduction, report NO_DEMONSTRATED_INCREMENTAL_VALUE. Never relabel outcomes after seeing responses.",
+  "source_owner": "voku/agent-recall-compiler",
+  "catalog_ref": "0d99e266c7bad88b2b0f402fe8a3b617e8c1bce0",
+  "retrieval_implementation_ref": "b560fb6d09bc49d19cf8ff5154f44f141cbb0953",
+  "attempted_model_calls": 10,
+  "labels_independently_adjudicated": false,
+  "cases": [
+    {
+      "id": "issue-1-method",
+      "cohort": "workflow_requested",
+      "source_ref": "voku/php-runtime-audit#34",
+      "source_title": "chore(deps): update dependency phpunit/phpunit to v13",
+      "query": "Prepare a breaking-change compatibility review of the PHPUnit 13 upgrade in php-runtime-audit. Inspect PHP minimum versions, downstream test consumers and migration risks before recommending a merge.",
+      "expected_id": "breaking-change-review",
+      "label_basis": "The adapted request explicitly commissions the named workflow/method, not authorization to execute the underlying change."
+    },
+    {
+      "id": "issue-1-implementation",
+      "cohort": "topic_only",
+      "source_ref": "voku/php-runtime-audit#34",
+      "source_title": "chore(deps): update dependency phpunit/phpunit to v13",
+      "query": "Update phpunit/phpunit from ^11.5 to ^13.0 in php-runtime-audit and repair the Composer dependency lockfile.",
+      "expected_id": null,
+      "label_basis": "The adapted request is implementation work, not a request to generate a general process recipe. Another judgment is possible; independent review remains required."
+    },
+    {
+      "id": "issue-2-method",
+      "cohort": "workflow_requested",
+      "source_ref": "voku/agent-loop#879",
+      "source_title": "follow-up(standing-approval): enforce the reserved standing: actor at the owner level and add end-to-end finish tests",
+      "query": "Carry out an adversarial review of the standing: actor restriction. Investigate forged actor values through finish finding, acknowledgement and Learning recorder APIs, and report evidence for each possible bypass.",
+      "expected_id": "adversarial-review",
+      "label_basis": "The adapted request explicitly commissions the named workflow/method, not authorization to execute the underlying change."
+    },
+    {
+      "id": "issue-2-implementation",
+      "cohort": "topic_only",
+      "source_ref": "voku/agent-loop#879",
+      "source_title": "follow-up(standing-approval): enforce the reserved standing: actor at the owner level and add end-to-end finish tests",
+      "query": "Enforce reserved standing: actor values at the owner boundary and add end-to-end finish regressions without changing the workflow permissions.",
+      "expected_id": null,
+      "label_basis": "The adapted request is implementation work, not a request to generate a general process recipe. Another judgment is possible; independent review remains required."
+    },
+    {
+      "id": "issue-3-method",
+      "cohort": "workflow_requested",
+      "source_ref": "voku/agent-loop#838",
+      "source_title": "refactor(recovery): reduce replay and state-store complexity after #836",
+      "query": "Provide a deletion-first assessment of the recovery replay refactor: identify redundant state paths that could be removed and list the existing checks that must remain true.",
+      "expected_id": "deletion-first",
+      "label_basis": "The adapted request explicitly commissions the named workflow/method, not authorization to execute the underlying change."
+    },
+    {
+      "id": "issue-3-implementation",
+      "cohort": "topic_only",
+      "source_ref": "voku/agent-loop#838",
+      "source_title": "refactor(recovery): reduce replay and state-store complexity after #836",
+      "query": "Refactor the long recovery replay run method, remove unused fixture bindings and keep the existing state-store assertions green.",
+      "expected_id": null,
+      "label_basis": "The adapted request is implementation work, not a request to generate a general process recipe. Another judgment is possible; independent review remains required."
+    },
+    {
+      "id": "issue-4-method",
+      "cohort": "workflow_requested",
+      "source_ref": "voku/agent-loop#457",
+      "source_title": "Pre-1.0: prove the closed learning loop from Finding to changed future execution",
+      "query": "Perform a missingness audit of the Learning closed-loop proof: distinguish completed owner-selection and L2/L1 handoffs from missing independent Task B behavior and independent outcome verification.",
+      "expected_id": "missingness-audit",
+      "label_basis": "The adapted request explicitly commissions the named workflow/method, not authorization to execute the underlying change."
+    },
+    {
+      "id": "issue-4-implementation",
+      "cohort": "topic_only",
+      "source_ref": "voku/agent-loop#457",
+      "source_title": "Pre-1.0: prove the closed learning loop from Finding to changed future execution",
+      "query": "Implement a tracked Learning outcome handoff that connects a later coding task to its saved precedent and records whether Dream considered the outcome.",
+      "expected_id": null,
+      "label_basis": "The adapted request is implementation work, not a request to generate a general process recipe. Another judgment is possible; independent review remains required."
+    },
+    {
+      "id": "issue-5-method",
+      "cohort": "workflow_requested",
+      "source_ref": "voku/agent-ui#178",
+      "source_title": "feat(workbench): prove Fix → Release → Consumer → Post-merge chain",
+      "query": "Produce an evidence report for the agent-ui release-to-consumer handoff. Separate exact producer merge commits, released tag identity, installed consumer package and post-merge tests, marking any missing proof.",
+      "expected_id": "evidence-report",
+      "label_basis": "The adapted request explicitly commissions the named workflow/method, not authorization to execute the underlying change."
+    },
+    {
+      "id": "issue-5-implementation",
+      "cohort": "topic_only",
+      "source_ref": "voku/agent-ui#178",
+      "source_title": "feat(workbench): prove Fix → Release → Consumer → Post-merge chain",
+      "query": "Add read-only producer release and consumer receipt fields to the agent-ui workbench, linking the appropriate GitHub Actions runs.",
+      "expected_id": null,
+      "label_basis": "The adapted request is implementation work, not a request to generate a general process recipe. Another judgment is possible; independent review remains required."
+    }
+  ]
+}
