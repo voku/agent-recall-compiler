@@ -139,6 +139,7 @@ $report = [
     'cases' => $results,
     'limitations' => [
         'One current repository and three controlled task shapes, not independent historical engineering tasks.',
+        'Standalone Recall CLI owner defaults are measured here, not the narrower agent-loop consumer policy (6 files / 16 KB at the prior frozen consumer).',
         'Measures projection presence and bytes only; no coding agent, correctness, tool use, tokens or causal efficiency measured.',
         'The map was prepared by the existing governed context-explain dogfood; no new Map indexer or owner API was introduced.',
     ],
