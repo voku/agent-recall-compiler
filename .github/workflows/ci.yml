@@ -44,7 +44,14 @@ jobs:
       - name: Checkout candidate recall compiler
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
+
+      - name: Confirm exact candidate head
+        shell: bash
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
 
       - name: Checkout released-set-verified agent-loop baseline
         uses: actions/checkout@v7
@@ -124,6 +131,13 @@ jobs:
       - name: Run governed context-explain dogfood
         run: php tools/context-explain-dogfood.php
 
+      - name: Probe exact vs discovery Recall context on the current owner map
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l tools/context-selection-probe.php
+          php tools/context-selection-probe.php
+
       - name: Prove released Learning 0.18.5 numeric identity bridge in installed consumer
         shell: bash
         run: |
@@ -158,6 +172,7 @@ jobs:
             build/agent-loop-explore-prompt.txt
             build/context-explain-dogfood
             build/context-explain-targeted
+            build/context-selection-probe
             .agent-loop/recall/ARC-17
             .agent-loop/sessions
             .agent-loop/runs/ARC-17
