@@ -91,7 +91,7 @@ final class MapArchitectureDiscoveryRecallTest extends TestCase
         rmdir($this->root);
     }
 
-    public function testUnderSpecifiedTaskGetsEvidenceBackedArchitectureDiscovery(): void
+    public function testUnspecifiedTaskKeepsOnlyMapSnapshotWithoutImplicitDiscovery(): void
     {
         $provider = new MapRecallProvider($this->mapPath, $this->root);
         $result = $provider->collect(
@@ -99,23 +99,10 @@ final class MapArchitectureDiscoveryRecallTest extends TestCase
             new RecallRootConfig($this->root, $this->root . '/constraints'),
         );
 
-        $fact = $this->discoveryFact($result->facts);
-        self::assertNotNull($fact);
-        self::assertSame('2.1', $provider->manifest()->contractVersion);
-        self::assertSame('ready', $fact->payload['status'] ?? null);
-        self::assertSame([], $fact->payload['namespace_coupling'] ?? null);
-        self::assertContains([
-            'from' => 'legacy/ui',
-            'to' => 'legacy/domain',
-            'links' => 1,
-            'uncertain_links' => 0,
-        ], $fact->payload['directory_coupling'] ?? []);
-        self::assertContains([
-            'from' => 'legacy/ui/Front.php',
-            'to' => 'legacy/domain/Service.php',
-            'links' => 1,
-            'uncertain_links' => 0,
-        ], $fact->payload['file_coupling'] ?? []);
+        self::assertSame('3.0', $provider->manifest()->contractVersion);
+        self::assertCount(1, $result->facts);
+        self::assertSame('map.snapshot', $result->facts[0]->id);
+        self::assertNull($this->discoveryFact($result->facts));
     }
 
     public function testExplicitFilesDoNotAddRepositoryWideDiscoveryNoise(): void
@@ -128,7 +115,7 @@ final class MapArchitectureDiscoveryRecallTest extends TestCase
         self::assertNull($this->discoveryFact($result->facts));
     }
 
-    public function testStaleMapProducesDiscoveryStatusInsteadOfStaleArchitecture(): void
+    public function testStaleMapDoesNotClaimFreshArchitecture(): void
     {
         file_put_contents($this->root . '/legacy/ui/Front.php', $this->frontSource . "\n// changed\n");
 
@@ -137,11 +124,9 @@ final class MapArchitectureDiscoveryRecallTest extends TestCase
             new RecallRootConfig($this->root, $this->root . '/constraints'),
         );
 
-        $fact = $this->discoveryFact($result->facts);
-        self::assertNotNull($fact);
-        self::assertSame('stale', $fact->payload['status'] ?? null);
-        self::assertArrayHasKey('legacy/ui/Front.php', $fact->payload['stale_files'] ?? []);
-        self::assertArrayNotHasKey('directory_coupling', $fact->payload);
+        self::assertCount(1, $result->facts);
+        self::assertSame('map.snapshot', $result->facts[0]->id);
+        self::assertNull($this->discoveryFact($result->facts));
     }
 
     /** @param list<RecallFact> $facts */
