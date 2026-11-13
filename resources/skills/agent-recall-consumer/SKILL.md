@@ -62,7 +62,7 @@ The task brief may be the governed `governed_recall_input` envelope; Recall rema
 
 Embedded compilation writes the same canonical artifacts as the CLI but emits no CLI success report to `STDOUT`, so an outer JSON or structured host protocol stays valid. `CompileResult` exposes the compilation ID, bundle digest, and common artifact paths without requiring the caller to know CLI spelling or internal provider construction.
 
-See `EMBEDDING.md` and `docs/embedding.md` for the compact and full embedding boundaries.
+See [the bundled embedding guide](EMBEDDING.md) and [the package embedding documentation](../../../docs/embedding.md) for the compact and full embedding boundaries.
 
 ## Compile
 
