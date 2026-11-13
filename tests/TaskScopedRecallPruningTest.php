@@ -34,6 +34,24 @@ final class TaskScopedRecallPruningTest extends TestCase
         $this->removeDirectory($this->root);
     }
 
+    public function testNumericDescriptionTokensDoNotBreakPruning(): void
+    {
+        $memory = "# Global Project Memory\n\n";
+        $memory .= "## Release 2026 Notes\n" . str_repeat("Release notes for the yearly cycle.\n", 200);
+        $memory .= "\n## Domain Section: Billing\n" . str_repeat("Billing payment gateway integration rules.\n", 200);
+        file_put_contents($this->root . '/MEMORY.md', $memory);
+
+        // "2026" becomes an int array key inside the provider's token set.
+        $task = new TaskBrief('NUM-01', 'Apply decision from 2026-11-13 to search terms', ['src/Search/Terms.php']);
+
+        $result = (new MemoryRecallProvider())->collect($task, new RecallRootConfig($this->root, 'constraints'));
+
+        self::assertCount(1, $result->facts);
+        $content = $result->facts[0]->payload['content'];
+        self::assertStringContainsString('Release 2026 Notes', $content);
+        self::assertStringNotContainsString('Domain Section: Billing', $content);
+    }
+
     public function testLargeMemoryIsPrunedToRequiredAndRelevantSectionsForTask(): void
     {
         $memoryPath = $this->root . '/MEMORY.md';
