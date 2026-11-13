@@ -1,6 +1,8 @@
 ---
 name: agent-recall-compiler-maintainer
 description: Maintain voku/agent-recall-compiler package source, tests, docs, prompt output, manifest loading, scope selection, outcome logging, and local vendor syncs in consuming projects.
+metadata:
+  author: Lars Moelleken <lars@moelleken.org>
 ---
 
 # Agent Recall Compiler Maintainer

@@ -1,6 +1,8 @@
 ---
 name: agent-recall-consumer
 description: Use voku/agent-recall-compiler for task-scoped Recall, discovery-first investigations of unclear or stale repository work, explicit prompt recipes, PHP embedding, implementation review, and evidence-backed outcomes.
+metadata:
+  author: Lars Moelleken <lars@moelleken.org>
 ---
 
 # Agent Recall Consumer
