@@ -20,4 +20,5 @@ jobs:
       paths: resources/skills
       min-score: 70
       scan-mode: all
+      scan-workers: 1 # Full, sequential SkillSpector coverage without shared worker contention
       llm: false
