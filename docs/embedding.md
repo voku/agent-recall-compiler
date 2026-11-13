@@ -117,3 +117,11 @@ PHP hosts should not depend on:
 - private artifact generation steps.
 
 Use `CompileResult` for the stable compilation identity and common artifact paths. Read generated evidence files only when their content is actually needed; their existence is not proof that a coding agent consumed or satisfied them.
+
+## Reading compiled evidence without parsing artifact JSON
+
+Compilation returns a receipt, not an assertion that the evidence was consumed or verified. When a host needs task-bound output status, use `voku\AgentRecallCompiler\Output\CompiledRecallOutputReader::readForTask($recallRoot, $taskId)` and inspect the returned typed output, including its integrity and facts availability, before relying on facts.
+
+When a host needs only the persisted fact document, use `voku\AgentRecallCompiler\Output\RecallFactsDocumentReader::readFromOutputDirectory($outputDirectory)`. It returns `null` when the document is absent and throws on invalid schema or malformed JSON. Inspect the returned `RecallFactsDocument::facts` collection and select `RecallFact::type === 'architecture_discovery'` only when that evidence is relevant. Its payload can report `ready` or `stale`; a stale discovery must not be treated as current architecture. A missing discovery fact is not proof that repository architecture is absent.
+
+These are read-only APIs. Do not reconstruct `facts.json` paths, decode its private schema in consumers, or inject repository-wide discovery into every `system.md`. The host still owns deciding whether to investigate, and Map owns navigation semantics.
