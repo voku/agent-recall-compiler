@@ -171,7 +171,7 @@ final class MapSearchCandidatesTest extends TestCase
         self::assertSame('skipped', $fact->payload['status']);
     }
 
-    public function testSearchStaysOptInAndProviderContractTracksDiscoveryAndSearchShapes(): void
+    public function testSearchStaysOptInAndProviderContractTracksOnlyOptionalSearch(): void
     {
         $this->buildSearchIndex('sha256:sources');
 
@@ -184,9 +184,9 @@ final class MapSearchCandidatesTest extends TestCase
         foreach ($result->facts as $fact) {
             self::assertNotSame('navigation_candidates', $fact->type);
         }
-        self::assertSame('2.1', $provider->manifest()->contractVersion);
+        self::assertSame('3.0', $provider->manifest()->contractVersion);
         self::assertSame(
-            '2.2',
+            '3.1',
             (new MapRecallProvider($this->mapPath, $this->root, searchDatabase: $this->searchPath))->manifest()->contractVersion,
         );
     }

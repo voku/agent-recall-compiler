@@ -6,6 +6,12 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.29.0] - 2026-11-13
+
+### Removed
+
+- **Breaking (fact shape):** the Map provider no longer computes implicit repository-wide `architecture_discovery` facts for tasks without explicit files or targets (agent-loop#1031). The fact was never rendered into `system.md`, never projected by context-explain, and read by no first-party host, yet cost ~112 s on a real repository. Provider contract versions move from 2.1/2.2 to 3.0/3.1. Explicit `agent-map discover` is unchanged.
+
 ## [0.28.1] - 2026-11-13
 
 ### Fixed
