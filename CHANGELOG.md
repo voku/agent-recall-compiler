@@ -6,6 +6,12 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.28.1] - 2026-11-13
+
+### Fixed
+
+- Task-scoped memory pruning no longer throws a `TypeError` when the task description contains a numeric word (e.g. a year): PHP turns numeric-string token keys into ints, which were passed to `str_contains()` as the needle.
+
 ## [0.28.0] - 2026-11-09
 
 ### Added

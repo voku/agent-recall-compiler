@@ -127,7 +127,8 @@ final class MemoryRecallProvider implements RecallProvider
 
             $isRelevant = false;
             foreach (array_keys($taskTokens) as $token) {
-                if (str_contains($headingLower, $token)) {
+                // numeric-string tokens such as "2026" become int array keys
+                if (str_contains($headingLower, (string) $token)) {
                     $isRelevant = true;
                     break;
                 }
