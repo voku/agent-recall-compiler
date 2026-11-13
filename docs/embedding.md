@@ -120,7 +120,7 @@ Use `CompileResult` for the stable compilation identity and common artifact path
 
 ## Reading compiled evidence without parsing artifact JSON
 
-Compilation returns a receipt, not an assertion that the evidence was consumed or verified. When a host needs task-bound output status, use `voku\AgentRecallCompiler\Output\CompiledRecallOutputReader::readForTask($recallRoot, $taskId)` and inspect the returned typed output, including its integrity and facts availability, before relying on facts.
+Compilation returns a receipt, not an assertion that the evidence was consumed or verified. When a host needs task-bound output status, use `voku\AgentRecallCompiler\Output\CompiledRecallOutputReader::readForTask($recallRoot, $taskId)` and inspect the returned typed output, including integrity failures for files recorded in `meta.json` under `output_hashes`, plus facts availability, before relying on facts. An empty integrity failure list alone does not prove all artifacts were checked.
 
 When a host needs only the persisted fact document, use `voku\AgentRecallCompiler\Output\RecallFactsDocumentReader::readFromOutputDirectory($outputDirectory)`. It returns `null` when the document is absent and throws on invalid schema or malformed JSON. Inspect the returned `RecallFactsDocument::facts` collection and select `RecallFact::type === 'architecture_discovery'` only when that evidence is relevant. Its payload can report `ready` or `stale`; a stale discovery must not be treated as current architecture. A missing discovery fact is not proof that repository architecture is absent.
 
