@@ -32,11 +32,14 @@ recall output: <cwd>/.agent-loop/recall/<task-id>
 
 Do not copy historical project-specific roots or ad-hoc output directories into new automation. Override `--root` or `--output-dir` only when the consuming project intentionally uses a different location.
 
-When `agent-loop` is installed, prefer its wrapper for project-owned path resolution:
+When `agent-loop` is installed, prefer its wrapper for project-owned path resolution. Before running any compile example below, set `TARGET_FILE` to an existing source file in the consuming repository; never substitute an invented path or compile against a missing file. Every example requires this precondition:
 
 ```bash
+: "${TARGET_FILE:?Set TARGET_FILE to an existing repository source file}"
+TARGET_FILE="${TARGET_FILE#./}"
+test -f "$TARGET_FILE" || { printf '%s\n' "Missing source file: $TARGET_FILE" >&2; exit 1; }
 vendor/bin/agent-loop init paths --format=json
-vendor/bin/agent-loop recall compile --task PROJECT-123 --description "Implement region-aware navigation" --file src/Navigation/Menu.php
+vendor/bin/agent-loop recall compile --task PROJECT-123 --description "Implement region-aware navigation" --file "$TARGET_FILE"
 ```
 
 `agent-loop recall compile` resolves the configured Learning and Recall roots through the project layout. The standalone compiler uses the defaults above.
@@ -60,7 +63,7 @@ The task brief may be the governed `governed_recall_input` envelope; Recall rema
 
 Embedded compilation writes the same canonical artifacts as the CLI but emits no CLI success report to `STDOUT`, so an outer JSON or structured host protocol stays valid. `CompileResult` exposes the compilation ID, bundle digest, and common artifact paths without requiring the caller to know CLI spelling or internal provider construction.
 
-See `EMBEDDING.md` and `docs/embedding.md` for the compact and full embedding boundaries.
+See [the bundled embedding guide](EMBEDDING.md) and [the package embedding documentation](../../../docs/embedding.md) for the compact and full embedding boundaries.
 
 ## Compile
 
@@ -70,7 +73,7 @@ Minimal standalone compile:
 vendor/bin/agent-recall-compiler compile \
   --task PROJECT-123 \
   --description "Implement region-aware navigation" \
-  --file src/Navigation/Menu.php
+  --file "$TARGET_FILE"
 ```
 
 For behavioral work, provide concrete files and behavior anchors through the supported task-brief/Contract input instead of dumping the repository. Missing or conflicting governed guidance is a real blocker, not an invitation to invent a fallback.
@@ -81,7 +84,7 @@ Use a bundled L2 recipe without copying its semantics elsewhere:
 vendor/bin/agent-recall-compiler compile \
   --task PROJECT-123 \
   --description "Review the current implementation as a first draft" \
-  --file src/Navigation/Menu.php \
+  --file "$TARGET_FILE" \
   --operating-prompt-source bundled \
   --operating-prompt '{"id":"adversarial-review","arguments":{"minimum_failure_modes":3}}'
 ```
@@ -145,7 +148,7 @@ Use the bundled `todo-card-handoff` L2 recipe when validated follow-up work must
 vendor/bin/agent-recall-compiler compile \
   --task PROJECT-123 \
   --description "Prepare self-contained follow-up TODO cards for the next coding agent" \
-  --file src/Navigation/Menu.php \
+  --file "$TARGET_FILE" \
   --operating-prompt-source bundled \
   --operating-prompt '{"id":"todo-card-handoff","arguments":{}}'
 ```
@@ -162,7 +165,7 @@ Use the bundled `execution-dispatch` L2 recipe only after a durable task/work pa
 vendor/bin/agent-recall-compiler compile \
   --task PROJECT-123 \
   --description "Dispatch the current authorized slice from the durable work package" \
-  --file src/Navigation/Menu.php \
+  --file "$TARGET_FILE" \
   --operating-prompt-source bundled \
   --operating-prompt '{"id":"execution-dispatch","arguments":{}}'
 ```
