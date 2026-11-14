@@ -36,6 +36,7 @@ When `agent-loop` is installed, prefer its wrapper for project-owned path resolu
 
 ```bash
 : "${TARGET_FILE:?Set TARGET_FILE to an existing repository source file}"
+TARGET_FILE="${TARGET_FILE#./}"
 test -f "$TARGET_FILE" || { printf '%s\n' "Missing source file: $TARGET_FILE" >&2; exit 1; }
 vendor/bin/agent-loop init paths --format=json
 vendor/bin/agent-loop recall compile --task PROJECT-123 --description "Implement region-aware navigation" --file "$TARGET_FILE"
