@@ -297,6 +297,74 @@ final class CompiledRecallOutputReaderTest extends TestCase
         self::assertSame('Keep desired roles separate from applied roles.', $rendered[0]->guidance);
     }
 
+    public function testRenderedPrecedentsFollowBriefingRankAndTheSelectionReportsFinalDecision(): void
+    {
+        $bundle = str_repeat('b', 64);
+        $this->writeMeta(['bundle_sha256' => $bundle]);
+        $precedent = static fn (string $noteId, int $specificity, string $pattern): array => [
+            'type' => 'learning_precedent',
+            'source_ref' => 'agent-learning:' . $noteId,
+            'payload' => [
+                'note_id' => $noteId,
+                'pattern_key' => $pattern,
+                'title' => 'Title ' . $noteId,
+                'evidence_state' => 'current',
+                'matching_task_files' => ['src/Foo.php'],
+                'scope_specificity' => $specificity,
+                'content' => ['guidance' => 'Guidance ' . $noteId],
+                'render' => true,
+            ],
+        ];
+        // Persisted in id order; the briefing ranks the exact-file note (z) above the directory note (a).
+        file_put_contents($this->dir . '/facts.json', json_encode([
+            'schema_version' => '1.0',
+            'bundle_sha256' => $bundle,
+            'facts' => [
+                $precedent('learning-note.a', 4, 'pattern.a'),
+                $precedent('learning-note.covered', 20000, 'pattern.covered'),
+                $precedent('learning-note.z', 10011, 'pattern.z'),
+            ],
+        ], JSON_THROW_ON_ERROR));
+
+        $ids = static fn (array $precedents): array => array_map(static fn ($p) => $p->noteId, $precedents);
+        $reader = new CompiledRecallOutputReader();
+
+        // Without a selection report the provider's render flag decides, in rank order.
+        self::assertSame(
+            ['learning-note.covered', 'learning-note.z', 'learning-note.a'],
+            $ids($reader->read($this->dir)?->renderedLearningPrecedents() ?? []),
+        );
+
+        // The bound selection report records that active guidance covered one note.
+        $explain = static fn (string $noteId, bool $selected): array => [
+            'id' => 'learning-precedent:' . $noteId,
+            'kind' => 'learning_precedent',
+            'selected' => $selected,
+            'subject_id' => $noteId,
+        ];
+        file_put_contents($this->dir . '/selection-report.json', json_encode([
+            'schema_version' => '1.0',
+            'bundle_sha256' => $bundle,
+            'context_explain' => [
+                $explain('learning-note.a', true),
+                $explain('learning-note.covered', false),
+                $explain('learning-note.z', true),
+            ],
+        ], JSON_THROW_ON_ERROR));
+        self::assertSame(['learning-note.z', 'learning-note.a'], $ids($reader->read($this->dir)?->renderedLearningPrecedents() ?? []));
+
+        // A report bound to another bundle is not trusted.
+        file_put_contents($this->dir . '/selection-report.json', json_encode([
+            'schema_version' => '1.0',
+            'bundle_sha256' => str_repeat('c', 64),
+            'context_explain' => [$explain('learning-note.z', true)],
+        ], JSON_THROW_ON_ERROR));
+        self::assertSame(
+            ['learning-note.covered', 'learning-note.z', 'learning-note.a'],
+            $ids($reader->read($this->dir)?->renderedLearningPrecedents() ?? []),
+        );
+    }
+
     public function testCorruptFactsAreReportedSeparatelyFromMissingFacts(): void
     {
         $this->writeMeta();

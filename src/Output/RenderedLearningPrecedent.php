@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace voku\AgentRecallCompiler\Output;
 
+use InvalidArgumentException;
+
 /**
  * A LearningNote that Recall selected and renders into the task briefing.
  *
@@ -26,6 +28,10 @@ final readonly class RenderedLearningPrecedent
         public ?string $guidance,
         public array $matchingTaskFiles,
     ) {
+        if (trim($noteId) === '') {
+            throw new InvalidArgumentException('RenderedLearningPrecedent noteId must be a non-empty string.');
+        }
+        self::assertStringList($matchingTaskFiles);
     }
 
     /**
@@ -39,7 +45,7 @@ final readonly class RenderedLearningPrecedent
             return null;
         }
         $noteId = $payload['note_id'] ?? null;
-        if (!is_string($noteId) || $noteId === '') {
+        if (!is_string($noteId) || trim($noteId) === '') {
             return null;
         }
         $content = is_array($payload['content'] ?? null) ? $payload['content'] : [];
@@ -52,6 +58,19 @@ final readonly class RenderedLearningPrecedent
             self::nonEmpty($content['guidance'] ?? null),
             array_values(array_filter($files, 'is_string')),
         );
+    }
+
+    /** @param array<mixed> $values */
+    private static function assertStringList(array $values): void
+    {
+        if (!array_is_list($values)) {
+            throw new InvalidArgumentException('RenderedLearningPrecedent matchingTaskFiles must be a list of strings.');
+        }
+        foreach ($values as $value) {
+            if (!is_string($value)) {
+                throw new InvalidArgumentException('RenderedLearningPrecedent matchingTaskFiles must be a list of strings.');
+            }
+        }
     }
 
     private static function nonEmpty(mixed $value): ?string

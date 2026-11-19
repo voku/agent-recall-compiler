@@ -21,7 +21,10 @@ final readonly class LearningPrecedentRenderer
             return '';
         }
 
-        usort($precedents, fn (array $left, array $right): int => $this->compare($left, $right));
+        usort($precedents, static fn (array $left, array $right): int => LearningPrecedentRanking::compare(
+            is_array($left['payload'] ?? null) ? $left['payload'] : [],
+            is_array($right['payload'] ?? null) ? $right['payload'] : [],
+        ));
 
         $activePatterns = [];
         foreach ($result->selectedGuidance as $guidance) {
@@ -120,42 +123,6 @@ final readonly class LearningPrecedentRenderer
         }
 
         return rtrim(implode("\n", $lines));
-    }
-
-    /**
-     * @param array<string, mixed> $left
-     * @param array<string, mixed> $right
-     */
-    private function compare(array $left, array $right): int
-    {
-        $leftPayload = is_array($left['payload'] ?? null) ? $left['payload'] : [];
-        $rightPayload = is_array($right['payload'] ?? null) ? $right['payload'] : [];
-        $state = $this->stateRank($this->string($rightPayload['evidence_state'] ?? null))
-            <=> $this->stateRank($this->string($leftPayload['evidence_state'] ?? null));
-        if ($state !== 0) {
-            return $state;
-        }
-        $leftSpecificity = is_int($leftPayload['scope_specificity'] ?? null) ? $leftPayload['scope_specificity'] : 0;
-        $rightSpecificity = is_int($rightPayload['scope_specificity'] ?? null) ? $rightPayload['scope_specificity'] : 0;
-        if ($leftSpecificity !== $rightSpecificity) {
-            return $rightSpecificity <=> $leftSpecificity;
-        }
-        $tagCount = count($this->strings($rightPayload['matching_tags'] ?? [])) <=> count($this->strings($leftPayload['matching_tags'] ?? []));
-        if ($tagCount !== 0) {
-            return $tagCount;
-        }
-
-        return ($this->string($leftPayload['note_id'] ?? null) ?? '') <=> ($this->string($rightPayload['note_id'] ?? null) ?? '');
-    }
-
-    private function stateRank(?string $state): int
-    {
-        return match ($state) {
-            'current' => 3,
-            'review_needed' => 2,
-            'no_hashable_repository_evidence' => 1,
-            default => 0,
-        };
     }
 
     private function string(mixed $value): ?string

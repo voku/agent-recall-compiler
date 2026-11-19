@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace voku\AgentRecallCompiler\Output;
 
+use voku\AgentRecallCompiler\Rendering\LearningPrecedentRanking;
+
 /**
  * Answers lifecycle-host questions about one compiled Recall output directory.
  *
@@ -19,6 +21,8 @@ final readonly class CompiledRecallOutput
      * @param list<string> $selectedConstraints
      * @param list<RecallFact> $facts
      * @param list<string> $integrityFailures
+     * @param list<string>|null $finalLearningPrecedentIds note ids the briefing rendered, from the
+     *        bundle-bound selection report; null when that report is unavailable
      */
     public function __construct(
         private string $identityPath,
@@ -40,6 +44,7 @@ final readonly class CompiledRecallOutput
         private array $selectedConstraints,
         private array $facts,
         private array $integrityFailures,
+        private ?array $finalLearningPrecedentIds = null,
     ) {
     }
 
@@ -157,18 +162,32 @@ final readonly class CompiledRecallOutput
     }
 
     /**
-     * LearningNotes rendered into this task's briefing, in Recall's rank order.
+     * LearningNotes rendered into this task's briefing, in the briefing's rank order.
+     *
+     * The final decision comes from the compilation's own selection report,
+     * which also drops a note whose pattern selected active guidance already
+     * covers. Without that report, the provider's render flag is the fallback.
      *
      * @return list<RenderedLearningPrecedent>
      */
     public function renderedLearningPrecedents(): array
     {
-        $rendered = [];
+        $payloads = [];
         foreach ($this->facts as $fact) {
-            if ($fact->type !== 'learning_precedent') {
+            if ($fact->type !== 'learning_precedent' || ($fact->payload['render'] ?? null) !== true) {
                 continue;
             }
-            $precedent = RenderedLearningPrecedent::fromFactPayload($fact->payload);
+            $noteId = $fact->payload['note_id'] ?? null;
+            if ($this->finalLearningPrecedentIds !== null && !in_array($noteId, $this->finalLearningPrecedentIds, true)) {
+                continue;
+            }
+            $payloads[] = $fact->payload;
+        }
+        usort($payloads, LearningPrecedentRanking::compare(...));
+
+        $rendered = [];
+        foreach ($payloads as $payload) {
+            $precedent = RenderedLearningPrecedent::fromFactPayload($payload);
             if ($precedent !== null) {
                 $rendered[] = $precedent;
             }

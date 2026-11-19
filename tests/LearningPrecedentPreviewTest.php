@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace voku\AgentRecallCompiler\Tests;
 
+use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 use voku\AgentRecallCompiler\LearningPrecedentPreview;
 use voku\AgentRecallCompiler\Output\RenderedLearningPrecedent;
@@ -52,6 +53,27 @@ final class LearningPrecedentPreviewTest extends TestCase
         self::assertSame('Title learning-note.gate', $precedents[0]->title);
         self::assertSame('pattern.learning-note.gate', $precedents[0]->patternKey);
         self::assertSame(['src/Workflow/WorkflowCloseReadinessInspector.php'], $precedents[0]->matchingTaskFiles);
+    }
+
+    public function testPreviewUsesTheBriefingRankNotIdentityOrder(): void
+    {
+        $preview = new LearningPrecedentPreview($this->provider([
+            $this->note('learning-note.a', ['src/Workflow']),
+            $this->note('learning-note.z', ['src/Workflow/WorkflowCloseReadinessInspector.php']),
+        ]));
+
+        $precedents = $preview->forCandidateScope($this->root, 'REL-003', ['src/Workflow/WorkflowCloseReadinessInspector.php']);
+
+        self::assertSame(['learning-note.z', 'learning-note.a'], array_map(
+            static fn (RenderedLearningPrecedent $p): string => $p->noteId,
+            $precedents,
+        ));
+    }
+
+    public function testDirectConstructionRejectsAnEmptyIdentity(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        new RenderedLearningPrecedent(' ', null, null, null, []);
     }
 
     public function testUnavailableLearningOwnerPreviewsNothing(): void
