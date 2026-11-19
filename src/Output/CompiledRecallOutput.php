@@ -157,6 +157,27 @@ final readonly class CompiledRecallOutput
     }
 
     /**
+     * LearningNotes rendered into this task's briefing, in Recall's rank order.
+     *
+     * @return list<RenderedLearningPrecedent>
+     */
+    public function renderedLearningPrecedents(): array
+    {
+        $rendered = [];
+        foreach ($this->facts as $fact) {
+            if ($fact->type !== 'learning_precedent') {
+                continue;
+            }
+            $precedent = RenderedLearningPrecedent::fromFactPayload($fact->payload);
+            if ($precedent !== null) {
+                $rendered[] = $precedent;
+            }
+        }
+
+        return $rendered;
+    }
+
+    /**
      * Relevant LearningNotes withheld because their repository evidence needs
      * review. Budget omissions of current notes are not included: those notes
      * are healthy, only lower ranked.

@@ -263,6 +263,7 @@ final class CompiledRecallOutputReaderTest extends TestCase
                 'title' => 'Store member-scoped rights as desired state',
                 'evidence_state' => $state,
                 'matching_task_files' => ['src/Roles.php'],
+                'content' => $render ? ['guidance' => 'Keep desired roles separate from applied roles.'] : [],
                 'render' => $render,
             ],
         ];
@@ -289,6 +290,11 @@ final class CompiledRecallOutputReaderTest extends TestCase
         self::assertSame('review_needed', $suppressed[1]->evidenceState);
         self::assertSame('roles.desired_state', $suppressed[1]->patternKey);
         self::assertSame(['src/Roles.php'], $suppressed[1]->matchingTaskFiles);
+
+        $rendered = $output->renderedLearningPrecedents();
+        self::assertSame(['learning-note.2026-09-10.cccccc'], array_map(static fn ($p) => $p->noteId, $rendered));
+        self::assertSame('Store member-scoped rights as desired state', $rendered[0]->title);
+        self::assertSame('Keep desired roles separate from applied roles.', $rendered[0]->guidance);
     }
 
     public function testCorruptFactsAreReportedSeparatelyFromMissingFacts(): void

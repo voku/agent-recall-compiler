@@ -6,6 +6,13 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.29.3] - 2026-11-19
+
+### Added
+
+- `LearningPrecedentPreview::forCandidateScope()` previews which LearningNotes Recall would render for a candidate task scope, without compiling or writing anything. It uses the same selection, ranking and rendering budget as compilation, and fails closed on missing note evidence in the same way. A host can therefore show a precedent while the task's scope is still a candidate, before the design is approved (agent-loop#1091).
+- `CompiledRecallOutput::renderedLearningPrecedents()` lists the LearningNotes rendered into a compiled briefing (note id, pattern key, title, guidance, matching task files), so hosts can name them instead of leaving them only in `system.md`. In agent-loop's learning-effect experiment, a scope-matched note was compiled into all three governed runs' briefings, and no agent opened it.
+
 ## [0.29.2] - 2026-11-19
 
 ### Dependencies
