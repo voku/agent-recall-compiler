@@ -6,6 +6,12 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.29.2] - 2026-11-19
+
+### Dependencies
+
+- Allow `voku/agent-map ^0.24.0` alongside `^0.20.0 || ^0.21.0 || ^0.22.0 || ^0.23.0`. 0.24.0 indexes `.phtml` templates as PHP source and keeps same-line calls apart in rename plans. That fix includes the byte range in the identity of call relations, so relation IDs differ from earlier versions. Recall only passes relation IDs through as evidence from the map it is given, and stores or compares none across versions. The full suite (426 tests) gives the same result against agent-map 0.24.0 and 0.23.0, and PHPStan passes. This unblocks downstream consumers (agent-loop, agent-ui) from adopting agent-map 0.24.
+
 ### Fixed
 
 - The `agent-recall-consumer` skill linked the package embedding documentation with `../../../docs/embedding.md`, which only resolves inside this repository. Projected into a consumer (for example `.claude/skills/agent-recall-consumer/`), it pointed at the consumer's own root. It now uses an absolute package URL, and `PackageResourcesTest` rejects consumer-skill links that leave the skill directory.
