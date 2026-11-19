@@ -123,7 +123,46 @@ final readonly class CompiledRecallOutputReader
             selectedConstraints: $this->constraintIds($meta['selected_constraints'] ?? null),
             facts: $facts,
             integrityFailures: $this->integrityFailures($directory, $meta),
+            finalLearningPrecedentIds: $this->finalLearningPrecedentIds($directory, $this->stringOrNull($meta['bundle_sha256'] ?? null)),
         );
+    }
+
+    /**
+     * Note ids the briefing rendered, as the compilation's selection report
+     * recorded them. Null when the report is absent, unreadable or bound to a
+     * different bundle, so callers fall back to the provider's render flag.
+     *
+     * @return list<string>|null
+     */
+    private function finalLearningPrecedentIds(string $directory, ?string $bundleSha256): ?array
+    {
+        $path = $directory . '/selection-report.json';
+        if ($bundleSha256 === null || !is_file($path)) {
+            return null;
+        }
+        try {
+            $report = $this->decode($path);
+        } catch (RuntimeException) {
+            return null;
+        }
+        $reportBundle = $report['bundle_sha256'] ?? null;
+        $items = $report['context_explain'] ?? null;
+        if (!is_string($reportBundle) || !hash_equals($bundleSha256, $reportBundle) || !is_array($items)) {
+            return null;
+        }
+
+        $ids = [];
+        foreach ($items as $item) {
+            if (!is_array($item) || ($item['kind'] ?? null) !== 'learning_precedent' || ($item['selected'] ?? null) !== true) {
+                continue;
+            }
+            $noteId = $item['subject_id'] ?? null;
+            if (is_string($noteId) && $noteId !== '') {
+                $ids[] = $noteId;
+            }
+        }
+
+        return $ids;
     }
 
     /** @return array{bool, bool, list<RecallFact>} */
