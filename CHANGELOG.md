@@ -6,6 +6,12 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.29.1] - 2026-11-19
+
+### Dependencies
+
+- Allow `voku/agent-map ^0.23.0` alongside `^0.20.0 || ^0.21.0 || ^0.22.0`. 0.23.0 only adds pluggable template dialects, an experimental Smarty evidence API and Smarty/Blade template-reference fixes; Recall uses none of the changed APIs directly, and the full suite passes against both agent-map 0.23.0 and 0.22.7. This unblocks downstream consumers (agent-loop, agent-ui) from adopting agent-map 0.23.
+
 ### Fixed
 
 - Release tag workflow: capture the target `CHANGELOG.md` once and match in-shell instead of `git show | grep -Fq` under `pipefail`. That pipeline fails with SIGPIPE (141) as soon as `grep` matches early in a changelog larger than the pipe buffer, reporting a present release section as missing. It failed 6/6 locally from 100 KB up and already blocked a voku/agent-learning release check at 75 KB (lesson from voku/agent-loop finding `2026-09-19.95209d`). `tests/ReleaseTagWorkflowTest.php` runs the real workflow script against a real repository with a local bare `origin`.
