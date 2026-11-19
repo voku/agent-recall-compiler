@@ -330,6 +330,9 @@ final class CompiledRecallOutputReaderTest extends TestCase
         $reader = new CompiledRecallOutputReader();
 
         // Without a selection report the provider's render flag decides, in rank order.
+        $eligibilityOnly = $reader->read($this->dir);
+        self::assertNotNull($eligibilityOnly);
+        self::assertFalse($eligibilityOnly->hasFinalLearningPrecedentSelection());
         self::assertSame(
             ['learning-note.covered', 'learning-note.z', 'learning-note.a'],
             $ids($reader->read($this->dir)?->renderedLearningPrecedents() ?? []),
@@ -352,6 +355,9 @@ final class CompiledRecallOutputReaderTest extends TestCase
             ],
         ], JSON_THROW_ON_ERROR));
         self::assertSame(['learning-note.z', 'learning-note.a'], $ids($reader->read($this->dir)?->renderedLearningPrecedents() ?? []));
+        $final = $reader->read($this->dir);
+        self::assertNotNull($final);
+        self::assertTrue($final->hasFinalLearningPrecedentSelection());
 
         // A report bound to another bundle is not trusted.
         file_put_contents($this->dir . '/selection-report.json', json_encode([

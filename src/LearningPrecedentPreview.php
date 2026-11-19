@@ -18,11 +18,11 @@ use voku\AgentRecallCompiler\Rendering\LearningPrecedentRanking;
  * Like compilation, it throws RecallCompilationBlockedException when a matching
  * note references missing repository evidence.
  *
- * The preview is a superset of what the compiled briefing renders: a full
- * compilation also drops a note whose pattern selected active guidance covers,
- * and guidance selection needs the whole compilation. Such a note's guidance
- * then reaches the briefing as active guidance instead, so showing the note
- * early loses nothing. Compiled output reports the final set through
+ * The preview covers the candidate files only, so it can differ from a
+ * compiled briefing in both directions: compilation can add Map-derived files
+ * to the scope, which can select further notes, and it drops a note whose
+ * pattern selected active guidance already covers (that guidance then reaches
+ * the briefing instead). Compiled output reports the final set through
  * CompiledRecallOutput::renderedLearningPrecedents().
  */
 final readonly class LearningPrecedentPreview
