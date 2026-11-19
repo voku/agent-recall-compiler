@@ -28,6 +28,23 @@ final class PackageResourcesTest extends TestCase
         }
     }
 
+    public function testConsumerSkillLinksStayInsideTheProjectedSkill(): void
+    {
+        // Consumer skills are copied into other repositories (for example
+        // `.claude/skills/<id>/`). A relative link that leaves the skill
+        // directory then resolves against the consumer's tree, not this package.
+        foreach (PackageResources::consumerSkills() as $id => $path) {
+            foreach (glob($path . '/*.md') ?: [] as $file) {
+                $contents = (string) file_get_contents($file);
+                self::assertSame(
+                    0,
+                    preg_match('/\]\(\.\.\//', $contents),
+                    sprintf('%s/%s links outside its skill directory; use an absolute package URL.', $id, basename($file)),
+                );
+            }
+        }
+    }
+
     public function testMaintainerSkillsExistAndHaveSkillMd(): void
     {
         $skills = PackageResources::maintainerSkills();
