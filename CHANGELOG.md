@@ -6,6 +6,10 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+### Fixed
+
+- The `agent-recall-consumer` skill linked the package embedding documentation with `../../../docs/embedding.md`, which only resolves inside this repository. Projected into a consumer (for example `.claude/skills/agent-recall-consumer/`), it pointed at the consumer's own root. It now uses an absolute package URL, and `PackageResourcesTest` rejects consumer-skill links that leave the skill directory.
+
 ## [0.29.1] - 2026-11-19
 
 ### Dependencies
