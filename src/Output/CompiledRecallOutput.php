@@ -162,11 +162,22 @@ final readonly class CompiledRecallOutput
     }
 
     /**
+     * Whether renderedLearningPrecedents() reflects the compilation's final,
+     * bundle-bound selection rather than render eligibility only.
+     */
+    public function hasFinalLearningPrecedentSelection(): bool
+    {
+        return $this->finalLearningPrecedentIds !== null;
+    }
+
+    /**
      * LearningNotes rendered into this task's briefing, in the briefing's rank order.
      *
      * The final decision comes from the compilation's own selection report,
      * which also drops a note whose pattern selected active guidance already
-     * covers. Without that report, the provider's render flag is the fallback.
+     * covers. Without that report the provider's render flag is the fallback,
+     * which can include a note the briefing omitted: check
+     * hasFinalLearningPrecedentSelection() before presenting the list as exact.
      *
      * @return list<RenderedLearningPrecedent>
      */

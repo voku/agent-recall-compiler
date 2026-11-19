@@ -6,6 +6,11 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+### Changed
+
+- `CompiledRecallOutput::hasFinalLearningPrecedentSelection()` reports whether `renderedLearningPrecedents()` reflects the compilation's final, bundle-bound selection. When it is false, the list shows render eligibility only, and it can include a note the briefing omitted because selected guidance covered it.
+- Corrected the `LearningPrecedentPreview` contract: it covers the candidate files only, so it can differ from a compiled briefing in both directions. Compilation can add Map-derived scope, and selected guidance can cover a note. The 0.29.3 entry called the preview a superset.
+
 ## [0.29.3] - 2026-11-19
 
 ### Added
