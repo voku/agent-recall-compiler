@@ -6,6 +6,12 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.29.5] - 2026-11-20
+
+### Changed
+
+- Fresh-agent handoffs allow normally authorized repository and network access without requiring offline isolation. Discovery and clarification can use available authorized sources beyond Recall context (#290).
+
 ## [0.29.4] - 2026-11-20
 
 ### Changed
