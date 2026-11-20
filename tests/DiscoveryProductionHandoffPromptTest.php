@@ -53,6 +53,7 @@ final class DiscoveryProductionHandoffPromptTest extends TestCase
         );
 
         self::assertStringContainsString('### discovery-first (L2)', $system);
+        self::assertStringContainsString('task history available through recall context or normally authorized tools', $system);
         self::assertStringContainsString('before proposing or implementing a change', $system);
         self::assertStringContainsString('already-completed or disproved work', $system);
         self::assertStringContainsString('VERIFIED, INFERRED, UNKNOWN, BLOCKED, or CONTRADICTED', $system);
@@ -65,6 +66,18 @@ final class DiscoveryProductionHandoffPromptTest extends TestCase
         self::assertStringContainsString('Do not implement during the discovery pass', $system);
     }
 
+    public function testClarificationCanUseAvailableAuthorizedSources(): void
+    {
+        $system = $this->compileRecipe(
+            'clarify-missing-inputs',
+            'CLARIFY-1',
+            'Resolve missing information before proceeding.',
+            ['maximum_questions' => 1],
+        );
+
+        self::assertStringContainsString('an available authorized repository file, symbol, issue, pull request, repository-supported read-only command, or the user', $system);
+    }
+
     public function testProductionReadyHandoffCompilesFreshAgentExecutionContract(): void
     {
         $system = $this->compileRecipe(
@@ -74,6 +87,8 @@ final class DiscoveryProductionHandoffPromptTest extends TestCase
         );
 
         self::assertStringContainsString('### production-ready-handoff (L2)', $system);
+        self::assertStringContainsString('Lack of prior conversational context does not imply network isolation', $system);
+        self::assertStringContainsString('Do not require an offline Docker setup or restrict network access solely to make the handoff self-contained', $system);
         self::assertStringContainsString('has no access to the current chat, Session-private context, hidden reasoning, or prior-agent memory', $system);
         self::assertStringContainsString('re-ground all supplied anchors against current repository state before acting', $system);
         self::assertStringContainsString('preserve VERIFIED, INFERRED, UNKNOWN, BLOCKED, and CONTRADICTED distinctions', $system);
@@ -100,6 +115,8 @@ final class DiscoveryProductionHandoffPromptTest extends TestCase
         );
 
         self::assertStringContainsString('### todo-card-handoff (L2)', $system);
+        self::assertStringContainsString('Lack of prior conversational context does not imply network isolation', $system);
+        self::assertStringContainsString('Do not require an offline Docker setup or restrict network access solely to make the handoff self-contained', $system);
         self::assertStringContainsString('self-contained TODO or work cards for a coding agent', $system);
         self::assertStringContainsString('no access to the current chat, Session-private context', $system);
         self::assertStringContainsString('Treat the generated cards as work-package candidates, not approved Contract/Run authority', $system);
@@ -128,7 +145,8 @@ final class DiscoveryProductionHandoffPromptTest extends TestCase
         self::assertStringContainsString('copy-paste-ready L1 prompt for the current slice only', $system);
     }
 
-    private function compileRecipe(string $id, string $task, string $description): string
+    /** @param array<string, int> $arguments */
+    private function compileRecipe(string $id, string $task, string $description, array $arguments = []): string
     {
         $manifest = dirname(__DIR__) . '/resources/skills/agent-recall-consumer/operating-prompts.json';
         self::assertFileExists($manifest);
@@ -136,7 +154,7 @@ final class DiscoveryProductionHandoffPromptTest extends TestCase
         $output = $this->root . '/output-' . strtolower($task);
         $request = json_encode([
             'id' => $id,
-            'arguments' => [],
+            'arguments' => $arguments,
         ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
 
         self::assertSame(0, (new Cli())->run([
