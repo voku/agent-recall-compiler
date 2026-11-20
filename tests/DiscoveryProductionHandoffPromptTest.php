@@ -74,6 +74,8 @@ final class DiscoveryProductionHandoffPromptTest extends TestCase
         );
 
         self::assertStringContainsString('### production-ready-handoff (L2)', $system);
+        self::assertStringContainsString('Lack of prior conversational context does not imply network isolation', $system);
+        self::assertStringContainsString('Do not require an offline Docker setup or restrict network access solely to make the handoff self-contained', $system);
         self::assertStringContainsString('has no access to the current chat, Session-private context, hidden reasoning, or prior-agent memory', $system);
         self::assertStringContainsString('re-ground all supplied anchors against current repository state before acting', $system);
         self::assertStringContainsString('preserve VERIFIED, INFERRED, UNKNOWN, BLOCKED, and CONTRADICTED distinctions', $system);
@@ -100,6 +102,8 @@ final class DiscoveryProductionHandoffPromptTest extends TestCase
         );
 
         self::assertStringContainsString('### todo-card-handoff (L2)', $system);
+        self::assertStringContainsString('Lack of prior conversational context does not imply network isolation', $system);
+        self::assertStringContainsString('Do not require an offline Docker setup or restrict network access solely to make the handoff self-contained', $system);
         self::assertStringContainsString('self-contained TODO or work cards for a coding agent', $system);
         self::assertStringContainsString('no access to the current chat, Session-private context', $system);
         self::assertStringContainsString('Treat the generated cards as work-package candidates, not approved Contract/Run authority', $system);
