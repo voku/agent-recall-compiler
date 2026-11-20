@@ -6,6 +6,8 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.29.4] - 2026-11-20
+
 ### Changed
 
 - `CompiledRecallOutput::hasFinalLearningPrecedentSelection()` reports whether `renderedLearningPrecedents()` reflects the compilation's final, bundle-bound selection. When it is false, the list shows render eligibility only, and it can include a note the briefing omitted because selected guidance covered it.
