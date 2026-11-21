@@ -10,6 +10,7 @@ final readonly class RecallRetirement
      * @param list<string> $scope
      * @param list<string> $tags
      * @param ?string      $supersededBy id of the proposal this one was retired in favour of, if any
+     * @param ?string      $targetType   the retired proposal's recorded target_type, if any
      */
     public function __construct(
         public string $id,
@@ -19,6 +20,7 @@ final readonly class RecallRetirement
         public ?string $target,
         public array $tags = [],
         public ?string $supersededBy = null,
+        public ?string $targetType = null,
     ) {
     }
 }
