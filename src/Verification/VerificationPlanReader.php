@@ -14,13 +14,25 @@ use voku\AgentRecallCompiler\Output\CompiledRecallOutputPaths;
  *
  * Absence is a legitimate state (a compilation that resolved no map target
  * emits no plan) and returns null, but only once absence is established: the
- * output directory exists and is searchable, and nothing (not even a dangling
- * link) sits at the plan's path. Everything else fails closed and throws:
- * a plan that cannot be reached or read, is not JSON, or does not have the
- * shape the writer emits (schema 1.0, non-empty task_id and target, and
- * knowledge_probes / checklist as lists of entries with unique non-empty ids).
- * Treating any of those as absent or empty would silently drop probe and
- * checklist answer slots.
+ * output directory can be listed and holds no `verification-plan.json` entry.
+ * Everything else fails closed and throws, because treating it as absent or
+ * empty would silently drop verification obligations:
+ *
+ * - an entry that exists but cannot be reached (a dangling or looping link,
+ *   open_basedir, a path too long to stat, a denied lookup);
+ * - an output directory that is missing or cannot be listed;
+ * - a plan that cannot be read, is not JSON, or is not a JSON object;
+ * - a plan without the top-level shape the writer emits: `schema_version`
+ *   `1.0`, non-empty `task_id`, `target` and `map_digest`, `analysis_fingerprint`
+ *   an object or null, `required_evidence_types` a non-empty array of
+ *   non-empty strings, `generator` an object with string `name`, `version`
+ *   and `seed_sha256`, `omitted_probe_candidates` an array of objects, and
+ *   `knowledge_probes`, `checklist` and `objective_gates` arrays of objects
+ *   with unique non-empty `id`s.
+ *
+ * Fields inside those entries other than `id` are not validated here.
+ * Unknown top-level keys are tolerated; `schema_version` gates incompatible
+ * changes.
  */
 final readonly class VerificationPlanReader
 {
@@ -39,7 +51,7 @@ final readonly class VerificationPlanReader
             throw new RuntimeException('Verification plan is not a regular file: ' . $path);
         }
         if (!is_readable($path)) {
-            throw new RuntimeException('Unable to read verification plan: ' . $path);
+            throw new RuntimeException('Verification plan is not readable: ' . $path);
         }
 
         $raw = file_get_contents($path);
@@ -66,6 +78,14 @@ final readonly class VerificationPlanReader
                 $path,
             ));
         }
+        self::requiredString($root, 'map_digest', $path);
+        if (!property_exists($root, 'analysis_fingerprint') || ($root->analysis_fingerprint !== null && !$root->analysis_fingerprint instanceof stdClass)) {
+            throw new RuntimeException('Verification plan analysis_fingerprint must be an object or null: ' . $path);
+        }
+        self::assertEvidenceTypes($root, $path);
+        self::assertGenerator($root, $path);
+        self::objects($root, 'omitted_probe_candidates', $path);
+        self::ids($root, 'objective_gates', $path);
 
         /** @var array<string, mixed> $plan */
         return new VerificationPlanDocument(
@@ -81,20 +101,65 @@ final readonly class VerificationPlanReader
 
     /**
      * file_exists() is false both for a missing plan and for one it cannot
-     * reach (an unsearchable or missing directory, a dangling link). Only the
-     * first is absence.
+     * reach. Only a directory listing without the plan's entry is absence.
      */
     private static function assertAbsenceIsEstablished(string $directory, string $path): void
     {
-        if (is_link($path)) {
-            throw new RuntimeException('Verification plan is a dangling symbolic link: ' . $path);
-        }
         if (!is_dir($directory)) {
             throw new RuntimeException('Cannot establish verification plan absence: output directory does not exist or cannot be reached: ' . $directory);
         }
-        if (!is_executable($directory)) {
-            throw new RuntimeException('Cannot establish verification plan absence: output directory is not searchable: ' . $directory);
+        $entries = @scandir($directory);
+        if ($entries === false) {
+            throw new RuntimeException('Cannot establish verification plan absence: output directory cannot be listed: ' . $directory);
         }
+        if (in_array(basename($path), $entries, true)) {
+            throw new RuntimeException(is_link($path)
+                ? 'Verification plan is a symbolic link whose target cannot be reached: ' . $path
+                : 'Verification plan exists but cannot be reached: ' . $path);
+        }
+    }
+
+    private static function assertEvidenceTypes(stdClass $root, string $path): void
+    {
+        $types = $root->required_evidence_types ?? null;
+        if (!is_array($types) || $types === []) {
+            throw new RuntimeException('Verification plan required_evidence_types must be a non-empty JSON array: ' . $path);
+        }
+        foreach ($types as $type) {
+            if (!is_string($type) || $type === '') {
+                throw new RuntimeException('Verification plan required_evidence_types must contain only non-empty strings: ' . $path);
+            }
+        }
+    }
+
+    private static function assertGenerator(stdClass $root, string $path): void
+    {
+        $generator = $root->generator ?? null;
+        if (!$generator instanceof stdClass) {
+            throw new RuntimeException('Verification plan generator must be an object: ' . $path);
+        }
+        foreach (['name', 'version', 'seed_sha256'] as $field) {
+            if (!is_string($generator->{$field} ?? null)) {
+                throw new RuntimeException(sprintf('Verification plan generator.%s must be a string: %s', $field, $path));
+            }
+        }
+    }
+
+    /** @return list<stdClass> */
+    private static function objects(stdClass $root, string $field, string $path): array
+    {
+        $entries = $root->{$field} ?? null;
+        if (!is_array($entries)) {
+            throw new RuntimeException(sprintf('Verification plan %s must be a JSON array: %s', $field, $path));
+        }
+        foreach ($entries as $index => $entry) {
+            if (!$entry instanceof stdClass) {
+                throw new RuntimeException(sprintf('Verification plan %s[%d] must be an object: %s', $field, $index, $path));
+            }
+        }
+
+        /** @var list<stdClass> $entries */
+        return $entries;
     }
 
     /** @return non-empty-string */
@@ -111,14 +176,9 @@ final readonly class VerificationPlanReader
     /** @return list<non-empty-string> */
     private static function ids(stdClass $root, string $field, string $path): array
     {
-        $entries = $root->{$field} ?? null;
-        if (!is_array($entries)) {
-            throw new RuntimeException(sprintf('Verification plan %s must be a JSON array: %s', $field, $path));
-        }
-
         $ids = [];
-        foreach ($entries as $index => $entry) {
-            $id = $entry instanceof stdClass ? ($entry->id ?? null) : null;
+        foreach (self::objects($root, $field, $path) as $index => $entry) {
+            $id = $entry->id ?? null;
             if (!is_string($id) || $id === '') {
                 throw new RuntimeException(sprintf('Verification plan %s[%d] must be an object with a non-empty string id: %s', $field, $index, $path));
             }
