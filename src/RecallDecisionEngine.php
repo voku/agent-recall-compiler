@@ -47,6 +47,22 @@ final class RecallDecisionEngine
         // fact (e.g. an LDAP learning) be selected for a task whose files live under an
         // unrelated-looking directory, without the compiler guessing at path semantics.
         foreach ($activeGuidance as $g) {
+            // An applied DELETE has removed its target and carries no guidance text, so there is
+            // nothing left to deliver. It stays evaluated (inactive) to keep the exclusion
+            // explainable and its id known to outcome history. An approved, not yet applied
+            // DELETE is still selected: it tells the task to perform the removal.
+            if ($g->status === 'applied' && strtoupper(trim($g->action)) === 'DELETE') {
+                $evaluatedGuidance[] = new EvaluatedGuidance(
+                    $g->id,
+                    $this->guidanceType($g->targetType, $g->id),
+                    false,
+                    false,
+                    null,
+                    ExclusionReason::INACTIVE,
+                    [],
+                );
+                continue;
+            }
             $matchingFiles = $this->matchingTaskFiles($g->scope, $task->files);
             $tagMatched = $this->hasTagOverlap($g->tags, $task->tags);
             $matches = $matchingFiles !== [] || $tagMatched;

@@ -13,6 +13,7 @@ use voku\AgentRecallCompiler\RecallDecisionEngine;
 use voku\AgentRecallCompiler\RecallPromptBuilder;
 use voku\AgentRecallCompiler\OutcomeLogger;
 use voku\AgentRecallCompiler\RecallGuidance;
+use voku\AgentRecallCompiler\ExclusionReason;
 use voku\AgentRecallCompiler\RecallRejection;
 use voku\AgentRecallCompiler\RecallRetirement;
 use voku\AgentRecallCompiler\RecallResult;
@@ -449,6 +450,38 @@ final class RecallCompilerTest extends TestCase
 
         self::assertSame(['g-delete'], array_map(static fn(RecallGuidance $guidance): string => $guidance->id, $result->selectedGuidance));
         self::assertSame(['r-replace'], array_map(static fn(RecallRejection $rejection): string => $rejection->id, $result->selectedRejections));
+    }
+
+    public function testDecidesDoesNotSelectAnAppliedDeleteAsActiveGuidance(): void
+    {
+        // Once applied, a DELETE's target is gone and it carries no guidance text. Selecting it
+        // would spend briefing budget on a placeholder and name a row that no longer exists
+        // (observed in voku/agent-loop task REMOVE-INPROC-RULE, #296). It stays evaluated as
+        // inactive, so the exclusion is still explainable.
+        $activeGuidance = [
+            new RecallGuidance('g-applied-delete', 'DELETE', 'memory', 'Tooling test isolation', ['MEMORY.md'], 'Old row', null, 'Row is obsolete', null, [], 'applied'),
+            new RecallGuidance('g-pending-delete', 'DELETE', 'memory', 'Other row', ['MEMORY.md'], 'Other old row', null, 'Row is obsolete', null, [], 'approved'),
+            new RecallGuidance('g-applied-replace', 'REPLACE', 'memory', 'Kept row', ['MEMORY.md'], 'Old', 'New wording', 'Clarified', null, [], 'applied'),
+        ];
+
+        $result = (new RecallDecisionEngine())->decide(
+            new TaskBrief('ITPNG-123', 'Edit memory', ['MEMORY.md']),
+            $activeGuidance,
+            [],
+            [],
+        );
+
+        self::assertSame(
+            ['g-applied-replace', 'g-pending-delete'],
+            array_map(static fn(RecallGuidance $guidance): string => $guidance->id, $result->selectedGuidance),
+        );
+        $evaluated = [];
+        foreach ($result->evaluatedGuidance as $item) {
+            $evaluated[$item->guidanceId] = $item;
+        }
+        self::assertFalse($evaluated['g-applied-delete']->selected);
+        self::assertSame(ExclusionReason::INACTIVE, $evaluated['g-applied-delete']->exclusionReason);
+        self::assertTrue($evaluated['g-pending-delete']->selected);
     }
 
     /**
