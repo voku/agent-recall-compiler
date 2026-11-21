@@ -6,6 +6,12 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.29.7] - 2026-11-21
+
+### Fixed
+
+- Recall no longer reports an approved DELETE as contradicting a retired proposal for the same target. 0.29.6 fixed the same false conflict for rejected proposals only; a MEMORY.md row whose earlier REPLACE was retired still blocked every task touching MEMORY.md once the owner approved deleting it.
+
 ## [0.29.6] - 2026-11-21
 
 ### Fixed

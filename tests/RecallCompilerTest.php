@@ -783,6 +783,26 @@ final class RecallCompilerTest extends TestCase
         self::assertSame(['g-new'], array_map(static fn (RecallGuidance $g): string => $g->id, $result->selectedGuidance));
     }
 
+    public function testDecidesAllowsApprovedDeleteOfTargetWithRetiredReplace(): void
+    {
+        // A DELETE removes the target and asserts no guidance text, so a REPLACE of that
+        // target that was retired earlier cannot be contradicted by it (agent-loop
+        // REMOVE-INPROC-RULE: deleting a MEMORY.md row blocked every task touching MEMORY.md).
+        $activeGuidance = [
+            new RecallGuidance('g-delete', 'DELETE', 'memory', 'memory.auth_rule', ['src/Auth'], 'Old wording', null, 'Reason', 'Boundary', ['make test'], 'approved'),
+        ];
+        $retiredProposals = [
+            new RecallRetirement('g-old', 'Superseded by a static constraint.', ['src/Auth'], 'REPLACE', 'memory.auth_rule', [], 'constraint-x'),
+        ];
+
+        $engine = new RecallDecisionEngine();
+        $task = new TaskBrief('ITPNG-123', 'Implement auth logic', ['src/Auth/OAuth.php']);
+
+        $result = $engine->decide($task, $activeGuidance, [], [], [], $retiredProposals);
+
+        self::assertSame(['g-delete'], array_map(static fn (RecallGuidance $g): string => $g->id, $result->selectedGuidance));
+    }
+
     public function testDecidesStillBlocksWhenTheRetirementNamesADifferentSuccessor(): void
     {
         $activeGuidance = [

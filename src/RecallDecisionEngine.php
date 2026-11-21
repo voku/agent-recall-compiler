@@ -312,8 +312,12 @@ final class RecallDecisionEngine
         // Same reasoning as rejected proposals: an unrelated broad target like MEMORY.md must not
         // trip this, so only in-scope retirements ($selectedRetirements) are checked. A retirement
         // that names the selected guidance as its successor is the replacement itself, not a
-        // contradiction of it.
+        // contradiction of it. A DELETE asserts no guidance text, so it cannot contradict a
+        // retirement either.
         foreach ($selectedGuidance as $g) {
+            if (strtoupper(trim($g->action)) === 'DELETE') {
+                continue;
+            }
             if ($g->target !== null && trim($g->target) !== '') {
                 foreach ($selectedRetirements as $ret) {
                     if ($ret->supersededBy === $g->id) {
