@@ -6,6 +6,8 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.29.9] - 2026-11-21
+
 ### Added
 
 - `Output\CompiledRecallOutputPaths` names every artifact in one compiled Recall output directory (`identity()`, `briefing()`, `outcomeDraft()`, `verificationPlan()`, `verificationKey()` and the rest), so hosts no longer spell `meta.json`, `system.md`, `recall-log.draft.json` or `verification-plan.json` themselves. `CompileResult::paths()` returns it for a fresh compilation; `CompileResult`, `CompiledRecallOutputReader` and `VerificationArtifactWriter` now resolve their paths through it.
