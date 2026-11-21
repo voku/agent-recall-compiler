@@ -276,6 +276,78 @@ final class TaskScopedRecallPruningTest extends TestCase
         self::assertSame('compilation.TEST.001', $result);
     }
 
+    public function testGuidanceRetiredAfterCompilationStillLogsAndUnknownGuidanceIsRejected(): void
+    {
+        // A compilation evaluates the guidance that was active at compile time. When that
+        // proposal is legitimately retired before the outcome is logged (for example replaced by a
+        // successor constraint), the draft still names it; the outcome must remain loggable.
+        $learningRoot = $this->root . '/learning';
+        mkdir($learningRoot . '/proposals/retired', 0777, true);
+        mkdir($learningRoot . '/findings/validated', 0777, true);
+        mkdir($learningRoot . '/history', 0777, true);
+        file_put_contents($learningRoot . '/proposals/retired/proposal.2026-06-01.002.json', json_encode([
+            'schema_version' => '1.0',
+            'id' => 'proposal.2026-06-01.002',
+            'created_at' => '2026-06-01T09:00:00+00:00',
+            'action' => 'ADD',
+            'target_type' => 'constraint',
+            'target' => 'project.recovery.rule',
+            'scope' => ['src/Run/'],
+            'source_findings' => ['finding.2026-06-01.001'],
+            'reason' => 'Replaced by a successor with a current target.',
+            'status' => 'retired',
+            'retired_by' => 'reviewer',
+            'retired_at' => '2026-06-02T10:00:00+00:00',
+            'superseded_by' => 'proposal.2026-06-02.001',
+        ], JSON_THROW_ON_ERROR));
+
+        $evaluated = (new EvaluatedGuidance(
+            'proposal.2026-06-01.002',
+            GuidanceType::CONSTRAINT,
+            false,
+            false,
+            null,
+            ExclusionReason::NO_SCOPE_OVERLAP,
+            [],
+        ))->toArray();
+        $draft = static fn (array $evaluatedGuidance, string $compilationId): string => json_encode([
+            'schema_version' => '1.0',
+            'id' => 'outcome.2026-06-02.001',
+            'compilation_id' => $compilationId,
+            'task_id' => 'TASK-LOG-2',
+            'session' => 'sess-2',
+            'created_at' => '2026-06-02T12:00:00+00:00',
+            'task_files' => ['composer.json'],
+            'evaluated_guidance' => $evaluatedGuidance,
+            'guidance_outcomes' => [],
+            'result' => 'successful',
+        ], JSON_THROW_ON_ERROR);
+
+        $draftPath = $this->root . '/recall-log.retired.json';
+        file_put_contents($draftPath, $draft([$evaluated], 'compilation.TEST.002'));
+        self::assertSame('compilation.TEST.002', (new OutcomeLogger())->log($learningRoot, $draftPath, 'actor', 'commit_hash'));
+
+        $evaluated['guidance_type'] = 'memory';
+        file_put_contents($draftPath, $draft([$evaluated], 'compilation.TEST.003'));
+        try {
+            (new OutcomeLogger())->log($learningRoot, $draftPath, 'actor', 'commit_hash');
+            self::fail('A retired guidance id must keep its recorded type.');
+        } catch (\RuntimeException $exception) {
+            self::assertStringContainsString('type mismatch', $exception->getMessage());
+        }
+
+        $unknown = $evaluated;
+        $unknown['guidance_id'] = 'proposal.2026-06-01.999';
+        $unknown['guidance_type'] = 'constraint';
+        file_put_contents($draftPath, $draft([$unknown], 'compilation.TEST.004'));
+        try {
+            (new OutcomeLogger())->log($learningRoot, $draftPath, 'actor', 'commit_hash');
+            self::fail('An id unknown to the learning repository must stay rejected.');
+        } catch (\RuntimeException $exception) {
+            self::assertStringContainsString("referenced guidance 'proposal.2026-06-01.999' does not exist", $exception->getMessage());
+        }
+    }
+
     public function testPrunedMemoryOmitsCanonicalSourceRefAndPreservesAppliedGuidance(): void
     {
         $learningRoot = $this->root . '/learning';

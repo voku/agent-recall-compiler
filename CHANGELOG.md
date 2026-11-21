@@ -6,6 +6,12 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.29.10] - 2026-11-21
+
+### Fixed
+
+- `OutcomeLogger::log()` accepts an outcome draft that names a proposal retired after the compilation. A draft records the guidance evaluated at compile time; when that proposal was legitimately retired before the outcome was logged (for example replaced by a successor constraint), logging failed with "referenced guidance … does not exist in learning repository", and agent-loop's `finish` kept routing the same command that could not succeed (voku/agent-loop#1132). Retired proposals now count as known, typed references: `evaluated_guidance` still checks the recorded `guidance_type` against the retired proposal's `target_type`, and ids unknown to the learning repository are still rejected. `RecallRetirement` gains an optional `targetType`.
+
 ## [0.29.9] - 2026-11-21
 
 ### Added

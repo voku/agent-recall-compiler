@@ -64,6 +64,7 @@ final class OutcomeLogger
             $validIds[] = $constraint->id;
             $validIds[] = $constraint->sourceProposal;
         }
+        array_push($validIds, ...$this->repository->loadRetiredProposalIds($root));
 
         $guidanceUsed = $data['guidance_used'] ?? [];
         $constraintsUsed = $data['constraints_used'] ?? [];
@@ -339,6 +340,11 @@ final class OutcomeLogger
         }
         foreach ($this->repository->loadConstraintManifests($root) as $constraint) {
             $known[$constraint->id] = GuidanceType::CONSTRAINT;
+        }
+        // A draft records the guidance evaluated at compile time. A proposal retired since then
+        // (for example replaced by a successor) is still a real, typed reference, not an unknown id.
+        foreach ($this->repository->loadRetiredProposals($root) as $retired) {
+            $known[$retired->id] ??= GuidanceType::fromTargetType($retired->targetType, $retired->id);
         }
 
         return $known;

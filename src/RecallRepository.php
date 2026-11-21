@@ -127,6 +127,7 @@ final class RecallRepository
             $target = $data['target'] ?? null;
             $tags = $data['tags'] ?? [];
             $supersededBy = $data['superseded_by'] ?? null;
+            $targetType = $data['target_type'] ?? null;
 
             $retirements[] = new RecallRetirement(
                 $id,
@@ -136,6 +137,7 @@ final class RecallRepository
                 is_string($target) ? $target : null,
                 is_array($tags) ? array_values(array_filter($tags, 'is_string')) : [],
                 is_string($supersededBy) && trim($supersededBy) !== '' ? trim($supersededBy) : null,
+                is_string($targetType) && trim($targetType) !== '' ? $targetType : null,
             );
         }
 
