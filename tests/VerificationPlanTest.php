@@ -21,6 +21,7 @@ use voku\AgentRecallCompiler\RecallResult;
 use voku\AgentRecallCompiler\TaskBrief;
 use voku\AgentRecallCompiler\Verification\VerificationArtifactWriter;
 use voku\AgentRecallCompiler\Verification\VerificationPlanCompiler;
+use voku\AgentRecallCompiler\Verification\VerificationPlanReader;
 
 final class VerificationPlanTest extends TestCase
 {
@@ -228,6 +229,12 @@ final class VerificationPlanTest extends TestCase
         self::assertSame('sha256:' . hash('sha256', $planJson), $meta['verification_plan_sha256']);
         self::assertSame('sha256:' . hash('sha256', $keyJson), $meta['verification_key_sha256']);
         self::assertIsArray($meta['verification_generator']);
+
+        // The strict reader accepts what the real writer emits, bound to the same bytes as meta.json.
+        $document = (new VerificationPlanReader())->read($first);
+        self::assertNotNull($document);
+        self::assertSame($meta['verification_plan_sha256'], $document->sha256);
+        self::assertSame('EDIT-123', $document->taskId);
 
         $fileOnlyOutput = $this->root . '/file-only';
         self::assertSame(0, (new Cli())->run([

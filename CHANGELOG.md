@@ -9,7 +9,12 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 ### Added
 
 - `Output\CompiledRecallOutputPaths` names every artifact in one compiled Recall output directory (`identity()`, `briefing()`, `outcomeDraft()`, `verificationPlan()`, `verificationKey()` and the rest), so hosts no longer spell `meta.json`, `system.md`, `recall-log.draft.json` or `verification-plan.json` themselves. `CompileResult::paths()` returns it for a fresh compilation; `CompileResult`, `CompiledRecallOutputReader` and `VerificationArtifactWriter` now resolve their paths through it.
-- `Verification\VerificationPlanReader::read()` returns a `VerificationPlanDocument` bound to the plan's exact bytes (`sha256`, `task_id`, `target`, probe and checklist ids, decoded plan). An absent plan returns null; an unreadable, malformed or non-object plan throws instead of reading as absent.
+- `Verification\VerificationPlanReader::read()` returns a `VerificationPlanDocument` bound to the plan's exact bytes (`sha256`, `task_id`, `target`, probe and checklist ids, decoded plan). It returns null only once absence is established: the output directory exists and is searchable, and no entry, not even a dangling link, sits at the plan path. Everything else throws instead of reading as absent or empty:
+  - a missing or unsearchable output directory;
+  - an unreadable file, malformed JSON or a non-object;
+  - a plan without the writer's shape: `schema_version` `1.0`, non-empty `task_id` and `target`, and `knowledge_probes` and `checklist` as JSON arrays of objects with unique non-empty `id`s.
+
+  `VerificationPlanDocument` validates direct construction the same way.
 
 ## [0.29.8] - 2026-11-21
 
