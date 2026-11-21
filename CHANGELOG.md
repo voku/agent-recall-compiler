@@ -6,6 +6,12 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.29.6] - 2026-11-21
+
+### Fixed
+
+- Recall no longer reports an approved DELETE as contradicting a rejected proposal for the same target. A DELETE removes the target and asserts no guidance text, so a rejected REPLACE of a MEMORY.md row no longer blocks every task once the owner approves deleting that row.
+
 ## [0.29.5] - 2026-11-20
 
 ### Changed

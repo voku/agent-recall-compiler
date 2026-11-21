@@ -429,6 +429,57 @@ final class RecallCompilerTest extends TestCase
         $engine->decide($task, $activeGuidance, $rejectedGuidance, []);
     }
 
+    public function testDecidesAllowsApprovedDeleteOfTargetWithRejectedReplace(): void
+    {
+        // A DELETE asserts no guidance text; it removes the target, so it cannot
+        // contradict a rejected rewording of that same target.
+        $activeGuidance = [
+            new RecallGuidance('g-delete', 'DELETE', 'memory', 'MEMORY.md#tooling-test-isolation', ['src/Auth'], 'Old row', null, 'Row is obsolete', null, [], 'approved'),
+        ];
+        $rejectedGuidance = [
+            new RecallRejection('r-replace', 'Rewording declined', ['src/Auth'], 'REPLACE', 'MEMORY.md#tooling-test-isolation'),
+        ];
+
+        $result = (new RecallDecisionEngine())->decide(
+            new TaskBrief('ITPNG-123', 'Implement auth logic', ['src/Auth/OAuth.php']),
+            $activeGuidance,
+            $rejectedGuidance,
+            [],
+        );
+
+        self::assertSame(['g-delete'], array_map(static fn(RecallGuidance $guidance): string => $guidance->id, $result->selectedGuidance));
+        self::assertSame(['r-replace'], array_map(static fn(RecallRejection $rejection): string => $rejection->id, $result->selectedRejections));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function textAssertingActions(): iterable
+    {
+        yield 'replace' => ['REPLACE'];
+        yield 'add' => ['ADD'];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('textAssertingActions')]
+    public function testDecidesStillThrowsWhenTextAssertingGuidanceTargetsRejectedProposal(string $action): void
+    {
+        $activeGuidance = [
+            new RecallGuidance('g-1', $action, 'memory', 'MEMORY.md#tooling-test-isolation', ['src/Auth'], $action === 'REPLACE' ? 'Old row' : null, 'New row', 'Reason', null, [], 'approved'),
+        ];
+        $rejectedGuidance = [
+            new RecallRejection('r-1', 'Rewording declined', ['src/Auth'], 'REPLACE', 'MEMORY.md#tooling-test-isolation'),
+        ];
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage("Conflict: Selected guidance 'g-1' targets 'MEMORY.md#tooling-test-isolation', which contradicts rejected proposal 'r-1'");
+        (new RecallDecisionEngine())->decide(
+            new TaskBrief('ITPNG-123', 'Implement auth logic', ['src/Auth/OAuth.php']),
+            $activeGuidance,
+            $rejectedGuidance,
+            [],
+        );
+    }
+
     public function testDecidesAllowsRejectedDuplicateOfSelectedGuidance(): void
     {
         $activeGuidance = [

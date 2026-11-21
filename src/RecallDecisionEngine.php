@@ -280,8 +280,12 @@ final class RecallDecisionEngine
         // Rejections outside the task scope are historical data only; sharing a
         // broad target such as MEMORY.md does not make them contradictory. A rejected
         // duplicate of the selected pattern is evidence that the duplicate was declined,
-        // not a contradiction of the applied guidance that it duplicates.
+        // not a contradiction of the applied guidance that it duplicates. A DELETE asserts
+        // no guidance text; it removes the target, so it cannot contradict a rejection.
         foreach ($selectedGuidance as $g) {
+            if (strtoupper(trim($g->action)) === 'DELETE') {
+                continue;
+            }
             if ($g->target !== null && trim($g->target) !== '') {
                 foreach ($selectedRejections as $rj) {
                     if (
