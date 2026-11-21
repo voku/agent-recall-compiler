@@ -343,8 +343,17 @@ final class OutcomeLogger
         }
         // A draft records the guidance evaluated at compile time. A proposal retired since then
         // (for example replaced by a successor) is still a real, typed reference, not an unknown id.
+        // A retired record whose legacy target_type no longer maps to a guidance type is skipped, so
+        // it stays "unknown" if a draft names it and never breaks logging for unrelated drafts.
         foreach ($this->repository->loadRetiredProposals($root) as $retired) {
-            $known[$retired->id] ??= GuidanceType::fromTargetType($retired->targetType, $retired->id);
+            if (isset($known[$retired->id])) {
+                continue;
+            }
+            try {
+                $known[$retired->id] = GuidanceType::fromTargetType($retired->targetType, $retired->id);
+            } catch (RuntimeException) {
+                continue;
+            }
         }
 
         return $known;

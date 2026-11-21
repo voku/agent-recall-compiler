@@ -336,6 +336,27 @@ final class TaskScopedRecallPruningTest extends TestCase
             self::assertStringContainsString('type mismatch', $exception->getMessage());
         }
 
+        // An unrelated retired record with a legacy target_type must not break logging.
+        file_put_contents($learningRoot . '/proposals/retired/proposal.2026-01-01.legacy.json', json_encode([
+            'id' => 'proposal.2026-01-01.legacy',
+            'target_type' => 'legacy-unsupported',
+            'status' => 'retired',
+        ], JSON_THROW_ON_ERROR));
+        $evaluated['guidance_type'] = 'constraint';
+        file_put_contents($draftPath, $draft([$evaluated], 'compilation.TEST.005'));
+        self::assertSame('compilation.TEST.005', (new OutcomeLogger())->log($learningRoot, $draftPath, 'actor', 'commit_hash'));
+
+        // The legacy outcome-list format may also reference the retired id.
+        file_put_contents($draftPath, json_encode([
+            'id' => 'outcome.2026-06-02.002',
+            'task_id' => 'TASK-LOG-2',
+            'session' => 'sess-2',
+            'created_at' => '2026-06-02T12:00:00+00:00',
+            'applied_proposals' => ['proposal.2026-06-01.002'],
+            'result' => 'successful',
+        ], JSON_THROW_ON_ERROR));
+        self::assertIsString((new OutcomeLogger())->log($learningRoot, $draftPath, 'actor', 'commit_hash'));
+
         $unknown = $evaluated;
         $unknown['guidance_id'] = 'proposal.2026-06-01.999';
         $unknown['guidance_type'] = 'constraint';
