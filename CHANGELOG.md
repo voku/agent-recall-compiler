@@ -6,6 +6,8 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.29.8] - 2026-11-21
+
 ### Fixed
 
 - An applied DELETE is no longer selected as active guidance. Its target is gone and it carries no guidance text, yet a MEMORY.md task could still receive "Selected Active Guidance" naming the deleted row with the placeholder "No new wording provided". Until now it was dropped only when the loaded MEMORY.md hash happened to equal the hash recorded at apply time. It is now always evaluated as `inactive` and stays known to outcome history. An approved, not yet applied DELETE is still selected (#296).
