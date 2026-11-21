@@ -6,6 +6,11 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+### Added
+
+- `Output\CompiledRecallOutputPaths` names every artifact in one compiled Recall output directory (`identity()`, `briefing()`, `outcomeDraft()`, `verificationPlan()`, `verificationKey()` and the rest), so hosts no longer spell `meta.json`, `system.md`, `recall-log.draft.json` or `verification-plan.json` themselves. `CompileResult::paths()` returns it for a fresh compilation; `CompileResult`, `CompiledRecallOutputReader` and `VerificationArtifactWriter` now resolve their paths through it.
+- `Verification\VerificationPlanReader::read()` returns a `VerificationPlanDocument` bound to the plan's exact bytes (`sha256`, `task_id`, `target`, probe and checklist ids, decoded plan). An absent plan returns null; an unreadable, malformed or non-object plan throws instead of reading as absent.
+
 ## [0.29.8] - 2026-11-21
 
 ### Fixed

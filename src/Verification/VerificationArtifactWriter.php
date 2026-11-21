@@ -6,6 +6,7 @@ namespace voku\AgentRecallCompiler\Verification;
 
 use RuntimeException;
 use voku\AgentRecallCompiler\CanonicalJson;
+use voku\AgentRecallCompiler\Output\CompiledRecallOutputPaths;
 
 /** Serializes public and verifier-owned artifacts without crossing their boundary. */
 final readonly class VerificationArtifactWriter
@@ -70,8 +71,9 @@ final readonly class VerificationArtifactWriter
 
     public function write(string $outputDirectory, CompiledVerificationPlan $compiled): void
     {
-        $this->writeFile($outputDirectory . '/verification-plan.json', $this->renderPlan($compiled));
-        $this->writeFile($outputDirectory . '/verification-key.json', $this->renderKey($compiled));
+        $paths = new CompiledRecallOutputPaths($outputDirectory);
+        $this->writeFile($paths->verificationPlan(), $this->renderPlan($compiled));
+        $this->writeFile($paths->verificationKey(), $this->renderKey($compiled));
     }
 
     private function writeFile(string $path, string $content): void
