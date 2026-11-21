@@ -18,7 +18,7 @@ final readonly class CompiledRecallOutputReader
     /** Where the document identifying this output lives, whether or not it exists. */
     public function identityPath(string $outputDirectory): string
     {
-        return rtrim($outputDirectory, '/\\') . '/meta.json';
+        return (new CompiledRecallOutputPaths($outputDirectory))->identity();
     }
 
     /**
@@ -54,7 +54,7 @@ final readonly class CompiledRecallOutputReader
             return null;
         }
 
-        $path = dirname($output->identityPath()) . '/system.md';
+        $path = (new CompiledRecallOutputPaths(dirname($output->identityPath())))->briefing();
         if (!is_file($path)) {
             return null;
         }
@@ -73,14 +73,15 @@ final readonly class CompiledRecallOutputReader
 
     public function read(string $outputDirectory): ?CompiledRecallOutput
     {
-        $directory = rtrim($outputDirectory, '/\\');
-        $metaPath = $this->identityPath($directory);
+        $paths = new CompiledRecallOutputPaths($outputDirectory);
+        $directory = $paths->directory();
+        $metaPath = $paths->identity();
         if (!is_file($metaPath)) {
             return null;
         }
 
         $meta = $this->decode($metaPath);
-        $bundlePath = $directory . '/recall.bundle.json';
+        $bundlePath = $paths->bundle();
         $bundlePresent = is_file($bundlePath);
 
         $boundTaskId = null;
@@ -117,7 +118,7 @@ final readonly class CompiledRecallOutputReader
             bundleReadable: $bundleReadable,
             factsPresent: $factsPresent,
             factsReadable: $factsReadable,
-            outcomeDraftPresent: is_file($directory . '/recall-log.draft.json'),
+            outcomeDraftPresent: is_file($paths->outcomeDraft()),
             taskFiles: $this->stringList($meta['task_files'] ?? null),
             selectedGuidance: $this->stringList($meta['selected_guidance'] ?? null),
             selectedConstraints: $this->constraintIds($meta['selected_constraints'] ?? null),
@@ -136,7 +137,7 @@ final readonly class CompiledRecallOutputReader
      */
     private function finalLearningPrecedentIds(string $directory, ?string $bundleSha256): ?array
     {
-        $path = $directory . '/selection-report.json';
+        $path = (new CompiledRecallOutputPaths($directory))->selectionReport();
         if ($bundleSha256 === null || !is_file($path)) {
             return null;
         }
@@ -168,7 +169,7 @@ final readonly class CompiledRecallOutputReader
     /** @return array{bool, bool, list<RecallFact>} */
     private function facts(string $directory): array
     {
-        $path = $directory . '/facts.json';
+        $path = (new CompiledRecallOutputPaths($directory))->facts();
         if (!is_file($path)) {
             return [false, true, []];
         }

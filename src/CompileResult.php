@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace voku\AgentRecallCompiler;
 
+use voku\AgentRecallCompiler\Output\CompiledRecallOutputPaths;
+
 /**
  * Stable owner-level result of a successful Recall compilation.
  */
@@ -18,31 +20,32 @@ final readonly class CompileResult
 
     public function systemPath(): string
     {
-        return $this->artifactPath('system.md');
+        return $this->paths()->briefing();
     }
 
     public function validationPlanPath(): string
     {
-        return $this->artifactPath('validation-plan.md');
+        return $this->paths()->validationPlan();
     }
 
     public function factsPath(): string
     {
-        return $this->artifactPath('facts.json');
+        return $this->paths()->facts();
     }
 
     public function metaPath(): string
     {
-        return $this->artifactPath('meta.json');
+        return $this->paths()->identity();
     }
 
     public function bundlePath(): string
     {
-        return $this->artifactPath('recall.bundle.json');
+        return $this->paths()->bundle();
     }
 
-    private function artifactPath(string $filename): string
+    /** Every artifact path of this compilation, owned by Recall. */
+    public function paths(): CompiledRecallOutputPaths
     {
-        return rtrim($this->outputDirectory, '/\\') . '/' . $filename;
+        return new CompiledRecallOutputPaths($this->outputDirectory);
     }
 }
