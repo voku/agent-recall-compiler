@@ -6,6 +6,12 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.29.11] - 2026-11-22
+
+### Changed
+
+- Accept `voku/agent-map` `^0.25.0` (opt-in TypeScript/JavaScript declarations; PHP-only maps are unchanged).
+
 ## [0.29.10] - 2026-11-21
 
 ### Fixed
