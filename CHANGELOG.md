@@ -6,6 +6,12 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.29.12] - 2026-11-24
+
+### Fixed
+
+- Allow applied guidance to share a target when the current target matches their recorded snapshot and contains each reviewed directive; keep unverified or competing changes blocked (#304).
+
 ## [0.29.11] - 2026-11-22
 
 ### Changed
