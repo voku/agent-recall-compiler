@@ -265,7 +265,7 @@ final class RecallDecisionEngine
         $guidanceByDirective = [];
         foreach ($selectedGuidance as $g) {
             if ($g->target !== null && trim($g->target) !== '') {
-                $guidanceByTarget[$g->target][] = $g->id;
+                $guidanceByTarget[$g->target][] = $g;
             }
             if ($g->new !== null) {
                 $trimmedNew = trim($g->new);
@@ -274,8 +274,28 @@ final class RecallDecisionEngine
                 }
             }
         }
-        foreach ($guidanceByTarget as $target => $ids) {
-            if (count($ids) > 1) {
+        foreach ($guidanceByTarget as $target => $items) {
+            if (count($items) < 2) {
+                continue;
+            }
+            $ids = array_map(static fn (RecallGuidance $item): string => $item->id, $items);
+            $first = $items[0];
+            $sameAppliedSnapshot = $first->status === 'applied'
+                && $first->appliedTargetSourceRef === $target
+                && $first->appliedTargetContentHash !== null
+                && preg_match('/^[a-f0-9]{64}$/', $first->appliedTargetContentHash) === 1;
+            $targetContent = $readTaskFile === null ? null : $readTaskFile($target);
+            $sameAppliedSnapshot = $sameAppliedSnapshot && $targetContent !== null
+                && hash('sha256', $targetContent) === $first->appliedTargetContentHash;
+            foreach ($items as $item) {
+                $sameAppliedSnapshot = $sameAppliedSnapshot
+                    && $item->status === 'applied'
+                    && $item->appliedTargetSourceRef === $target
+                    && $item->appliedTargetContentHash === $first->appliedTargetContentHash
+                    && $item->new !== null && $item->new !== ''
+                    && str_contains($targetContent, $item->new);
+            }
+            if (!$sameAppliedSnapshot) {
                 throw new RecallCompilationBlockedException(sprintf(
                     "Conflict: Multiple active guidance items target '%s' (%s).",
                     $target,
