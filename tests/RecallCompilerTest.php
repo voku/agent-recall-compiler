@@ -398,6 +398,43 @@ final class RecallCompilerTest extends TestCase
         $engine->decide($task, $activeGuidance, [], []);
     }
 
+    public function testAppliedGuidanceCanShareProvenTargetSnapshot(): void
+    {
+        $content = 'new 1 and new 2';
+        $hash = hash('sha256', $content);
+        $items = [
+            new RecallGuidance('g-1', 'REPLACE', 'skill', 'auth', ['src/Auth'], 'old 1', 'new 1', 'reason', null, [], 'applied', appliedTargetSourceRef: 'auth', appliedTargetContentHash: $hash),
+            new RecallGuidance('g-2', 'REPLACE', 'skill', 'auth', ['src/Auth'], 'old 2', 'new 2', 'reason', null, [], 'applied', appliedTargetSourceRef: 'auth', appliedTargetContentHash: $hash),
+        ];
+        $result = (new RecallDecisionEngine())->decide(new TaskBrief('ITPNG-123', 'Auth', ['src/Auth/OAuth.php']), $items, [], [], readTaskFile: static fn (string $path): ?string => $path === 'auth' ? $content : null);
+        self::assertCount(2, $result->selectedGuidance);
+    }
+
+    public function testAppliedGuidanceWithoutVerifiedCurrentWordingStillBlocks(): void
+    {
+        $content = 'new 1 and new 2';
+        $hash = hash('sha256', $content);
+        $items = [
+            new RecallGuidance('g-1', 'REPLACE', 'skill', 'auth', ['src/Auth'], 'old 1', 'new 1', 'reason', null, [], 'applied', appliedTargetSourceRef: 'auth', appliedTargetContentHash: $hash),
+            new RecallGuidance('g-2', 'REPLACE', 'skill', 'auth', ['src/Auth'], 'old 2', 'missing', 'reason', null, [], 'applied', appliedTargetSourceRef: 'auth', appliedTargetContentHash: $hash),
+        ];
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Multiple active guidance items');
+        (new RecallDecisionEngine())->decide(new TaskBrief('ITPNG-123', 'Auth', ['src/Auth/OAuth.php']), $items, [], [], readTaskFile: static fn (string $path): ?string => $path === 'auth' ? $content : null);
+    }
+
+    public function testAppliedGuidanceWithDifferentTargetSnapshotsStillBlocks(): void
+    {
+        $content = 'new 1 and new 2';
+        $items = [
+            new RecallGuidance('g-1', 'REPLACE', 'skill', 'auth', ['src/Auth'], 'old 1', 'new 1', 'reason', null, [], 'applied', appliedTargetSourceRef: 'auth', appliedTargetContentHash: hash('sha256', $content)),
+            new RecallGuidance('g-2', 'REPLACE', 'skill', 'auth', ['src/Auth'], 'old 2', 'new 2', 'reason', null, [], 'applied', appliedTargetSourceRef: 'auth', appliedTargetContentHash: str_repeat('b', 64)),
+        ];
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Multiple active guidance items');
+        (new RecallDecisionEngine())->decide(new TaskBrief('ITPNG-123', 'Auth', ['src/Auth/OAuth.php']), $items, [], [], readTaskFile: static fn (string $path): ?string => $path === 'auth' ? $content : null);
+    }
+
     public function testDecidesThrowsOnDirectiveConflict(): void
     {
         $activeGuidance = [
