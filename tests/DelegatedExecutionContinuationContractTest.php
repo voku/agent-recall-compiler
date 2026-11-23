@@ -21,6 +21,7 @@ final class DelegatedExecutionContinuationContractTest extends TestCase
         self::assertSame(2, substr_count($markdown, 'PRE_EXISTING'));
         self::assertSame(2, substr_count($markdown, 'NOT_READY_TO_DELEGATE'));
         self::assertSame(2, substr_count($markdown, 'executor completion prose as a claim'));
+        self::assertSame(2, substr_count($markdown, 'final developer-facing report as a self-contained account'));
         self::assertStringContainsString('Keep every direct L1 contract below unchanged', $markdown);
     }
 
