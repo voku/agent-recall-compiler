@@ -79,6 +79,25 @@ final class GovernedRunBindingTest extends TestCase
         (new TaskBriefParser())->parseFile($path);
     }
 
+    public function testStaleEnvelopeRejectsRevisedContractSource(): void
+    {
+        $contractPath = $this->writeContract();
+        $staleEnvelope = $this->writeEnvelope('run:ABC-123:one', $contractPath, 2, 'stale.json');
+        $contract = json_decode((string) file_get_contents($contractPath), true, 512, JSON_THROW_ON_ERROR);
+        $contract['revision'] = 3;
+        $contract['scope'][] = 'src/Other.php';
+        file_put_contents($contractPath, json_encode($contract, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+
+        $currentEnvelope = $this->writeEnvelope('run:ABC-123:two', $contractPath, 3, 'current.json');
+        $current = (new TaskBriefParser())->parseFile($currentEnvelope);
+        self::assertSame(3, $current->governedRun?->contractRevision);
+        self::assertSame(['src/Parser.php', 'src/Other.php'], $current->files);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Contract digest does not match');
+        (new TaskBriefParser())->parseFile($staleEnvelope);
+    }
+
     public function testRevisionMismatchFailsClosed(): void
     {
         $contractPath = $this->writeContract();
