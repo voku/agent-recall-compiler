@@ -37,12 +37,14 @@ final readonly class CompileRequest
         public ?KanbanContextProjection $kanbanContextProjection = null,
         public ?InlineCompileTask $inlineTask = null,
         public array $operatingPrompts = [],
+        public ?string $itpSourceHints = null,
     ) {
         $this->assertNonEmpty($this->learningRoot, 'learningRoot');
         $this->assertOptionalNonEmpty($this->taskBrief, 'taskBrief');
         $this->assertNonEmpty($this->outputDirectory, 'outputDirectory');
         $this->assertOptionalNonEmpty($this->kanbanContext, 'kanbanContext');
         $this->assertOptionalNonEmpty($this->mapIndex, 'mapIndex');
+        $this->assertOptionalNonEmpty($this->itpSourceHints, 'itpSourceHints');
         $this->assertOptionalNonEmpty($this->mapRoot, 'mapRoot');
         $this->assertOptionalNonEmpty($this->mapSearchIndex, 'mapSearchIndex');
         $this->assertOptionalNonEmpty($this->compilationId, 'compilationId');
