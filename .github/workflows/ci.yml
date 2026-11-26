@@ -214,7 +214,7 @@ jobs:
           PHP
           php build/itp-context/bin/itp-context-source-hints \
             --root="$root" --file=src/Widget.php > "$root/hints.json"
-          php vendor/bin/agent-recall-compiler compile \
+          php bin/agent-recall-compiler compile \
             --root "$root/.agent-loop/learning" \
             --task ITP-E2E \
             --description 'Inspect verified source identity before changing behavior' \
@@ -232,7 +232,7 @@ jobs:
           }
           '
           printf '\n// changed after the owner snapshot\n' >> "$root/src/Widget.php"
-          php vendor/bin/agent-recall-compiler compile \
+          php bin/agent-recall-compiler compile \
             --root "$root/.agent-loop/learning" \
             --task ITP-E2E \
             --description 'Inspect verified source identity before changing behavior' \
