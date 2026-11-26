@@ -11,6 +11,9 @@ use RuntimeException;
 use voku\AgentRecallCompiler\Cli;
 use voku\AgentRecallCompiler\CompileRequest;
 use voku\AgentRecallCompiler\RecallCompiler;
+use voku\AgentRecallCompiler\RecallRootConfig;
+use voku\AgentRecallCompiler\TaskBrief;
+use voku\AgentRecallCompiler\Provider\ItpSourceHintsRecallProvider;
 
 final class ItpSourceHintsCompilationTest extends TestCase
 {
@@ -101,6 +104,14 @@ PHP);
 
     public function testStaleOwnerSourceHashDoesNotLeakObsoleteArchitectureRule(): void
     {
+        $freshOutput = $this->compile('fresh-before-stale', true);
+        $freshBundle = json_decode((string) file_get_contents($freshOutput . '/recall.bundle.json'), true, 512, JSON_THROW_ON_ERROR);
+        $freshProvider = array_values(array_filter(
+            $freshBundle['snapshot']['providers'],
+            static fn (array $provider): bool => $provider['manifest']['id'] === 'itp-source-hints',
+        ));
+        self::assertCount(1, $freshProvider);
+
         file_put_contents($this->sourcePath, "\n// changed after owner's scan", FILE_APPEND);
         $output = $this->compile('stale-hints', true);
         $facts = json_decode((string) file_get_contents($output . '/facts.json'), true, 512, JSON_THROW_ON_ERROR);
@@ -110,6 +121,17 @@ PHP);
         ));
         self::assertCount(1, $statuses);
         self::assertSame('stale', $statuses[0]['payload']['status']);
+        $staleBundle = json_decode((string) file_get_contents($output . '/recall.bundle.json'), true, 512, JSON_THROW_ON_ERROR);
+        $staleProvider = array_values(array_filter(
+            $staleBundle['snapshot']['providers'],
+            static fn (array $provider): bool => $provider['manifest']['id'] === 'itp-source-hints',
+        ));
+        self::assertCount(1, $staleProvider);
+        self::assertNotSame(
+            $freshProvider[0]['source_digest'],
+            $staleProvider[0]['source_digest'],
+            'The source-verification outcome must affect the compilation snapshot identity.',
+        );
         $system = (string) file_get_contents($output . '/system.md');
         self::assertStringContainsString('Incomplete, unavailable or stale', $system);
         self::assertStringNotContainsString('Demo\Rules::ReadTests', $system);
@@ -134,6 +156,20 @@ PHP);
             'Incomplete, unavailable or stale',
             (string) file_get_contents($out . '/system.md'),
         );
+    }
+
+    public function testMissingProjectRootCannotFallBackToProcessWorkingDirectory(): void
+    {
+        $provider = new ItpSourceHintsRecallProvider($this->root . '/hints.json');
+        $result = $provider->collect(
+            new TaskBrief('TEST-ROOT', 'Inspect the rule owner.', ['src/Example.php']),
+            new RecallRootConfig($this->learning, 'constraints/active', null),
+        );
+
+        self::assertCount(1, $result->facts);
+        self::assertSame('architecture_status', $result->facts[0]->type);
+        self::assertSame('unavailable', $result->facts[0]->payload['status']);
+        self::assertSame('project_root_unavailable', $result->facts[0]->payload['reason']);
     }
 
     public function testCompilationWithoutOptionalOwnerHintsKeepsExistingBehavior(): void
