@@ -161,3 +161,88 @@ jobs:
             .agent-loop/recall/ARC-17
             .agent-loop/sessions
             .agent-loop/runs/ARC-17
+
+  itp-owner-source-hints-dogfood:
+    if: github.event_name == 'pull_request'
+    name: Real ITP owner CLI to Recall L2 dogfood
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout candidate Recall compiler
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Checkout pinned ITP source-hints owner
+        uses: actions/checkout@v7
+        with:
+          repository: voku/itp-context
+          ref: 7e9c06ee44830b745cc7bc59233e1fc59ed4545f
+          path: build/itp-context
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: json, mbstring
+          coverage: none
+          tools: composer:v2
+
+      - name: Install exact candidate and owner dependencies
+        run: |
+          set -euo pipefail
+          composer install --no-interaction --prefer-dist --no-progress
+          composer install --working-dir=build/itp-context --no-dev --no-interaction --prefer-dist --no-progress
+
+      - name: Prove real owner JSON is compiled into a low-authority L2 briefing
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=build/itp-e2e
+          mkdir -p "$root/src" "$root/.agent-loop/learning/proposals/approved" \
+            "$root/.agent-loop/learning/proposals/applied" \
+            "$root/.agent-loop/learning/proposals/rejected" \
+            "$root/.agent-loop/learning/constraints/active" \
+            "$root/.agent-loop/learning/history"
+          cat > "$root/src/Widget.php" <<'PHP'
+          <?php
+          namespace Demo;
+          #[\ItpContext\Attribute\Rule(\Demo\Rules::ReadTests)]
+          final class Widget {}
+          PHP
+          php build/itp-context/bin/itp-context-source-hints \
+            --root="$root" --file=src/Widget.php > "$root/hints.json"
+          php vendor/bin/agent-recall-compiler compile \
+            --root "$root/.agent-loop/learning" \
+            --task ITP-E2E \
+            --description 'Inspect verified source identity before changing behavior' \
+            --file src/Widget.php \
+            --itp-source-hints "$root/hints.json" \
+            --output-dir "$root/recall" \
+            --compilation-id compilation.ITP-E2E.current
+          grep -Fq 'PHP Architecture Rule Leads (Unverified)' "$root/recall/system.md"
+          grep -Fq 'Demo\Rules::ReadTests' "$root/recall/system.md"
+          php -r '
+          $facts = json_decode(file_get_contents("build/itp-e2e/recall/facts.json"), true, 512, JSON_THROW_ON_ERROR);
+          $hints = array_values(array_filter($facts["facts"], static fn (array $f): bool => $f["type"] === "architecture_hint"));
+          if (count($hints) !== 1 || $hints[0]["authority"] !== "derived_navigation") {
+              throw new RuntimeException("Owner architecture hint was not projected with low authority.");
+          }
+          '
+          printf '\n// changed after the owner snapshot\n' >> "$root/src/Widget.php"
+          php vendor/bin/agent-recall-compiler compile \
+            --root "$root/.agent-loop/learning" \
+            --task ITP-E2E \
+            --description 'Inspect verified source identity before changing behavior' \
+            --file src/Widget.php \
+            --itp-source-hints "$root/hints.json" \
+            --output-dir "$root/stale" \
+            --compilation-id compilation.ITP-E2E.stale
+          grep -Fq 'Incomplete, unavailable or stale' "$root/stale/system.md"
+          if grep -Fq 'Demo\Rules::ReadTests' "$root/stale/system.md"; then
+            echo "Stale source incorrectly reached L2." >&2
+            exit 1
+          fi
+
