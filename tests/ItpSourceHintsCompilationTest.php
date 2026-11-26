@@ -111,8 +111,29 @@ PHP);
         self::assertCount(1, $statuses);
         self::assertSame('stale', $statuses[0]['payload']['status']);
         $system = (string) file_get_contents($output . '/system.md');
-        self::assertStringContainsString('Unavailable or stale', $system);
+        self::assertStringContainsString('Incomplete, unavailable or stale', $system);
         self::assertStringNotContainsString('Demo\Rules::ReadTests', $system);
+    }
+
+    public function testOwnerOmissionsAreExplicitlyVisibleToTheHost(): void
+    {
+        $path = $this->root . '/hints.json';
+        $data = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+        $data['ignored_paths'] = 2;
+        file_put_contents($path, json_encode($data, JSON_THROW_ON_ERROR));
+
+        $out = $this->compile('partial-hints', true);
+        $facts = json_decode((string) file_get_contents($out . '/facts.json'), true, 512, JSON_THROW_ON_ERROR);
+        $partial = array_values(array_filter(
+            $facts['facts'],
+            static fn (array $fact): bool => ($fact['type'] ?? null) === 'architecture_status',
+        ));
+        self::assertCount(1, $partial);
+        self::assertSame('partial', $partial[0]['payload']['status']);
+        self::assertStringContainsString(
+            'Incomplete, unavailable or stale',
+            (string) file_get_contents($out . '/system.md'),
+        );
     }
 
     public function testCompilationWithoutOptionalOwnerHintsKeepsExistingBehavior(): void
