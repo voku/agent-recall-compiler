@@ -67,6 +67,9 @@ final readonly class RecallCompiler
         if ($request->mapIndex !== null) {
             array_push($tokens, '--map-index', $request->mapIndex);
         }
+        if ($request->itpSourceHints !== null) {
+            array_push($tokens, '--itp-source-hints', $request->itpSourceHints);
+        }
         if ($request->mapRoot !== null) {
             array_push($tokens, '--map-root', $request->mapRoot);
         }
