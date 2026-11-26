@@ -136,6 +136,26 @@ vendor/bin/agent-recall-compiler compile \
 
 Dependencies and type definitions are context-only by default. Being shown to the agent does not automatically widen edit scope.
 
+### Optional ITP architecture hints in L2
+
+The `voku/itp-context` owner CLI can provide syntax-only PHP architecture identifiers for files already found via `agent-map` or focused repository investigation. Recall consumes its JSON as **low-authority, source-hash-checked facts**, without loading ITP PHP classes or rule enums:
+
+```bash
+vendor/bin/itp-context-source-hints --root=. --file=src/Service/Example.php > .agent-loop/itp-source-hints.json
+vendor/bin/agent-recall-compiler compile \
+  --root .agent-loop/learning \
+  --task EXAMPLE-1 \
+  --description 'Review the behavior and its existing tests before making changes' \
+  --file src/Service/Example.php \
+  --itp-source-hints .agent-loop/itp-source-hints.json \
+  --output-dir .agent-loop/recall/EXAMPLE-1
+```
+
+The output `system.md` includes a **PHP Architecture Rule Leads (Unverified)** section. Every referenced source path is checked against the owner's recorded SHA-256; stale or unavailable information is reported as such, not silently presented as current. The rule ID is a pointer only: the receiving agent must inspect the owning definition to find any `verifiedBy` tests, ADR `refs` and `changeGuidance`. No such metadata is inferred or added to the approved task scope by Recall. An absent CLI or omitted option leaves compilation unchanged. JavaScript/TypeScript do not have equivalent ITP annotations.
+
+This is the reusable Recall projection, **not** automatic discovery or an additional approval gate. The host is responsible for collecting the owner evidence at the appropriate planning and implementation stages. Source paths are read only, and executable project rule definitions are never loaded by Recall.
+
+
 ### Context explains provenance and safe use
 
 `selection-report.json` can expose deterministic context explanations using:
