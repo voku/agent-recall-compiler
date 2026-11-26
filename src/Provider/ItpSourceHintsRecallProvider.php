@@ -128,6 +128,15 @@ final readonly class ItpSourceHintsRecallProvider implements RecallProvider
             );
         }
 
+        $ignored = $data['ignored_paths'] ?? 0;
+        $omitted = $data['omitted_rules'] ?? 0;
+        if (!is_int($ignored) || $ignored < 0 || !is_int($omitted) || $omitted < 0) {
+            throw new RuntimeException('Invalid ITP source-hints omission counts');
+        }
+        if ($ignored > 0 || $omitted > 0) {
+            $facts[] = $this->statusFact('partial', 'owner_omitted_candidates');
+        }
+
         return new RecallProviderResult($digest, $facts);
     }
 
