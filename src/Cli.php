@@ -75,6 +75,7 @@ final class Cli
         fwrite(STDOUT, "  --map-search-index PATH  Derived agent-map search database (agent-map search-index build). Adds ranked candidates.\n");
         fwrite(STDOUT, "  --map-search-limit N     How many ranked candidates to include (default 8).\n");
         fwrite(STDOUT, "  --edit-focus TEXT        Narrow target source context around this literal. Repeatable.\n");
+        fwrite(STDOUT, "  --itp-source-hints PATH  Optional JSON from itp-context-source-hints (checked against source hashes).\n");
         fwrite(STDOUT, "  --kanban-context PATH    Optional stable JSON projection owned by the board integration.\n");
         fwrite(STDOUT, "  --document-manifest PATH Git-tracked scoped skill/ADR manifest. Repeatable.\n");
         fwrite(STDOUT, "  --compilation-id ID      Stable ID for this compile session.\n");
