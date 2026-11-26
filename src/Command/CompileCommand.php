@@ -20,6 +20,7 @@ use voku\AgentRecallCompiler\JsonTaskBriefResolver;
 use voku\AgentRecallCompiler\OperatingPromptOutcomeDraftAugmenter;
 use voku\AgentRecallCompiler\OperatingPromptRequest;
 use voku\AgentRecallCompiler\Provider\KanbanContextRecallProvider;
+use voku\AgentRecallCompiler\Provider\ItpSourceHintsRecallProvider;
 use voku\AgentRecallCompiler\Provider\LearningNoteRecallProvider;
 use voku\AgentRecallCompiler\Provider\LearningRecallProvider;
 use voku\AgentRecallCompiler\Provider\MapRecallProvider;
@@ -148,6 +149,10 @@ final class CompileCommand
                     searchDatabase: $mapSearchIndex,
                     searchLimit: $mapSearchLimit,
                 );
+            }
+            $sourceHints = $parsed->stringOption('itp-source-hints');
+            if ($sourceHints !== null) {
+                $providers[] = new ItpSourceHintsRecallProvider($sourceHints);
             }
             $kanbanContext = $parsed->stringOption('kanban-context');
             if ($kanbanContext !== null) {
