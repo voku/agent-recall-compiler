@@ -62,10 +62,15 @@ final readonly class ItpSourceHintsRecallProvider implements RecallProvider
             throw new RuntimeException('ITP source-hints projection exceeds owner bounds');
         }
 
-        $root = realpath($rootConfig->projectRoot ?? '');
-        if ($root === false || !is_dir($root)) {
-            return new RecallProviderResult($digest, [$this->statusFact('unavailable', 'project_root_unavailable')]);
+        $projectRoot = $rootConfig->projectRoot;
+        if ($projectRoot === null || trim($projectRoot) === '') {
+            return $this->unavailable($digest, 'unavailable', 'project_root_unavailable');
         }
+        $root = realpath($projectRoot);
+        if ($root === false || !is_dir($root)) {
+            return $this->unavailable($digest, 'unavailable', 'project_root_unavailable');
+        }
+        $normalizedRoot = str_replace('\\', '/', $root);
 
         /** @var array<string, true> $verifiedPaths */
         $verifiedPaths = [];
@@ -84,14 +89,15 @@ final readonly class ItpSourceHintsRecallProvider implements RecallProvider
             }
 
             $real = realpath($root . '/' . $path);
-            if ($real === false || !str_starts_with($real, rtrim($root, '/') . '/')
+            if ($real === false
+                || !str_starts_with(str_replace('\\', '/', $real), rtrim($normalizedRoot, '/') . '/')
                 || !is_file($real) || !is_readable($real)
             ) {
-                return new RecallProviderResult($digest, [$this->statusFact('stale', 'source_missing_or_outside_project')]);
+                return $this->unavailable($digest, 'stale', 'source_missing_or_outside_project', $path);
             }
             $actual = hash_file('sha256', $real);
             if ($actual === false || 'sha256:' . $actual !== $sha) {
-                return new RecallProviderResult($digest, [$this->statusFact('stale', 'source_digest_mismatch')]);
+                return $this->unavailable($digest, 'stale', 'source_digest_mismatch', $path, $actual === false ? null : $actual);
             }
             $verifiedPaths[$path] = true;
         }
@@ -152,6 +158,27 @@ final readonly class ItpSourceHintsRecallProvider implements RecallProvider
             && !in_array('..', explode('/', $path), true)
             && !in_array('.', explode('/', $path), true)
             && preg_match('/\.php$/iD', $path) === 1;
+    }
+
+    private function unavailable(
+        string $projectionDigest,
+        string $status,
+        string $reason,
+        string $sourcePath = '',
+        ?string $observedSha256 = null,
+    ): RecallProviderResult {
+        return new RecallProviderResult(
+            CanonicalJson::digest([
+                'projection_digest' => $projectionDigest,
+                'verification' => [
+                    'status' => $status,
+                    'reason' => $reason,
+                    'path' => $sourcePath,
+                    'observed_sha256' => $observedSha256,
+                ],
+            ]),
+            [$this->statusFact($status, $reason)],
+        );
     }
 
     private function statusFact(string $status, string $reason): RecallFact
