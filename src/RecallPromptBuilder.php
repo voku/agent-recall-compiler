@@ -186,7 +186,7 @@ final class RecallPromptBuilder
                 ));
             }
             if ($architectureStatuses !== []) {
-                $md[] = '- **Unavailable or stale:** ITP source hints could not be used; their absence does not imply that relevant architecture rules do not exist. Check the recorded status facts.';
+                $md[] = '- **Incomplete, unavailable or stale:** ITP source-hint coverage may be partial or unusable; missing entries do not prove that architecture rules are absent. Check the recorded status facts.';
             }
             $md[] = '';
         }
