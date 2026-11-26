@@ -9,6 +9,8 @@ use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use RuntimeException;
 use voku\AgentRecallCompiler\Cli;
+use voku\AgentRecallCompiler\CompileRequest;
+use voku\AgentRecallCompiler\RecallCompiler;
 
 final class ItpSourceHintsCompilationTest extends TestCase
 {
@@ -137,6 +139,30 @@ PHP);
             '--compilation-id', 'compilation.TEST-ITP.invalid',
         ]));
         self::assertFileDoesNotExist($this->root . '/invalid-out/system.md');
+    }
+
+    public function testTypedHostApiCanSupplyTheSameOwnerProjection(): void
+    {
+        file_put_contents($this->root . '/task.json', json_encode([
+            'schema_version' => '1.0',
+            'id' => 'TEST-ITP-TYPED',
+            'description' => 'Use owner hints in a host-provided typed compilation.',
+            'files' => ['src/Example.php'],
+        ], JSON_THROW_ON_ERROR));
+
+        $out = $this->root . '/typed-out';
+        (new RecallCompiler())->compile(new CompileRequest(
+            learningRoot: $this->learning,
+            taskBrief: $this->root . '/task.json',
+            outputDirectory: $out,
+            itpSourceHints: $this->root . '/hints.json',
+            compilationId: 'compilation.TEST-ITP-TYPED.hints',
+        ));
+
+        self::assertStringContainsString(
+            'Demo\Rules::ReadTests',
+            (string) file_get_contents($out . '/system.md'),
+        );
     }
 
     private function compile(string $suffix, bool $withHints): string
