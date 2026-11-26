@@ -162,6 +162,35 @@ final class RecallPromptBuilder
             $md[] = "";
         }
 
+        $architectureHints = array_values(array_filter(
+            $facts,
+            static fn (array $fact): bool => ($fact['type'] ?? null) === 'architecture_hint',
+        ));
+        $architectureStatuses = array_values(array_filter(
+            $facts,
+            static fn (array $fact): bool => ($fact['type'] ?? null) === 'architecture_status',
+        ));
+        if ($architectureHints !== [] || $architectureStatuses !== []) {
+            $md[] = '## PHP Architecture Rule Leads (Unverified)';
+            $md[] = 'These low-authority source-attribute identifiers are not approved edit scope or validated rule definitions. Inspect the owning enum source for verifiedBy tests, ADR refs and changeGuidance; check affected assertions before proposing changes.';
+            foreach ($architectureHints as $fact) {
+                $payload = is_array($fact['payload'] ?? null) ? $fact['payload'] : [];
+                $ruleId = is_string($payload['rule_id'] ?? null) ? $payload['rule_id'] : '';
+                $paths = is_array($payload['files'] ?? null) ? $payload['files'] : [];
+                if ($ruleId === '') {
+                    continue;
+                }
+                $md[] = '- ' . chr(96) . $ruleId . chr(96) . ' in ' . implode(', ', array_map(
+                    static fn (string $path): string => chr(96) . $path . chr(96),
+                    array_values(array_filter($paths, 'is_string')),
+                ));
+            }
+            if ($architectureStatuses !== []) {
+                $md[] = '- **Unavailable or stale:** ITP source hints could not be used; their absence does not imply that relevant architecture rules do not exist. Check the recorded status facts.';
+            }
+            $md[] = '';
+        }
+
         $projectDocuments = array_values(array_filter(
             $facts,
             static fn (array $fact): bool => in_array($fact['type'] ?? null, ['adr', 'skill'], true),
