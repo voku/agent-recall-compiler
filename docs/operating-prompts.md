@@ -149,6 +149,12 @@ The L2 pass must:
 
 This is the point of putting the mechanism in recall rather than storing a pile of polished generic prompts: the reusable recipe stays small, while the generated L1 prompt gets shaped by the actual project.
 
+## Completion reporting and host boundaries
+
+When an L1 operating contract executes work, its final developer-facing report must stand on its own. It should identify the requested outcome, what actually changed, the verification and review evidence observed, unresolved risks or blockers, and the owner-backed next action. Previous chat updates or private model reasoning are not required reading, and a model's completion claim is never a substitute for repository or workflow evidence. Observed evidence keeps its source reference and stays separate from unverified claims; a failing, skipped or missing check is reported as such, and the report does not supply a motivation that no evidence records. Planning-only L2 construction does not claim execution.
+
+Recall compiles task context and operating instructions. Model choice, reasoning effort, Responses API conversation-prefix handling, prompt caching, background processing, and transport settings belong to the invoking host/provider integration, not to Recall's generated L1/L2 content. Changing those settings does not grant new Contract/Run authority.
+
 ## Governed input
 
 A governed Recall compile does not copy Session-private work-brief state. It receives a small envelope that binds one explicit `run_id` to one exact approved durable Contract revision and digest:
