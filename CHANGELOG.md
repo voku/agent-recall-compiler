@@ -6,6 +6,16 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.29.13] - 2026-11-27
+
+### Added
+
+- `compile --itp-source-hints <file>` (and `CompileRequest::$itpSourceHints`) adds an optional **PHP Architecture Rule Leads (Unverified)** section to L2 briefings from `voku/itp-context` source-hints JSON. Each referenced source is checked against its recorded SHA-256; stale or unavailable hints are reported as such. Omitting the option leaves compilation unchanged (#308).
+
+### Changed
+
+- The delegated-execution continuation prompt asks for a standalone completion report that keeps observed evidence, with its source, separate from unverified claims, and reports failing, skipped or missing checks as such (#303).
+
 ## [0.29.12] - 2026-11-24
 
 ### Fixed
