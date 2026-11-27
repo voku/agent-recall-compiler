@@ -22,6 +22,9 @@ final class DelegatedExecutionContinuationContractTest extends TestCase
         self::assertSame(2, substr_count($markdown, 'NOT_READY_TO_DELEGATE'));
         self::assertSame(2, substr_count($markdown, 'executor completion prose as a claim'));
         self::assertSame(2, substr_count($markdown, 'final developer-facing report as a self-contained account'));
+        self::assertSame(2, substr_count($markdown, 'Keep observed evidence, with its source reference, separate from unverified claims.'));
+        self::assertSame(2, substr_count($markdown, 'Report a failing, skipped, or missing check as such; do not count it as passed'));
+        self::assertSame(2, substr_count($markdown, 'do not supply a motivation or WHY that no evidence records'));
         self::assertStringContainsString('Keep every direct L1 contract below unchanged', $markdown);
     }
 
