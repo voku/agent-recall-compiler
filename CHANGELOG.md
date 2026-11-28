@@ -6,9 +6,11 @@ The format follows Keep a Changelog, and this project uses semantic versioning w
 
 ## [Unreleased]
 
+## [0.29.14] - 2026-11-28
+
 ### Fixed
 
-- `RecallDecisionEngine::decide()` no longer blocks when append-only outcome history references a guidance ID that no longer exists (for example a constraint manifest its owner removed). Such an ID can never be selected, so it is reported once per ID as a warning with its record count; previously every later compile of the repository failed with "Conflict: outcome references unknown rule ID".
+- `RecallDecisionEngine::decide()` no longer blocks when append-only outcome history references a guidance ID that no longer exists (for example a constraint manifest its owner removed). Such an ID can never be selected, so it is reported once per ID as a warning with its record count; previously every later compile of the repository failed with "Conflict: outcome references unknown rule ID" (#311).
 
 ## [0.29.13] - 2026-11-27
 
