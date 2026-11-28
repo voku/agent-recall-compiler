@@ -769,22 +769,34 @@ final class RecallCompilerTest extends TestCase
         (new RecallRepository())->loadConstraintManifests($this->root);
     }
 
-    public function testDecidesThrowsOnUnknownRuleIdInOutcomes(): void
+    public function testDecidesWarnsOnceOnUnknownRuleIdInOutcomes(): void
     {
+        // Reproduces a real regression: a consumer removed a hand-written constraint manifest
+        // while 137 append-only outcome records still named it, and every compile blocked with
+        // "unknown rule ID" although the ID could never be selected again.
         $outcomes = [
             [
                 'task_id' => 'ITPNG-100',
                 'guidance_used' => ['g-unknown'],
-                'harmful' => []
-            ]
+                'harmful' => [],
+            ],
+            [
+                'task_id' => 'ITPNG-101',
+                'guidance_id' => 'g-unknown',
+                'outcome' => 'not_used',
+            ],
         ];
 
         $engine = new RecallDecisionEngine();
         $task = new TaskBrief('ITPNG-123', 'Implement auth logic', ['src/Auth/OAuth.php']);
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage("Conflict: outcome references unknown rule ID 'g-unknown'");
-        $engine->decide($task, [], [], $outcomes);
+        $result = $engine->decide($task, [], [], $outcomes);
+
+        self::assertSame([], $result->selectedGuidance);
+        self::assertSame(
+            ["Outcome history references unknown rule ID 'g-unknown' (2 record(s)); it is no longer active, removed or retired guidance and is ignored."],
+            $result->warnings,
+        );
     }
 
     public function testDecidesDoesNotBlockOnHistoricalOutcomeReferencingRetiredProposal(): void

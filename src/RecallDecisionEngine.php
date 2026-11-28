@@ -231,19 +231,30 @@ final class RecallDecisionEngine
         foreach ($retiredProposals as $retirement) {
             $allKnownIds[] = $retirement->id;
         }
+        // Outcome history is append-only, so a reference to guidance that no longer exists (for
+        // example a constraint manifest removed by its owner) cannot be repaired. Such an ID can
+        // never be selected, so it does not affect this compilation: report it once as a warning
+        // instead of blocking every later compile of the repository.
+        $unknownOutcomeIds = [];
         foreach ($outcomes as $outcome) {
+            $referencedIds = [];
             if (isset($outcome['guidance_id']) && is_string($outcome['guidance_id'])) {
-                if (!in_array($outcome['guidance_id'], $allKnownIds, true)) {
-                    throw new RecallCompilationBlockedException(sprintf("Conflict: outcome references unknown rule ID '%s'.", $outcome['guidance_id']));
-                }
+                $referencedIds[] = $outcome['guidance_id'];
             }
             $guidanceUsed = $outcome['guidance_used'] ?? [];
             $appliedProposals = $outcome['applied_proposals'] ?? [];
-            foreach (array_merge($guidanceUsed, $appliedProposals) as $refId) {
-                if (!in_array($refId, $allKnownIds, true)) {
-                    throw new RecallCompilationBlockedException(sprintf("Conflict: outcome references unknown rule ID '%s'.", $refId));
+            foreach (array_merge($referencedIds, $guidanceUsed, $appliedProposals) as $refId) {
+                if (is_string($refId) && !in_array($refId, $allKnownIds, true)) {
+                    $unknownOutcomeIds[$refId] = ($unknownOutcomeIds[$refId] ?? 0) + 1;
                 }
             }
+        }
+        foreach ($unknownOutcomeIds as $unknownId => $count) {
+            $warnings[] = sprintf(
+                "Outcome history references unknown rule ID '%s' (%d record(s)); it is no longer active, removed or retired guidance and is ignored.",
+                $unknownId,
+                $count,
+            );
         }
 
         // 4. Stale or unapproved check
